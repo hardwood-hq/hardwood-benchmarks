@@ -1,0 +1,10 @@
+pass	benchmark	contender	ms_per_op	m_rows_per_s	mb_per_s
+unpinned	FlatScanBenchmark	avroParquetReaderIndexed	29304.178	1.663	28.3
+unpinned	FlatScanBenchmark	avroParquetReaderNamed	30407.235	1.602	27.3
+unpinned	FlatScanBenchmark	hardwoodColumnar	2764.322	17.626	300.2
+unpinned	FlatScanBenchmark	hardwoodRowReaderIndexed	2919.125	16.691	284.3
+unpinned	FlatScanBenchmark	hardwoodRowReaderNamed	15342.455	3.176	54.1
+unpinned	FlatScanBenchmark	parquetJavaColumnar	13103.250	3.718	63.3
+pinned	FlatScanBenchmark	hardwoodColumnar	11454.882	4.253	72.5
+pinned	FlatScanBenchmark	hardwoodRowReaderIndexed	10114.834	4.817	82.1
+pinned	FlatScanBenchmark	hardwoodRowReaderNamed	23385.490	2.083	35.5
