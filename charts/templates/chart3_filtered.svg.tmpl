@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="550" viewBox="0 0 780 550" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="780" height="550" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">Filtered scan (predicate push-down)</text>
+  <text x="40" y="50" font-size="12.5" fill="#495057">Hardwood filtered column reader ↔ parquet-java · push-down range filter · $fds</text>
+  <text x="40" y="67" font-size="11" fill="#868e96">$machine, warm cache · $java</text>
+
+  <!-- Legend (horizontal header) -->
+  <rect x="40"  y="82" width="12" height="12" rx="2" fill="#1971c2"/>
+  <text x="57"  y="92" font-size="11.5" fill="#495057">Hardwood (all cores)</text>
+  <rect x="190" y="82" width="12" height="12" rx="2" fill="#4dabf7"/>
+  <text x="207" y="92" font-size="11.5" fill="#495057">Hardwood (1 core)*</text>
+  <rect x="328" y="82" width="12" height="12" rx="2" fill="#f08c00"/>
+  <text x="345" y="92" font-size="11.5" fill="#495057">parquet-java (single-threaded)</text>
+
+  <!-- everything below the legend is shifted down for legend-to-plot whitespace; tweak the translate to adjust -->
+  <g transform="translate(0, 10)">
+  <!-- Y axis title -->
+  <text x="22" y="270" font-size="12.5" fill="#495057" transform="rotate(-90 22 270)" text-anchor="middle">time per scan (ms · lower is better)</text>
+
+  <!-- Gridlines: main region (0..$brk, clean steps) + the lifted $tcap ceiling.
+       Data-driven (make-charts.py chart3) so the tick step stays a round number. -->
+  <g stroke="#ececec" stroke-width="1">
+    $gridlines
+  </g>
+  <g font-size="11" fill="#adb5bd" text-anchor="end">
+    $ticklabels
+  </g>
+  <line x1="70" y1="440" x2="740" y2="440" stroke="#bbb" stroke-width="1.5"/>
+
+  <!-- axis break: vertical zig-zag centred midway between the 1000 and 3000 ticks (y 153..173), same y as the bar break; on the label column (x≈50) -->
+  <polyline points="43,153 57,156.3 43,159.7 57,163 43,166.3 57,169.7 43,173" fill="none" stroke="#adb5bd" stroke-width="1.0"/>
+
+  <!-- ===== SELECTIVE group (centre 237.5) ===== -->
+  <rect x="129.5" y="$s_hw_y" width="56" height="$s_hw_h" rx="2" fill="#1971c2"/>
+  <text x="157.5" y="$s_hw_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$s_hw_v</text>
+  <rect x="199.5" y="$s_hwp_y" width="56" height="$s_hwp_h" rx="2" fill="#4dabf7"/>
+  <text x="227.5" y="$s_hwp_ly" font-size="12.5" font-weight="700" fill="#228be6" text-anchor="middle">$s_hwp_v</text>
+  <rect x="289.5" y="$s_pj_y" width="56" height="$s_pj_h" rx="2" fill="#f08c00"/>
+  <text x="317.5" y="$s_pj_ly" font-size="12.5" font-weight="700" fill="#f08c00" text-anchor="middle">$s_pj_v</text>
+
+  <!-- ===== MATCH-ALL group (centre 572.5) ===== -->
+  <rect x="464.5" y="$m_hw_y" width="56" height="$m_hw_h" rx="2" fill="#1971c2"/>
+  <text x="492.5" y="$m_hw_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$m_hw_v</text>
+  <rect x="534.5" y="$m_hwp_y" width="56" height="$m_hwp_h" rx="2" fill="#4dabf7"/>
+  <text x="562.5" y="$m_hwp_ly" font-size="12.5" font-weight="700" fill="#228be6" text-anchor="middle">$m_hwp_v</text>
+  $outlier
+
+  <!-- Group labels -->
+  <text x="237.5" y="464" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">SELECTIVE  ·  out-of-box $s_oob×</text>
+  <text x="237.5" y="480" font-size="11.5" fill="#868e96" text-anchor="middle">~5% of rows pass — the push-down win</text>
+  <text x="572.5" y="464" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">MATCH-ALL  ·  out-of-box $m_oob×</text>
+  <text x="572.5" y="480" font-size="11.5" fill="#868e96" text-anchor="middle">every row passes — full scan</text>
+
+  <!-- group divider -->
+  <line x1="405" y1="100" x2="405" y2="440" stroke="#f0f0f0" stroke-width="1"/>
+
+  <!-- footnote -->
+  <text x="40" y="514" font-size="11.5" fill="#868e96">The y-axis is broken above $brk ms (parquet-java's match-all rises to the $tcap ceiling). out-of-box × = parquet-java ÷ Hardwood.</text>
+  <text x="40" y="530" font-size="11.5" fill="#228be6">* 1 core = taskset -c 0 on one SMT thread sharing a physical core.</text>
+  </g>
+</svg>

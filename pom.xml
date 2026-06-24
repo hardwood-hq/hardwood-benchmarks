@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.hardwood</groupId>
+  <artifactId>hardwood-benchmarks</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>hardwood-benchmarks</name>
+  <description>Performance benchmarks testing Hardwood and parquet-java on different workloads</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+    <hardwood.version>1.0.0-SNAPSHOT</hardwood.version>
+    <parquet.version>1.17.1</parquet.version>
+    <hadoop.version>3.4.3</hadoop.version>
+    <jmh.version>1.37</jmh.version>
+    <arrow.version>18.1.0</arrow.version>
+    <!-- Match the slf4j-api version parquet-hadoop pulls in transitively. -->
+    <slf4j.version>1.7.33</slf4j.version>
+  </properties>
+
+  <dependencies>
+    <!-- The library under test: resolved from Maven Central, no Hardwood build needed. -->
+    <dependency>
+      <groupId>dev.hardwood</groupId>
+      <artifactId>hardwood-core</artifactId>
+      <version>${hardwood.version}</version>
+    </dependency>
+
+    <!-- Microbenchmark harness. -->
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>${jmh.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>${jmh.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- The contender, plus the writer used to generate the benchmark file. -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <version>${parquet.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-avro</artifactId>
+      <version>${parquet.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-column</artifactId>
+      <version>${parquet.version}</version>
+    </dependency>
+
+    <!-- Cross-runtime reference contender: Arrow C++ reached from the JVM through
+         the Arrow Dataset JNI bindings. Runs in-process so it shares the JMH
+         harness's warmup/fork discipline; arrow-memory-netty supplies the
+         off-heap allocator the dataset scanner writes batches into. -->
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-dataset</artifactId>
+      <version>${arrow.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-memory-netty</artifactId>
+      <version>${arrow.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- SLF4J binding. parquet-hadoop pulls slf4j-api (1.7.x) with no binding, so
+         it logs the "Failed to load StaticLoggerBinder … NOP" warning; and Netty
+         (via arrow-memory-netty / Hadoop), finding no usable slf4j backend, falls
+         back to Hadoop's transitive log4j 1.x (reload4j) with no appenders. A single
+         real binding silences both: it supplies the StaticLoggerBinder and gives
+         Netty a non-NOP slf4j backend so it routes through slf4j instead of log4j.
+         Level is set to warn in simplelogger.properties to keep benchmark output clean. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- parquet-hadoop needs a Hadoop Configuration/Path for local file IO; the
+         mapreduce client supplies the InputFormat base classes parquet links against. -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>${hadoop.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.openjdk.jmh</groupId>
+              <artifactId>jmh-generator-annprocess</artifactId>
+              <version>${jmh.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <mainClass>dev.hardwood.benchmarks.FilterBenchmark</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
