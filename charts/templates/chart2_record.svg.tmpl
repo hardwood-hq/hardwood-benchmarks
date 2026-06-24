@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="516" viewBox="0 0 780 516" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="780" height="516" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">Flat full scan (row reader)</text>
+  <text x="40" y="50" font-size="12.5" fill="#495057">Hardwood row reader ↔ AvroParquetReader · NYC taxi $ds</text>
+  <text x="40" y="67" font-size="11" fill="#868e96">$machine, warm cache · $java</text>
+
+  <!-- Legend (horizontal header) -->
+  <rect x="40"  y="82" width="12" height="12" rx="2" fill="#1971c2"/>
+  <text x="57"  y="92" font-size="11.5" fill="#495057">Hardwood (all cores)</text>
+  <rect x="190" y="82" width="12" height="12" rx="2" fill="#4dabf7"/>
+  <text x="207" y="92" font-size="11.5" fill="#495057">Hardwood (1 core)*</text>
+  <rect x="328" y="82" width="12" height="12" rx="2" fill="#f08c00"/>
+  <text x="345" y="92" font-size="11.5" fill="#495057">AvroParquetReader (single-threaded)</text>
+
+  <!-- everything below the legend is shifted down for legend-to-plot whitespace; tweak the translate to adjust -->
+  <g transform="translate(0, 16)">
+  <!-- Y axis title -->
+  <text x="22" y="250" font-size="12.5" fill="#495057" transform="rotate(-90 22 250)" text-anchor="middle">throughput (M rows/s · higher is better)</text>
+
+  <!-- Gridlines + y ticks (data-driven; see make-charts.py flat_axis) -->
+  <g stroke="#ececec" stroke-width="1">
+    $gridlines
+  </g>
+  <g font-size="11" fill="#adb5bd" text-anchor="end">
+    $ticklabels
+  </g>
+  <line x1="70" y1="400" x2="740" y2="400" stroke="#bbb" stroke-width="1.5"/>
+
+  <!-- ===== INDEXED group (x 139.5 / 209.5 / 279.5) — leads ===== -->
+  <!-- HW default -->
+  <rect x="129.5" y="$r_hwi_y" width="56" height="$r_hwi_h" rx="2" fill="#1971c2"/>
+  <text x="157.5" y="$r_hwi_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$r_hwi_v</text>
+  <!-- HW 1-core -->
+  <rect x="199.5" y="$r_hwip_y" width="56" height="$r_hwip_h" rx="2" fill="#4dabf7"/>
+  <text x="227.5" y="$r_hwip_ly" font-size="12.5" font-weight="700" fill="#228be6" text-anchor="middle">$r_hwip_v</text>
+  <!-- Avro -->
+  <rect x="289.5" y="$r_avi_y" width="56" height="$r_avi_h" rx="2" fill="#f08c00"/>
+  <text x="317.5" y="$r_avi_ly" font-size="12.5" font-weight="700" fill="#f08c00" text-anchor="middle">$r_avi_v</text>
+
+  <!-- ===== NAMED group (x 474.5 / 544.5 / 614.5) ===== -->
+  <!-- HW default -->
+  <rect x="464.5" y="$r_hwn_y" width="56" height="$r_hwn_h" rx="2" fill="#1971c2"/>
+  <text x="492.5" y="$r_hwn_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$r_hwn_v</text>
+  <!-- HW 1-core -->
+  <rect x="534.5" y="$r_hwnp_y" width="56" height="$r_hwnp_h" rx="2" fill="#4dabf7"/>
+  <text x="562.5" y="$r_hwnp_ly" font-size="12.5" font-weight="700" fill="#228be6" text-anchor="middle">$r_hwnp_v</text>
+  <!-- Avro -->
+  <rect x="624.5" y="$r_avn_y" width="56" height="$r_avn_h" rx="2" fill="#f08c00"/>
+  <text x="652.5" y="$r_avn_ly" font-size="12.5" font-weight="700" fill="#f08c00" text-anchor="middle">$r_avn_v</text>
+
+  <!-- Group labels -->
+  <text x="237.5" y="424" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">INDEXED  ·  out-of-box $r_idx_oob×</text>
+  <text x="237.5" y="440" font-size="11.5" fill="#868e96" text-anchor="middle">positional — get(10) — the fast path</text>
+  <text x="572.5" y="424" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">NAMED  ·  out-of-box $r_named_oob×</text>
+  <text x="572.5" y="440" font-size="11.5" fill="#868e96" text-anchor="middle">ergonomic — get("fare_amount") — name lookup per field</text>
+
+  <!-- group divider -->
+  <line x1="405" y1="92" x2="405" y2="400" stroke="#f0f0f0" stroke-width="1"/>
+
+  <!-- footnote -->
+  <text x="40" y="474" font-size="11.5" fill="#868e96">Indexed (positional) access is the fast path; named (by-name) trades a per-field name lookup for ergonomics.</text>
+  <text x="40" y="490" font-size="11.5" fill="#228be6">* 1 core = taskset -c 0 on one SMT thread.</text>
+  </g>
+</svg>

@@ -1,3 +1,12 @@
+#Maven
+target/
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
 # Compiled class file
 *.class
 
@@ -22,3 +31,16 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Build output and generated benchmark data
+/target/
+.cache
+
+# macOS
+.DS_Store
+
+# Committed run archives under results/run-*/ are tracked for reproducibility:
+# keep their logs (the blanket *.log above would otherwise drop them), but never
+# commit the regenerable charts (make-charts.py --results-dir rebuilds them).
+results/**/charts/
+!results/**/*.log

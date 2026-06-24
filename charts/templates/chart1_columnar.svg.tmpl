@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="516" viewBox="0 0 780 516" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="780" height="516" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">Flat full scan (columnar reader)</text>
+  <text x="40" y="50" font-size="12.5" fill="#495057">Hardwood column reader ↔ parquet-java column API · NYC taxi $ds</text>
+  <text x="40" y="67" font-size="11" fill="#868e96">$machine, warm cache · $java</text>
+
+  <!-- Legend (horizontal header) -->
+  <rect x="40"  y="82" width="12" height="12" rx="2" fill="#1971c2"/>
+  <text x="57"  y="92" font-size="11.5" fill="#495057">Hardwood (all cores)</text>
+  <rect x="190" y="82" width="12" height="12" rx="2" fill="#4dabf7"/>
+  <text x="207" y="92" font-size="11.5" fill="#495057">Hardwood (1 core)*</text>
+  <rect x="328" y="82" width="12" height="12" rx="2" fill="#f08c00"/>
+  <text x="345" y="92" font-size="11.5" fill="#495057">parquet-java (single-threaded)</text>
+
+  <!-- everything below the legend is shifted down for legend-to-plot whitespace; tweak the translate to adjust -->
+  <g transform="translate(0, 16)">
+  <!-- Y axis title -->
+  <text x="22" y="250" font-size="12.5" fill="#495057" transform="rotate(-90 22 250)" text-anchor="middle">throughput (M rows/s · higher is better)</text>
+
+  <!-- Gridlines + y ticks (data-driven; see make-charts.py flat_axis) -->
+  <g stroke="#ececec" stroke-width="1">
+    $gridlines
+  </g>
+  <g font-size="11" fill="#adb5bd" text-anchor="end">
+    $ticklabels
+  </g>
+  <line x1="70" y1="400" x2="740" y2="400" stroke="#bbb" stroke-width="1.5"/>
+
+  <!-- Bars (15px/unit; y0 = 400) -->
+  <!-- Hardwood default -->
+  <rect x="297" y="$c_hw_y" width="56" height="$c_hw_h" rx="2" fill="#1971c2"/>
+  <text x="325" y="$c_hw_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$c_hw_v</text>
+  <!-- Hardwood 1-core (pinned) -->
+  <rect x="367" y="$c_hwp_y" width="56" height="$c_hwp_h" rx="2" fill="#4dabf7"/>
+  <text x="395" y="$c_hwp_ly" font-size="12.5" font-weight="700" fill="#228be6" text-anchor="middle">$c_hwp_v</text>
+  <!-- parquet-java -->
+  <rect x="457" y="$c_pj_y" width="56" height="$c_pj_h" rx="2" fill="#f08c00"/>
+  <text x="485" y="$c_pj_ly" font-size="12.5" font-weight="700" fill="#f08c00" text-anchor="middle">$c_pj_v</text>
+
+  <!-- ratio callout -->
+  <text x="405" y="446" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">out-of-box $c_oob×  (Hardwood ÷ parquet-java)  ·  engine-for-engine $c_efe×</text>
+
+  <!-- footnote -->
+  <text x="40" y="490" font-size="11.5" fill="#228be6">* 1 core = taskset -c 0 on one SMT thread sharing a physical core.</text>
+  </g>
+</svg>
