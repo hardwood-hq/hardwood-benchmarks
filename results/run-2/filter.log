@@ -1,0 +1,946 @@
+
+######################################################################
+## FilterBenchmark
+######################################################################
+Started FilterBenchmark at 2026-06-24 01:09:40 UTC
+---- Out-of-the-box (all cores) ----
+Run params: 50,000,000 rows, 1,038.4 MB, Java 25 (Eclipse Adoptium)
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault
+# Parameters: (selectivity = selective)
+
+# Run progress: 0.00% complete, ETA 00:08:40
+# Fork: 1 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+19.346 ms/op
+# Warmup Iteration   2: 13.475 ms/op
+# Warmup Iteration   3: 13.168 ms/op
+Iteration   1: 12.694 ms/op
+Iteration   2: 12.786 ms/op
+Iteration   3: 12.850 ms/op
+Iteration   4: 12.598 ms/op
+Iteration   5: 12.695 ms/op
+Iteration   6: 12.662 ms/op
+Iteration   7: 12.581 ms/op
+Iteration   8: 12.646 ms/op
+Iteration   9: 12.628 ms/op
+Iteration  10: 12.624 ms/op
+
+# Run progress: 5.00% complete, ETA 00:08:20
+# Fork: 2 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+18.740 ms/op
+# Warmup Iteration   2: 14.073 ms/op
+# Warmup Iteration   3: 13.716 ms/op
+Iteration   1: 13.316 ms/op
+Iteration   2: 13.426 ms/op
+Iteration   3: 13.411 ms/op
+Iteration   4: 13.305 ms/op
+Iteration   5: 14.495 ms/op
+Iteration   6: 13.026 ms/op
+Iteration   7: 12.990 ms/op
+Iteration   8: 12.968 ms/op
+Iteration   9: 12.999 ms/op
+Iteration  10: 12.924 ms/op
+
+# Run progress: 10.00% complete, ETA 00:07:54
+# Fork: 3 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+18.583 ms/op
+# Warmup Iteration   2: 13.873 ms/op
+# Warmup Iteration   3: 13.195 ms/op
+Iteration   1: 12.885 ms/op
+Iteration   2: 12.992 ms/op
+Iteration   3: 12.954 ms/op
+Iteration   4: 12.899 ms/op
+Iteration   5: 12.831 ms/op
+Iteration   6: 12.960 ms/op
+Iteration   7: 12.808 ms/op
+Iteration   8: 12.902 ms/op
+Iteration   9: 12.970 ms/op
+Iteration  10: 12.778 ms/op
+
+# Run progress: 15.00% complete, ETA 00:07:28
+# Fork: 4 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+19.881 ms/op
+# Warmup Iteration   2: 14.056 ms/op
+# Warmup Iteration   3: 13.450 ms/op
+Iteration   1: 12.961 ms/op
+Iteration   2: 13.007 ms/op
+Iteration   3: 13.087 ms/op
+Iteration   4: 12.971 ms/op
+Iteration   5: 13.015 ms/op
+Iteration   6: 12.930 ms/op
+Iteration   7: 13.015 ms/op
+Iteration   8: 12.933 ms/op
+Iteration   9: 12.857 ms/op
+Iteration  10: 12.895 ms/op
+
+# Run progress: 20.00% complete, ETA 00:07:01
+# Fork: 5 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+18.241 ms/op
+# Warmup Iteration   2: 13.663 ms/op
+# Warmup Iteration   3: 13.112 ms/op
+Iteration   1: 12.833 ms/op
+Iteration   2: 12.865 ms/op
+Iteration   3: 12.814 ms/op
+Iteration   4: 12.799 ms/op
+Iteration   5: 12.825 ms/op
+Iteration   6: 12.705 ms/op
+Iteration   7: 12.773 ms/op
+Iteration   8: 12.731 ms/op
+Iteration   9: 12.765 ms/op
+Iteration  10: 12.726 ms/op
+
+
+Result "dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault":
+  12.922 ±(99.9%) 0.147 ms/op [Average]
+  (min, avg, max) = (12.581, 12.922, 14.495), stdev = 0.296
+  CI (99.9%): [12.776, 13.069] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault
+# Parameters: (selectivity = matchAll)
+
+# Run progress: 25.00% complete, ETA 00:06:35
+# Fork: 1 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+296.415 ms/op
+# Warmup Iteration   2: 238.870 ms/op
+# Warmup Iteration   3: 227.587 ms/op
+Iteration   1: 226.235 ms/op
+Iteration   2: 225.776 ms/op
+Iteration   3: 224.348 ms/op
+Iteration   4: 223.222 ms/op
+Iteration   5: 224.206 ms/op
+Iteration   6: 224.058 ms/op
+Iteration   7: 222.957 ms/op
+Iteration   8: 223.702 ms/op
+Iteration   9: 223.914 ms/op
+Iteration  10: 222.915 ms/op
+
+# Run progress: 30.00% complete, ETA 00:06:09
+# Fork: 2 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+290.861 ms/op
+# Warmup Iteration   2: 235.931 ms/op
+# Warmup Iteration   3: 223.125 ms/op
+Iteration   1: 220.297 ms/op
+Iteration   2: 220.877 ms/op
+Iteration   3: 217.095 ms/op
+Iteration   4: 217.733 ms/op
+Iteration   5: 218.006 ms/op
+Iteration   6: 218.513 ms/op
+Iteration   7: 217.559 ms/op
+Iteration   8: 218.677 ms/op
+Iteration   9: 217.793 ms/op
+Iteration  10: 217.341 ms/op
+
+# Run progress: 35.00% complete, ETA 00:05:46
+# Fork: 3 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+277.125 ms/op
+# Warmup Iteration   2: 233.573 ms/op
+# Warmup Iteration   3: 222.977 ms/op
+Iteration   1: 221.429 ms/op
+Iteration   2: 219.748 ms/op
+Iteration   3: 219.049 ms/op
+Iteration   4: 219.958 ms/op
+Iteration   5: 221.026 ms/op
+Iteration   6: 218.921 ms/op
+Iteration   7: 220.123 ms/op
+Iteration   8: 219.876 ms/op
+Iteration   9: 218.239 ms/op
+Iteration  10: 218.423 ms/op
+
+# Run progress: 40.00% complete, ETA 00:05:23
+# Fork: 4 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+291.074 ms/op
+# Warmup Iteration   2: 236.896 ms/op
+# Warmup Iteration   3: 223.103 ms/op
+Iteration   1: 221.137 ms/op
+Iteration   2: 222.305 ms/op
+Iteration   3: 219.217 ms/op
+Iteration   4: 219.571 ms/op
+Iteration   5: 220.233 ms/op
+Iteration   6: 219.126 ms/op
+Iteration   7: 219.629 ms/op
+Iteration   8: 219.697 ms/op
+Iteration   9: 218.097 ms/op
+Iteration  10: 218.728 ms/op
+
+# Run progress: 45.00% complete, ETA 00:04:57
+# Fork: 5 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+294.480 ms/op
+# Warmup Iteration   2: 240.668 ms/op
+# Warmup Iteration   3: 230.327 ms/op
+Iteration   1: 227.950 ms/op
+Iteration   2: 227.701 ms/op
+Iteration   3: 225.841 ms/op
+Iteration   4: 224.783 ms/op
+Iteration   5: 226.510 ms/op
+Iteration   6: 225.985 ms/op
+Iteration   7: 225.169 ms/op
+Iteration   8: 225.460 ms/op
+Iteration   9: 226.832 ms/op
+Iteration  10: 225.204 ms/op
+
+
+Result "dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault":
+  221.624 ±(99.9%) 1.586 ms/op [Average]
+  (min, avg, max) = (217.095, 221.624, 227.950), stdev = 3.204
+  CI (99.9%): [220.038, 223.210] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FilterBenchmark.parquetJava
+# Parameters: (selectivity = selective)
+
+# Run progress: 50.00% complete, ETA 00:04:30
+# Fork: 1 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+260.225 ms/op
+# Warmup Iteration   2: 174.776 ms/op
+# Warmup Iteration   3: 172.717 ms/op
+Iteration   1: 172.704 ms/op
+Iteration   2: 171.250 ms/op
+Iteration   3: 171.281 ms/op
+Iteration   4: 171.688 ms/op
+Iteration   5: 171.599 ms/op
+Iteration   6: 170.888 ms/op
+Iteration   7: 170.483 ms/op
+Iteration   8: 170.756 ms/op
+Iteration   9: 170.359 ms/op
+Iteration  10: 169.974 ms/op
+
+# Run progress: 55.00% complete, ETA 00:04:03
+# Fork: 2 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+262.535 ms/op
+# Warmup Iteration   2: 173.225 ms/op
+# Warmup Iteration   3: 172.009 ms/op
+Iteration   1: 171.707 ms/op
+Iteration   2: 171.009 ms/op
+Iteration   3: 170.229 ms/op
+Iteration   4: 169.785 ms/op
+Iteration   5: 169.786 ms/op
+Iteration   6: 169.763 ms/op
+Iteration   7: 169.841 ms/op
+Iteration   8: 170.943 ms/op
+Iteration   9: 169.684 ms/op
+Iteration  10: 169.149 ms/op
+
+# Run progress: 60.00% complete, ETA 00:03:36
+# Fork: 3 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+255.238 ms/op
+# Warmup Iteration   2: 174.665 ms/op
+# Warmup Iteration   3: 172.050 ms/op
+Iteration   1: 171.342 ms/op
+Iteration   2: 170.537 ms/op
+Iteration   3: 171.279 ms/op
+Iteration   4: 170.919 ms/op
+Iteration   5: 170.678 ms/op
+Iteration   6: 170.198 ms/op
+Iteration   7: 170.172 ms/op
+Iteration   8: 170.263 ms/op
+Iteration   9: 170.091 ms/op
+Iteration  10: 170.428 ms/op
+
+# Run progress: 65.00% complete, ETA 00:03:09
+# Fork: 4 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+259.404 ms/op
+# Warmup Iteration   2: 181.632 ms/op
+# Warmup Iteration   3: 182.292 ms/op
+Iteration   1: 180.600 ms/op
+Iteration   2: 179.387 ms/op
+Iteration   3: 180.090 ms/op
+Iteration   4: 179.203 ms/op
+Iteration   5: 179.879 ms/op
+Iteration   6: 179.795 ms/op
+Iteration   7: 179.780 ms/op
+Iteration   8: 179.443 ms/op
+Iteration   9: 179.631 ms/op
+Iteration  10: 179.861 ms/op
+
+# Run progress: 70.00% complete, ETA 00:02:42
+# Fork: 5 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+261.087 ms/op
+# Warmup Iteration   2: 173.656 ms/op
+# Warmup Iteration   3: 171.995 ms/op
+Iteration   1: 171.672 ms/op
+Iteration   2: 171.846 ms/op
+Iteration   3: 172.263 ms/op
+Iteration   4: 171.018 ms/op
+Iteration   5: 171.890 ms/op
+Iteration   6: 171.954 ms/op
+Iteration   7: 171.197 ms/op
+Iteration   8: 171.656 ms/op
+Iteration   9: 171.141 ms/op
+Iteration  10: 171.105 ms/op
+
+
+Result "dev.hardwood.benchmarks.FilterBenchmark.parquetJava":
+  172.644 ±(99.9%) 1.818 ms/op [Average]
+  (min, avg, max) = (169.149, 172.644, 180.600), stdev = 3.673
+  CI (99.9%): [170.826, 174.462] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FilterBenchmark.parquetJava
+# Parameters: (selectivity = matchAll)
+
+# Run progress: 75.00% complete, ETA 00:02:15
+# Fork: 1 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+3992.820 ms/op
+# Warmup Iteration   2: 3140.056 ms/op
+# Warmup Iteration   3: 3147.142 ms/op
+Iteration   1: 3137.613 ms/op
+Iteration   2: 3130.379 ms/op
+Iteration   3: 3127.609 ms/op
+Iteration   4: 3120.632 ms/op
+Iteration   5: 3118.642 ms/op
+Iteration   6: 3136.636 ms/op
+Iteration   7: 3134.108 ms/op
+Iteration   8: 3132.214 ms/op
+Iteration   9: 3133.900 ms/op
+Iteration  10: 3133.557 ms/op
+
+# Run progress: 80.00% complete, ETA 00:01:52
+# Fork: 2 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+4025.177 ms/op
+# Warmup Iteration   2: 3155.454 ms/op
+# Warmup Iteration   3: 3363.573 ms/op
+Iteration   1: 3355.226 ms/op
+Iteration   2: 3347.884 ms/op
+Iteration   3: 3349.446 ms/op
+Iteration   4: 3343.709 ms/op
+Iteration   5: 3341.142 ms/op
+Iteration   6: 3343.222 ms/op
+Iteration   7: 3343.954 ms/op
+Iteration   8: 3353.052 ms/op
+Iteration   9: 3351.441 ms/op
+Iteration  10: 3340.570 ms/op
+
+# Run progress: 85.00% complete, ETA 00:01:26
+# Fork: 3 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+3928.862 ms/op
+# Warmup Iteration   2: 3106.289 ms/op
+# Warmup Iteration   3: 3101.815 ms/op
+Iteration   1: 3096.275 ms/op
+Iteration   2: 3091.976 ms/op
+Iteration   3: 3092.849 ms/op
+Iteration   4: 3093.997 ms/op
+Iteration   5: 3091.474 ms/op
+Iteration   6: 3087.376 ms/op
+Iteration   7: 3089.650 ms/op
+Iteration   8: 3090.249 ms/op
+Iteration   9: 3088.669 ms/op
+Iteration  10: 3087.437 ms/op
+
+# Run progress: 90.00% complete, ETA 00:00:59
+# Fork: 4 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+3922.410 ms/op
+# Warmup Iteration   2: 3072.636 ms/op
+# Warmup Iteration   3: 3097.389 ms/op
+Iteration   1: 3089.730 ms/op
+Iteration   2: 3086.613 ms/op
+Iteration   3: 3082.798 ms/op
+Iteration   4: 3082.894 ms/op
+Iteration   5: 3080.736 ms/op
+Iteration   6: 3078.855 ms/op
+Iteration   7: 3080.090 ms/op
+Iteration   8: 3086.876 ms/op
+Iteration   9: 3088.394 ms/op
+Iteration  10: 3078.625 ms/op
+
+# Run progress: 95.00% complete, ETA 00:00:30
+# Fork: 5 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+3931.514 ms/op
+# Warmup Iteration   2: 3132.702 ms/op
+# Warmup Iteration   3: 3141.579 ms/op
+Iteration   1: 3135.725 ms/op
+Iteration   2: 3133.576 ms/op
+Iteration   3: 3133.796 ms/op
+Iteration   4: 3130.748 ms/op
+Iteration   5: 3135.560 ms/op
+Iteration   6: 3130.065 ms/op
+Iteration   7: 3131.788 ms/op
+Iteration   8: 3144.712 ms/op
+Iteration   9: 3144.044 ms/op
+Iteration  10: 3132.284 ms/op
+
+
+Result "dev.hardwood.benchmarks.FilterBenchmark.parquetJava":
+  3157.456 ±(99.9%) 48.544 ms/op [Average]
+  (min, avg, max) = (3078.625, 3157.456, 3355.226), stdev = 98.061
+  CI (99.9%): [3108.912, 3206.000] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:10:16
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                        (selectivity)  Mode  Cnt     Score    Error  Units
+FilterBenchmark.hardwoodDefault      selective  avgt   50    12.922 ±  0.147  ms/op
+FilterBenchmark.hardwoodDefault       matchAll  avgt   50   221.624 ±  1.586  ms/op
+FilterBenchmark.parquetJava          selective  avgt   50   172.644 ±  1.818  ms/op
+FilterBenchmark.parquetJava           matchAll  avgt   50  3157.456 ± 48.544  ms/op
+
+---- Pinned to a single core (taskset -c 0) — Hardwood contenders only ----
+Run params: 50,000,000 rows, 1,038.4 MB, Java 25 (Eclipse Adoptium)
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=pinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood -Dperf.pass=pinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault
+# Parameters: (selectivity = selective)
+
+# Run progress: 0.00% complete, ETA 00:04:20
+# Fork: 1 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+106.879 ms/op
+# Warmup Iteration   2: 67.056 ms/op
+# Warmup Iteration   3: 56.083 ms/op
+Iteration   1: 61.305 ms/op
+Iteration   2: 53.594 ms/op
+Iteration   3: 54.023 ms/op
+Iteration   4: 53.090 ms/op
+Iteration   5: 55.885 ms/op
+Iteration   6: 51.368 ms/op
+Iteration   7: 52.368 ms/op
+Iteration   8: 53.099 ms/op
+Iteration   9: 49.884 ms/op
+Iteration  10: 50.441 ms/op
+
+# Run progress: 10.00% complete, ETA 00:04:02
+# Fork: 2 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+101.971 ms/op
+# Warmup Iteration   2: 66.047 ms/op
+# Warmup Iteration   3: 57.447 ms/op
+Iteration   1: 60.123 ms/op
+Iteration   2: 52.573 ms/op
+Iteration   3: 55.575 ms/op
+Iteration   4: 52.040 ms/op
+Iteration   5: 55.313 ms/op
+Iteration   6: 51.855 ms/op
+Iteration   7: 52.041 ms/op
+Iteration   8: 51.976 ms/op
+Iteration   9: 50.124 ms/op
+Iteration  10: 49.289 ms/op
+
+# Run progress: 20.00% complete, ETA 00:03:35
+# Fork: 3 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+102.723 ms/op
+# Warmup Iteration   2: 65.341 ms/op
+# Warmup Iteration   3: 57.916 ms/op
+Iteration   1: 59.760 ms/op
+Iteration   2: 55.210 ms/op
+Iteration   3: 55.300 ms/op
+Iteration   4: 54.294 ms/op
+Iteration   5: 55.690 ms/op
+Iteration   6: 51.423 ms/op
+Iteration   7: 53.303 ms/op
+Iteration   8: 51.952 ms/op
+Iteration   9: 51.591 ms/op
+Iteration  10: 53.185 ms/op
+
+# Run progress: 30.00% complete, ETA 00:03:08
+# Fork: 4 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+102.965 ms/op
+# Warmup Iteration   2: 64.060 ms/op
+# Warmup Iteration   3: 59.858 ms/op
+Iteration   1: 60.911 ms/op
+Iteration   2: 55.725 ms/op
+Iteration   3: 55.857 ms/op
+Iteration   4: 52.251 ms/op
+Iteration   5: 58.060 ms/op
+Iteration   6: 52.890 ms/op
+Iteration   7: 52.975 ms/op
+Iteration   8: 52.508 ms/op
+Iteration   9: 51.362 ms/op
+Iteration  10: 51.215 ms/op
+
+# Run progress: 40.00% complete, ETA 00:02:41
+# Fork: 5 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+105.619 ms/op
+# Warmup Iteration   2: 67.519 ms/op
+# Warmup Iteration   3: 57.920 ms/op
+Iteration   1: 61.983 ms/op
+Iteration   2: 53.073 ms/op
+Iteration   3: 54.027 ms/op
+Iteration   4: 53.900 ms/op
+Iteration   5: 56.254 ms/op
+Iteration   6: 51.679 ms/op
+Iteration   7: 51.900 ms/op
+Iteration   8: 53.292 ms/op
+Iteration   9: 52.624 ms/op
+Iteration  10: 51.602 ms/op
+
+
+Result "dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault":
+  53.835 ±(99.9%) 1.469 ms/op [Average]
+  (min, avg, max) = (49.289, 53.835, 61.983), stdev = 2.968
+  CI (99.9%): [52.366, 55.304] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=pinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood -Dperf.pass=pinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault
+# Parameters: (selectivity = matchAll)
+
+# Run progress: 50.00% complete, ETA 00:02:14
+# Fork: 1 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+1631.010 ms/op
+# Warmup Iteration   2: 964.308 ms/op
+# Warmup Iteration   3: 964.053 ms/op
+Iteration   1: 1046.725 ms/op
+Iteration   2: 1085.365 ms/op
+Iteration   3: 1025.975 ms/op
+Iteration   4: 961.819 ms/op
+Iteration   5: 971.331 ms/op
+Iteration   6: 934.258 ms/op
+Iteration   7: 935.851 ms/op
+Iteration   8: 944.328 ms/op
+Iteration   9: 940.425 ms/op
+Iteration  10: 935.533 ms/op
+
+# Run progress: 60.00% complete, ETA 00:01:54
+# Fork: 2 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+1688.052 ms/op
+# Warmup Iteration   2: 958.991 ms/op
+# Warmup Iteration   3: 950.319 ms/op
+Iteration   1: 1055.983 ms/op
+Iteration   2: 1129.697 ms/op
+Iteration   3: 1020.751 ms/op
+Iteration   4: 954.842 ms/op
+Iteration   5: 972.375 ms/op
+Iteration   6: 1000.415 ms/op
+Iteration   7: 934.373 ms/op
+Iteration   8: 946.807 ms/op
+Iteration   9: 940.438 ms/op
+Iteration  10: 928.322 ms/op
+
+# Run progress: 70.00% complete, ETA 00:01:29
+# Fork: 3 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+1559.393 ms/op
+# Warmup Iteration   2: 971.766 ms/op
+# Warmup Iteration   3: 969.104 ms/op
+Iteration   1: 1025.433 ms/op
+Iteration   2: 1117.256 ms/op
+Iteration   3: 1023.833 ms/op
+Iteration   4: 947.268 ms/op
+Iteration   5: 1000.725 ms/op
+Iteration   6: 949.895 ms/op
+Iteration   7: 941.018 ms/op
+Iteration   8: 943.799 ms/op
+Iteration   9: 939.515 ms/op
+Iteration  10: 942.755 ms/op
+
+# Run progress: 80.00% complete, ETA 00:01:01
+# Fork: 4 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+1578.055 ms/op
+# Warmup Iteration   2: 973.683 ms/op
+# Warmup Iteration   3: 966.358 ms/op
+Iteration   1: 1023.177 ms/op
+Iteration   2: 1082.303 ms/op
+Iteration   3: 1022.391 ms/op
+Iteration   4: 971.961 ms/op
+Iteration   5: 1000.892 ms/op
+Iteration   6: 935.530 ms/op
+Iteration   7: 932.490 ms/op
+Iteration   8: 934.055 ms/op
+Iteration   9: 941.058 ms/op
+Iteration  10: 950.404 ms/op
+
+# Run progress: 90.00% complete, ETA 00:00:31
+# Fork: 5 of 5
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.0.0-SNAPSHOT/hardwood-core-1.0.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+1576.343 ms/op
+# Warmup Iteration   2: 974.705 ms/op
+# Warmup Iteration   3: 957.249 ms/op
+Iteration   1: 1034.527 ms/op
+Iteration   2: 1096.112 ms/op
+Iteration   3: 1046.673 ms/op
+Iteration   4: 948.323 ms/op
+Iteration   5: 987.753 ms/op
+Iteration   6: 951.959 ms/op
+Iteration   7: 935.864 ms/op
+Iteration   8: 936.119 ms/op
+Iteration   9: 954.084 ms/op
+Iteration  10: 944.789 ms/op
+
+
+Result "dev.hardwood.benchmarks.FilterBenchmark.hardwoodDefault":
+  982.551 ±(99.9%) 27.203 ms/op [Average]
+  (min, avg, max) = (928.322, 982.551, 1129.697), stdev = 54.952
+  CI (99.9%): [955.348, 1009.755] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:05:19
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                        (selectivity)  Mode  Cnt    Score    Error  Units
+FilterBenchmark.hardwoodDefault      selective  avgt   50   53.835 ±  1.469  ms/op
+FilterBenchmark.hardwoodDefault       matchAll  avgt   50  982.551 ± 27.203  ms/op
+Finished FilterBenchmark at 2026-06-24 01:25:17 UTC (duration 0h 15m 37s)
+
+=====================================================================
+Chart input — ms/op by contender (raw TSV: target/bench-throughput-FilterBenchmark.tsv) · lower is better
+Only Hardwood is timed pinned; single-threaded baselines show '-' for 1-core.
+=====================================================================
+benchmark          contender                          default      1-core
+                                                        ms/op       ms/op
+FilterBenchmark    hardwoodDefault[selective]          12.922      53.835
+FilterBenchmark    hardwoodDefault[matchAll]          221.624     982.551
+FilterBenchmark    parquetJava[selective]             172.644           -
+FilterBenchmark    parquetJava[matchAll]             3157.456           -
+
+ASCII chart — ms/op (lower is better), default (out-of-box); 1-core shown where measured
+
+  FilterBenchmark — selective
+    hardwoodDefault       │██ 12.9   (1-core 53.8)
+    parquetJava           │██████████████████████████████ 172.6
+
+  FilterBenchmark — matchAll
+    hardwoodDefault       │██ 221.6   (1-core 982.6)
+    parquetJava           │██████████████████████████████ 3157.5

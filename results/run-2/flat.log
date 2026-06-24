@@ -1,0 +1,1045 @@
+
+######################################################################
+## FlatScanBenchmark
+######################################################################
+Started FlatScanBenchmark at 2026-06-23 22:22:51 UTC
+---- Out-of-the-box (all cores) ----
+Run params: 48,722,602 rows, 830.0 MB, Java 25 (Eclipse Adoptium) (2025-01–2025-12)
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.avroParquetReaderIndexed
+
+# Run progress: 0.00% complete, ETA 00:13:00
+# Fork: 1 of 5
+# Warmup Iteration   1: 30761.865 ms/op
+# Warmup Iteration   2: 29987.849 ms/op
+# Warmup Iteration   3: 30150.895 ms/op
+Iteration   1: 30210.011 ms/op
+Iteration   2: 30171.001 ms/op
+Iteration   3: 30036.413 ms/op
+Iteration   4: 30176.045 ms/op
+Iteration   5: 30114.012 ms/op
+Iteration   6: 30199.702 ms/op
+Iteration   7: 30175.930 ms/op
+Iteration   8: 30272.310 ms/op
+Iteration   9: 30131.238 ms/op
+Iteration  10: 30201.015 ms/op
+
+# Run progress: 3.33% complete, ETA 03:10:01
+# Fork: 2 of 5
+# Warmup Iteration   1: 30551.681 ms/op
+# Warmup Iteration   2: 29826.535 ms/op
+# Warmup Iteration   3: 29801.534 ms/op
+Iteration   1: 30515.648 ms/op
+Iteration   2: 30656.710 ms/op
+Iteration   3: 30644.936 ms/op
+Iteration   4: 30610.935 ms/op
+Iteration   5: 30651.003 ms/op
+Iteration   6: 30678.940 ms/op
+Iteration   7: 30592.249 ms/op
+Iteration   8: 30541.820 ms/op
+Iteration   9: 30708.903 ms/op
+Iteration  10: 30551.337 ms/op
+
+# Run progress: 6.67% complete, ETA 03:04:20
+# Fork: 3 of 5
+# Warmup Iteration   1: 31227.344 ms/op
+# Warmup Iteration   2: 30547.491 ms/op
+# Warmup Iteration   3: 30541.730 ms/op
+Iteration   1: 30582.263 ms/op
+Iteration   2: 30482.272 ms/op
+Iteration   3: 30338.311 ms/op
+Iteration   4: 30703.197 ms/op
+Iteration   5: 30564.669 ms/op
+Iteration   6: 30367.768 ms/op
+Iteration   7: 30534.529 ms/op
+Iteration   8: 30482.346 ms/op
+Iteration   9: 30556.038 ms/op
+Iteration  10: 30464.061 ms/op
+
+# Run progress: 10.00% complete, ETA 02:58:11
+# Fork: 4 of 5
+# Warmup Iteration   1: 31560.712 ms/op
+# Warmup Iteration   2: 30828.683 ms/op
+# Warmup Iteration   3: 30682.548 ms/op
+Iteration   1: 30691.307 ms/op
+Iteration   2: 30762.858 ms/op
+Iteration   3: 30671.632 ms/op
+Iteration   4: 30670.425 ms/op
+Iteration   5: 30731.525 ms/op
+Iteration   6: 30727.437 ms/op
+Iteration   7: 30662.368 ms/op
+Iteration   8: 30715.826 ms/op
+Iteration   9: 30768.435 ms/op
+Iteration  10: 30714.703 ms/op
+
+# Run progress: 13.33% complete, ETA 02:52:06
+# Fork: 5 of 5
+# Warmup Iteration   1: 32694.073 ms/op
+# Warmup Iteration   2: 31843.961 ms/op
+# Warmup Iteration   3: 32061.809 ms/op
+Iteration   1: 31649.938 ms/op
+Iteration   2: 31723.254 ms/op
+Iteration   3: 31834.526 ms/op
+Iteration   4: 31909.103 ms/op
+Iteration   5: 31791.730 ms/op
+Iteration   6: 31834.851 ms/op
+Iteration   7: 31862.188 ms/op
+Iteration   8: 31884.213 ms/op
+Iteration   9: 31830.654 ms/op
+Iteration  10: 31910.658 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.avroParquetReaderIndexed":
+  30765.265 ±(99.9%) 282.129 ms/op [Average]
+  (min, avg, max) = (30036.413, 30765.265, 31910.658), stdev = 569.915
+  CI (99.9%): [30483.135, 31047.394] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.avroParquetReaderNamed
+
+# Run progress: 16.67% complete, ETA 02:47:00
+# Fork: 1 of 5
+# Warmup Iteration   1: 34692.219 ms/op
+# Warmup Iteration   2: 33827.711 ms/op
+# Warmup Iteration   3: 34023.172 ms/op
+Iteration   1: 33871.057 ms/op
+Iteration   2: 33922.705 ms/op
+Iteration   3: 34075.942 ms/op
+Iteration   4: 33800.488 ms/op
+Iteration   5: 33949.276 ms/op
+Iteration   6: 33920.833 ms/op
+Iteration   7: 33869.169 ms/op
+Iteration   8: 33934.223 ms/op
+Iteration   9: 33949.563 ms/op
+Iteration  10: 33928.966 ms/op
+
+# Run progress: 20.00% complete, ETA 02:43:05
+# Fork: 2 of 5
+# Warmup Iteration   1: 35525.688 ms/op
+# Warmup Iteration   2: 34667.104 ms/op
+# Warmup Iteration   3: 34848.766 ms/op
+Iteration   1: 34665.805 ms/op
+Iteration   2: 34726.170 ms/op
+Iteration   3: 34705.230 ms/op
+Iteration   4: 34661.508 ms/op
+Iteration   5: 34694.478 ms/op
+Iteration   6: 34627.214 ms/op
+Iteration   7: 34641.546 ms/op
+Iteration   8: 34767.875 ms/op
+Iteration   9: 34639.391 ms/op
+Iteration  10: 34664.586 ms/op
+
+# Run progress: 23.33% complete, ETA 02:38:44
+# Fork: 3 of 5
+# Warmup Iteration   1: 34859.624 ms/op
+# Warmup Iteration   2: 33004.558 ms/op
+# Warmup Iteration   3: 32980.278 ms/op
+Iteration   1: 33030.522 ms/op
+Iteration   2: 33244.313 ms/op
+Iteration   3: 34048.224 ms/op
+Iteration   4: 33991.256 ms/op
+Iteration   5: 33937.525 ms/op
+Iteration   6: 34093.872 ms/op
+Iteration   7: 34012.281 ms/op
+Iteration   8: 34142.134 ms/op
+Iteration   9: 34040.827 ms/op
+Iteration  10: 33975.702 ms/op
+
+# Run progress: 26.67% complete, ETA 02:33:01
+# Fork: 4 of 5
+# Warmup Iteration   1: 34791.734 ms/op
+# Warmup Iteration   2: 34045.394 ms/op
+# Warmup Iteration   3: 34038.093 ms/op
+Iteration   1: 33995.397 ms/op
+Iteration   2: 34000.947 ms/op
+Iteration   3: 33778.568 ms/op
+Iteration   4: 33939.988 ms/op
+Iteration   5: 34024.790 ms/op
+Iteration   6: 34066.705 ms/op
+Iteration   7: 34060.240 ms/op
+Iteration   8: 33993.479 ms/op
+Iteration   9: 34071.760 ms/op
+Iteration  10: 33962.491 ms/op
+
+# Run progress: 30.00% complete, ETA 02:27:04
+# Fork: 5 of 5
+# Warmup Iteration   1: 35026.182 ms/op
+# Warmup Iteration   2: 34348.349 ms/op
+# Warmup Iteration   3: 34012.458 ms/op
+Iteration   1: 33946.446 ms/op
+Iteration   2: 33870.394 ms/op
+Iteration   3: 33989.726 ms/op
+Iteration   4: 34007.464 ms/op
+Iteration   5: 33843.122 ms/op
+Iteration   6: 34003.826 ms/op
+Iteration   7: 33810.314 ms/op
+Iteration   8: 33858.900 ms/op
+Iteration   9: 33824.985 ms/op
+Iteration  10: 33875.261 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.avroParquetReaderNamed":
+  34069.150 ±(99.9%) 176.984 ms/op [Average]
+  (min, avg, max) = (33030.522, 34069.150, 34767.875), stdev = 357.517
+  CI (99.9%): [33892.166, 34246.134] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodColumnar
+
+# Run progress: 33.33% complete, ETA 02:20:49
+# Fork: 1 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:33:17 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3945.493 ms/op
+# Warmup Iteration   2: 3003.627 ms/op
+# Warmup Iteration   3: 3137.450 ms/op
+Iteration   1: 3125.460 ms/op
+Iteration   2: 3001.161 ms/op
+Iteration   3: 3030.243 ms/op
+Iteration   4: 2893.355 ms/op
+Iteration   5: 2966.363 ms/op
+Iteration   6: 2901.493 ms/op
+Iteration   7: 2916.257 ms/op
+Iteration   8: 2998.954 ms/op
+Iteration   9: 3037.404 ms/op
+Iteration  10: 2900.249 ms/op
+
+# Run progress: 36.67% complete, ETA 02:02:47
+# Fork: 2 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:33:58 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3789.489 ms/op
+# Warmup Iteration   2: 3180.970 ms/op
+# Warmup Iteration   3: 3036.006 ms/op
+Iteration   1: 2875.961 ms/op
+Iteration   2: 2857.094 ms/op
+Iteration   3: 2913.177 ms/op
+Iteration   4: 2899.141 ms/op
+Iteration   5: 2983.220 ms/op
+Iteration   6: 2891.071 ms/op
+Iteration   7: 3008.216 ms/op
+Iteration   8: 2830.118 ms/op
+Iteration   9: 2859.945 ms/op
+Iteration  10: 2893.784 ms/op
+
+# Run progress: 40.00% complete, ETA 01:47:37
+# Fork: 3 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:34:37 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3995.114 ms/op
+# Warmup Iteration   2: 2971.897 ms/op
+# Warmup Iteration   3: 3019.323 ms/op
+Iteration   1: 2894.866 ms/op
+Iteration   2: 3078.617 ms/op
+Iteration   3: 2847.463 ms/op
+Iteration   4: 2994.223 ms/op
+Iteration   5: 3013.447 ms/op
+Iteration   6: 2910.335 ms/op
+Iteration   7: 2926.118 ms/op
+Iteration   8: 2978.449 ms/op
+Iteration   9: 2840.362 ms/op
+Iteration  10: 2817.920 ms/op
+
+# Run progress: 43.33% complete, ETA 01:34:42
+# Fork: 4 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:35:17 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3863.265 ms/op
+# Warmup Iteration   2: 2995.722 ms/op
+# Warmup Iteration   3: 3072.220 ms/op
+Iteration   1: 2903.316 ms/op
+Iteration   2: 2979.997 ms/op
+Iteration   3: 2919.645 ms/op
+Iteration   4: 3020.605 ms/op
+Iteration   5: 3013.189 ms/op
+Iteration   6: 3006.319 ms/op
+Iteration   7: 2994.297 ms/op
+Iteration   8: 2899.473 ms/op
+Iteration   9: 3019.315 ms/op
+Iteration  10: 2889.608 ms/op
+
+# Run progress: 46.67% complete, ETA 01:23:32
+# Fork: 5 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:35:58 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3989.056 ms/op
+# Warmup Iteration   2: 3078.574 ms/op
+# Warmup Iteration   3: 3127.710 ms/op
+Iteration   1: 3026.077 ms/op
+Iteration   2: 2912.060 ms/op
+Iteration   3: 2951.824 ms/op
+Iteration   4: 3000.125 ms/op
+Iteration   5: 2910.763 ms/op
+Iteration   6: 3001.990 ms/op
+Iteration   7: 2964.924 ms/op
+Iteration   8: 2881.746 ms/op
+Iteration   9: 2978.002 ms/op
+Iteration  10: 2914.944 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodColumnar":
+  2945.454 ±(99.9%) 33.801 ms/op [Average]
+  (min, avg, max) = (2817.920, 2945.454, 3125.460), stdev = 68.280
+  CI (99.9%): [2911.653, 2979.255] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderIndexed
+
+# Run progress: 50.00% complete, ETA 01:13:46
+# Fork: 1 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:36:38 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+4035.110 ms/op
+# Warmup Iteration   2: 3386.851 ms/op
+# Warmup Iteration   3: 3368.974 ms/op
+Iteration   1: 3318.250 ms/op
+Iteration   2: 3217.352 ms/op
+Iteration   3: 3178.913 ms/op
+Iteration   4: 3323.654 ms/op
+Iteration   5: 3316.768 ms/op
+Iteration   6: 3338.514 ms/op
+Iteration   7: 3240.597 ms/op
+Iteration   8: 3070.871 ms/op
+Iteration   9: 3634.594 ms/op
+Iteration  10: 3281.652 ms/op
+
+# Run progress: 53.33% complete, ETA 01:05:11
+# Fork: 2 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:37:23 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+4096.417 ms/op
+# Warmup Iteration   2: 3290.652 ms/op
+# Warmup Iteration   3: 3543.442 ms/op
+Iteration   1: 3219.529 ms/op
+Iteration   2: 3196.092 ms/op
+Iteration   3: 3323.814 ms/op
+Iteration   4: 3188.346 ms/op
+Iteration   5: 3355.430 ms/op
+Iteration   6: 3137.831 ms/op
+Iteration   7: 3381.017 ms/op
+Iteration   8: 3167.819 ms/op
+Iteration   9: 3248.410 ms/op
+Iteration  10: 3281.391 ms/op
+
+# Run progress: 56.67% complete, ETA 00:57:32
+# Fork: 3 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:38:07 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3988.282 ms/op
+# Warmup Iteration   2: 3251.370 ms/op
+# Warmup Iteration   3: 3399.039 ms/op
+Iteration   1: 3421.599 ms/op
+Iteration   2: 3262.053 ms/op
+Iteration   3: 3385.749 ms/op
+Iteration   4: 3261.979 ms/op
+Iteration   5: 3161.607 ms/op
+Iteration   6: 3326.080 ms/op
+Iteration   7: 3312.173 ms/op
+Iteration   8: 3205.293 ms/op
+Iteration   9: 3169.337 ms/op
+Iteration  10: 3171.568 ms/op
+
+# Run progress: 60.00% complete, ETA 00:50:39
+# Fork: 4 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:38:51 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+3795.612 ms/op
+# Warmup Iteration   2: 3333.958 ms/op
+# Warmup Iteration   3: 3350.117 ms/op
+Iteration   1: 3293.057 ms/op
+Iteration   2: 3148.975 ms/op
+Iteration   3: 3132.605 ms/op
+Iteration   4: 3120.463 ms/op
+Iteration   5: 3242.818 ms/op
+Iteration   6: 3073.995 ms/op
+Iteration   7: 3091.739 ms/op
+Iteration   8: 3249.831 ms/op
+Iteration   9: 3154.518 ms/op
+Iteration  10: 3181.792 ms/op
+
+# Run progress: 63.33% complete, ETA 00:44:24
+# Fork: 5 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:39:34 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+4038.347 ms/op
+# Warmup Iteration   2: 3388.746 ms/op
+# Warmup Iteration   3: 3277.857 ms/op
+Iteration   1: 3415.260 ms/op
+Iteration   2: 3202.945 ms/op
+Iteration   3: 3354.195 ms/op
+Iteration   4: 3266.966 ms/op
+Iteration   5: 3252.013 ms/op
+Iteration   6: 3495.749 ms/op
+Iteration   7: 3297.334 ms/op
+Iteration   8: 3362.275 ms/op
+Iteration   9: 3345.545 ms/op
+Iteration  10: 3331.994 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderIndexed":
+  3262.247 ±(99.9%) 54.242 ms/op [Average]
+  (min, avg, max) = (3070.871, 3262.247, 3634.594), stdev = 109.572
+  CI (99.9%): [3208.005, 3316.489] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderNamed
+
+# Run progress: 66.67% complete, ETA 00:38:43
+# Fork: 1 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:40:19 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+18222.923 ms/op
+# Warmup Iteration   2: 17744.861 ms/op
+# Warmup Iteration   3: 17501.955 ms/op
+Iteration   1: 17374.142 ms/op
+Iteration   2: 17388.392 ms/op
+Iteration   3: 17402.691 ms/op
+Iteration   4: 17487.247 ms/op
+Iteration   5: 17400.414 ms/op
+Iteration   6: 17491.777 ms/op
+Iteration   7: 17357.238 ms/op
+Iteration   8: 17541.880 ms/op
+Iteration   9: 17438.790 ms/op
+Iteration  10: 17432.354 ms/op
+
+# Run progress: 70.00% complete, ETA 00:34:49
+# Fork: 2 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:44:07 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+18192.614 ms/op
+# Warmup Iteration   2: 17534.247 ms/op
+# Warmup Iteration   3: 17510.042 ms/op
+Iteration   1: 17454.547 ms/op
+Iteration   2: 17358.941 ms/op
+Iteration   3: 17661.745 ms/op
+Iteration   4: 17529.732 ms/op
+Iteration   5: 17552.639 ms/op
+Iteration   6: 17386.041 ms/op
+Iteration   7: 17549.222 ms/op
+Iteration   8: 17568.188 ms/op
+Iteration   9: 17583.704 ms/op
+Iteration  10: 17516.488 ms/op
+
+# Run progress: 73.33% complete, ETA 00:30:56
+# Fork: 3 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:47:56 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+18146.530 ms/op
+# Warmup Iteration   2: 17338.038 ms/op
+# Warmup Iteration   3: 17445.185 ms/op
+Iteration   1: 17292.802 ms/op
+Iteration   2: 17319.854 ms/op
+Iteration   3: 17057.975 ms/op
+Iteration   4: 16887.004 ms/op
+Iteration   5: 16692.508 ms/op
+Iteration   6: 17064.327 ms/op
+Iteration   7: 16840.082 ms/op
+Iteration   8: 16811.378 ms/op
+Iteration   9: 16936.627 ms/op
+Iteration  10: 16706.555 ms/op
+
+# Run progress: 76.67% complete, ETA 00:27:01
+# Fork: 4 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:51:39 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+17668.607 ms/op
+# Warmup Iteration   2: 17034.167 ms/op
+# Warmup Iteration   3: 17165.281 ms/op
+Iteration   1: 17067.996 ms/op
+Iteration   2: 16987.793 ms/op
+Iteration   3: 16986.690 ms/op
+Iteration   4: 16855.232 ms/op
+Iteration   5: 17113.103 ms/op
+Iteration   6: 16936.821 ms/op
+Iteration   7: 16998.669 ms/op
+Iteration   8: 16919.654 ms/op
+Iteration   9: 16995.461 ms/op
+Iteration  10: 17011.331 ms/op
+
+# Run progress: 80.00% complete, ETA 00:23:07
+# Fork: 5 of 5
+# Warmup Iteration   1: Jun 23, 2026 11:55:22 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+17804.336 ms/op
+# Warmup Iteration   2: 17103.359 ms/op
+# Warmup Iteration   3: 17090.765 ms/op
+Iteration   1: 17044.471 ms/op
+Iteration   2: 17004.976 ms/op
+Iteration   3: 17142.278 ms/op
+Iteration   4: 17062.889 ms/op
+Iteration   5: 17119.810 ms/op
+Iteration   6: 17048.082 ms/op
+Iteration   7: 17473.618 ms/op
+Iteration   8: 17509.105 ms/op
+Iteration   9: 17491.745 ms/op
+Iteration  10: 17781.084 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderNamed":
+  17232.722 ±(99.9%) 137.992 ms/op [Average]
+  (min, avg, max) = (16692.508, 17232.722, 17781.084), stdev = 278.751
+  CI (99.9%): [17094.730, 17370.714] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.parquetJavaColumnar
+
+# Run progress: 83.33% complete, ETA 00:19:15
+# Fork: 1 of 5
+# Warmup Iteration   1: 15246.677 ms/op
+# Warmup Iteration   2: 14591.704 ms/op
+# Warmup Iteration   3: 14609.521 ms/op
+Iteration   1: 14556.356 ms/op
+Iteration   2: 14629.039 ms/op
+Iteration   3: 14577.577 ms/op
+Iteration   4: 14550.395 ms/op
+Iteration   5: 14532.646 ms/op
+Iteration   6: 14599.262 ms/op
+Iteration   7: 14601.115 ms/op
+Iteration   8: 14547.436 ms/op
+Iteration   9: 14534.329 ms/op
+Iteration  10: 14572.334 ms/op
+
+# Run progress: 86.67% complete, ETA 00:15:17
+# Fork: 2 of 5
+# Warmup Iteration   1: 15220.802 ms/op
+# Warmup Iteration   2: 14654.415 ms/op
+# Warmup Iteration   3: 14608.941 ms/op
+Iteration   1: 14597.908 ms/op
+Iteration   2: 14634.473 ms/op
+Iteration   3: 14595.759 ms/op
+Iteration   4: 14565.649 ms/op
+Iteration   5: 14567.514 ms/op
+Iteration   6: 14623.538 ms/op
+Iteration   7: 14580.946 ms/op
+Iteration   8: 14585.792 ms/op
+Iteration   9: 14590.851 ms/op
+Iteration  10: 14607.394 ms/op
+
+# Run progress: 90.00% complete, ETA 00:11:24
+# Fork: 3 of 5
+# Warmup Iteration   1: 15226.011 ms/op
+# Warmup Iteration   2: 14576.579 ms/op
+# Warmup Iteration   3: 14554.586 ms/op
+Iteration   1: 14557.047 ms/op
+Iteration   2: 14582.462 ms/op
+Iteration   3: 14542.418 ms/op
+Iteration   4: 14543.853 ms/op
+Iteration   5: 14554.236 ms/op
+Iteration   6: 14533.897 ms/op
+Iteration   7: 14551.024 ms/op
+Iteration   8: 14540.881 ms/op
+Iteration   9: 14540.585 ms/op
+Iteration  10: 14511.572 ms/op
+
+# Run progress: 93.33% complete, ETA 00:07:33
+# Fork: 4 of 5
+# Warmup Iteration   1: 15311.560 ms/op
+# Warmup Iteration   2: 14705.340 ms/op
+# Warmup Iteration   3: 14688.322 ms/op
+Iteration   1: 14717.608 ms/op
+Iteration   2: 14718.933 ms/op
+Iteration   3: 14659.583 ms/op
+Iteration   4: 14707.421 ms/op
+Iteration   5: 14662.173 ms/op
+Iteration   6: 14647.947 ms/op
+Iteration   7: 14648.103 ms/op
+Iteration   8: 14691.907 ms/op
+Iteration   9: 14639.788 ms/op
+Iteration  10: 14620.563 ms/op
+
+# Run progress: 96.67% complete, ETA 00:03:45
+# Fork: 5 of 5
+# Warmup Iteration   1: 15288.040 ms/op
+# Warmup Iteration   2: 14701.033 ms/op
+# Warmup Iteration   3: 14654.878 ms/op
+Iteration   1: 14638.870 ms/op
+Iteration   2: 14636.419 ms/op
+Iteration   3: 14629.449 ms/op
+Iteration   4: 14624.552 ms/op
+Iteration   5: 14629.368 ms/op
+Iteration   6: 14663.058 ms/op
+Iteration   7: 14648.887 ms/op
+Iteration   8: 14650.547 ms/op
+Iteration   9: 14617.000 ms/op
+Iteration  10: 14644.810 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.parquetJavaColumnar":
+  14604.105 ±(99.9%) 25.758 ms/op [Average]
+  (min, avg, max) = (14511.572, 14604.105, 14718.933), stdev = 52.033
+  CI (99.9%): [14578.347, 14629.864] (assumes normal distribution)
+
+
+# Run complete. Total time: 01:52:10
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                   Mode  Cnt      Score     Error  Units
+FlatScanBenchmark.avroParquetReaderIndexed  avgt   50  30765.265 ± 282.129  ms/op
+FlatScanBenchmark.avroParquetReaderNamed    avgt   50  34069.150 ± 176.984  ms/op
+FlatScanBenchmark.hardwoodColumnar          avgt   50   2945.454 ±  33.801  ms/op
+FlatScanBenchmark.hardwoodRowReaderIndexed  avgt   50   3262.247 ±  54.242  ms/op
+FlatScanBenchmark.hardwoodRowReaderNamed    avgt   50  17232.722 ± 137.992  ms/op
+FlatScanBenchmark.parquetJavaColumnar       avgt   50  14604.105 ±  25.758  ms/op
+
+=== Throughput (derived: rows / avg time, bytes / avg time) ===
+    dataset: 48,722,602 rows, 830.0 MB
+    Benchmark                                         ms/op     M rows/s       MB/s
+    avroParquetReaderIndexed                        30765.3         1.58         27
+    avroParquetReaderNamed                          34069.1         1.43         24
+    hardwoodColumnar                                 2945.5        16.54        282
+    hardwoodRowReaderIndexed                         3262.2        14.94        254
+    hardwoodRowReaderNamed                          17232.7         2.83         48
+    parquetJavaColumnar                             14604.1         3.34         57
+
+---- Pinned to a single core (taskset -c 0) — Hardwood contenders only ----
+Run params: 48,722,602 rows, 830.0 MB, Java 25 (Eclipse Adoptium) (2025-01–2025-12)
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=pinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.include=hardwood -Dperf.pass=pinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodColumnar
+
+# Run progress: 0.00% complete, ETA 00:06:30
+# Fork: 1 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:15:06 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+16150.274 ms/op
+# Warmup Iteration   2: 11789.913 ms/op
+# Warmup Iteration   3: 11821.083 ms/op
+Iteration   1: 12464.234 ms/op
+Iteration   2: 11877.637 ms/op
+Iteration   3: 11741.406 ms/op
+Iteration   4: 12154.406 ms/op
+Iteration   5: 12274.199 ms/op
+Iteration   6: 12910.206 ms/op
+Iteration   7: 12908.780 ms/op
+Iteration   8: 12572.561 ms/op
+Iteration   9: 13183.146 ms/op
+Iteration  10: 11988.940 ms/op
+
+# Run progress: 6.67% complete, ETA 00:38:33
+# Fork: 2 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:17:51 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+16021.674 ms/op
+# Warmup Iteration   2: 11174.532 ms/op
+# Warmup Iteration   3: 12058.456 ms/op
+Iteration   1: 12444.792 ms/op
+Iteration   2: 13216.378 ms/op
+Iteration   3: 12852.707 ms/op
+Iteration   4: 13212.467 ms/op
+Iteration   5: 12474.413 ms/op
+Iteration   6: 12547.859 ms/op
+Iteration   7: 12906.354 ms/op
+Iteration   8: 14186.886 ms/op
+Iteration   9: 13042.727 ms/op
+Iteration  10: 11941.532 ms/op
+
+# Run progress: 13.33% complete, ETA 00:36:15
+# Fork: 3 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:20:40 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+15758.115 ms/op
+# Warmup Iteration   2: 11288.144 ms/op
+# Warmup Iteration   3: 12202.066 ms/op
+Iteration   1: 12720.831 ms/op
+Iteration   2: 12364.146 ms/op
+Iteration   3: 12961.266 ms/op
+Iteration   4: 12782.664 ms/op
+Iteration   5: 12186.819 ms/op
+Iteration   6: 11989.948 ms/op
+Iteration   7: 11891.631 ms/op
+Iteration   8: 12391.492 ms/op
+Iteration   9: 12156.698 ms/op
+Iteration  10: 12221.955 ms/op
+
+# Run progress: 20.00% complete, ETA 00:33:15
+# Fork: 4 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:23:24 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+15895.767 ms/op
+# Warmup Iteration   2: 11734.665 ms/op
+# Warmup Iteration   3: 12083.184 ms/op
+Iteration   1: 12872.830 ms/op
+Iteration   2: 13178.307 ms/op
+Iteration   3: 12655.855 ms/op
+Iteration   4: 12833.798 ms/op
+Iteration   5: 12734.379 ms/op
+Iteration   6: 12731.572 ms/op
+Iteration   7: 13238.454 ms/op
+Iteration   8: 12573.124 ms/op
+Iteration   9: 11802.747 ms/op
+Iteration  10: 12182.758 ms/op
+
+# Run progress: 26.67% complete, ETA 00:30:33
+# Fork: 5 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:26:12 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+15943.318 ms/op
+# Warmup Iteration   2: 11043.952 ms/op
+# Warmup Iteration   3: 11998.175 ms/op
+Iteration   1: 12979.439 ms/op
+Iteration   2: 12844.736 ms/op
+Iteration   3: 13080.965 ms/op
+Iteration   4: 12763.454 ms/op
+Iteration   5: 11686.084 ms/op
+Iteration   6: 11780.513 ms/op
+Iteration   7: 11901.669 ms/op
+Iteration   8: 12079.860 ms/op
+Iteration   9: 12037.438 ms/op
+Iteration  10: 12046.967 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodColumnar":
+  12531.481 ±(99.9%) 255.838 ms/op [Average]
+  (min, avg, max) = (11686.084, 12531.481, 14186.886), stdev = 516.805
+  CI (99.9%): [12275.643, 12787.318] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=pinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.include=hardwood -Dperf.pass=pinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderIndexed
+
+# Run progress: 33.33% complete, ETA 00:27:40
+# Fork: 1 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:28:56 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+14485.975 ms/op
+# Warmup Iteration   2: 10580.276 ms/op
+# Warmup Iteration   3: 10399.224 ms/op
+Iteration   1: 11409.919 ms/op
+Iteration   2: 11380.238 ms/op
+Iteration   3: 11241.180 ms/op
+Iteration   4: 11185.105 ms/op
+Iteration   5: 11894.311 ms/op
+Iteration   6: 11169.979 ms/op
+Iteration   7: 11647.051 ms/op
+Iteration   8: 10958.675 ms/op
+Iteration   9: 10594.587 ms/op
+Iteration  10: 11346.659 ms/op
+
+# Run progress: 40.00% complete, ETA 00:24:29
+# Fork: 2 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:31:25 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+14619.155 ms/op
+# Warmup Iteration   2: 10628.199 ms/op
+# Warmup Iteration   3: 10452.255 ms/op
+Iteration   1: 11422.242 ms/op
+Iteration   2: 11403.442 ms/op
+Iteration   3: 10869.482 ms/op
+Iteration   4: 11654.836 ms/op
+Iteration   5: 11057.530 ms/op
+Iteration   6: 11236.102 ms/op
+Iteration   7: 11662.384 ms/op
+Iteration   8: 11206.466 ms/op
+Iteration   9: 10825.250 ms/op
+Iteration  10: 11111.514 ms/op
+
+# Run progress: 46.67% complete, ETA 00:21:30
+# Fork: 3 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:33:55 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+14191.603 ms/op
+# Warmup Iteration   2: 10390.718 ms/op
+# Warmup Iteration   3: 10181.407 ms/op
+Iteration   1: 11541.522 ms/op
+Iteration   2: 11184.850 ms/op
+Iteration   3: 11085.190 ms/op
+Iteration   4: 10739.512 ms/op
+Iteration   5: 12506.494 ms/op
+Iteration   6: 10903.650 ms/op
+Iteration   7: 10963.497 ms/op
+Iteration   8: 10733.295 ms/op
+Iteration   9: 10603.318 ms/op
+Iteration  10: 12608.196 ms/op
+
+# Run progress: 53.33% complete, ETA 00:18:38
+# Fork: 4 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:36:24 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+14182.190 ms/op
+# Warmup Iteration   2: 10234.057 ms/op
+# Warmup Iteration   3: 10230.192 ms/op
+Iteration   1: 11628.465 ms/op
+Iteration   2: 10940.541 ms/op
+Iteration   3: 10555.621 ms/op
+Iteration   4: 11039.730 ms/op
+Iteration   5: 10645.694 ms/op
+Iteration   6: 10851.819 ms/op
+Iteration   7: 10546.895 ms/op
+Iteration   8: 10866.322 ms/op
+Iteration   9: 11708.290 ms/op
+Iteration  10: 10981.099 ms/op
+
+# Run progress: 60.00% complete, ETA 00:15:49
+# Fork: 5 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:38:50 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+14355.001 ms/op
+# Warmup Iteration   2: 10493.907 ms/op
+# Warmup Iteration   3: 10322.382 ms/op
+Iteration   1: 10754.948 ms/op
+Iteration   2: 10542.088 ms/op
+Iteration   3: 10975.970 ms/op
+Iteration   4: 11282.080 ms/op
+Iteration   5: 11516.759 ms/op
+Iteration   6: 11237.532 ms/op
+Iteration   7: 11617.190 ms/op
+Iteration   8: 11050.942 ms/op
+Iteration   9: 11475.602 ms/op
+Iteration  10: 11166.832 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderIndexed":
+  11190.618 ±(99.9%) 221.057 ms/op [Average]
+  (min, avg, max) = (10542.088, 11190.618, 12608.196), stdev = 446.546
+  CI (99.9%): [10969.561, 11411.675] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=pinned -Dperf.forks=5 -Dperf.meas=10 -Dperf.include=hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed -Dperf.include=hardwood -Dperf.pass=pinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 10 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderNamed
+
+# Run progress: 66.67% complete, ETA 00:13:06
+# Fork: 1 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:41:18 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+30198.023 ms/op
+# Warmup Iteration   2: 25883.654 ms/op
+# Warmup Iteration   3: 26175.066 ms/op
+Iteration   1: 26030.099 ms/op
+Iteration   2: 25522.494 ms/op
+Iteration   3: 25689.360 ms/op
+Iteration   4: 25572.958 ms/op
+Iteration   5: 25868.310 ms/op
+Iteration   6: 25613.550 ms/op
+Iteration   7: 25714.652 ms/op
+Iteration   8: 25934.868 ms/op
+Iteration   9: 27214.736 ms/op
+Iteration  10: 25883.097 ms/op
+
+# Run progress: 73.33% complete, ETA 00:11:36
+# Fork: 2 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:47:01 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+29761.386 ms/op
+# Warmup Iteration   2: 25483.256 ms/op
+# Warmup Iteration   3: 25821.002 ms/op
+Iteration   1: 25635.886 ms/op
+Iteration   2: 25187.339 ms/op
+Iteration   3: 25342.565 ms/op
+Iteration   4: 25369.200 ms/op
+Iteration   5: 25329.247 ms/op
+Iteration   6: 25135.022 ms/op
+Iteration   7: 26521.674 ms/op
+Iteration   8: 25863.780 ms/op
+Iteration   9: 25221.763 ms/op
+Iteration  10: 25435.064 ms/op
+
+# Run progress: 80.00% complete, ETA 00:09:23
+# Fork: 3 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:52:38 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+30047.236 ms/op
+# Warmup Iteration   2: 25649.983 ms/op
+# Warmup Iteration   3: 25728.643 ms/op
+Iteration   1: 25592.168 ms/op
+Iteration   2: 25579.831 ms/op
+Iteration   3: 25365.716 ms/op
+Iteration   4: 25509.861 ms/op
+Iteration   5: 25427.473 ms/op
+Iteration   6: 25528.088 ms/op
+Iteration   7: 25687.012 ms/op
+Iteration   8: 25828.107 ms/op
+Iteration   9: 25394.312 ms/op
+Iteration  10: 25684.155 ms/op
+
+# Run progress: 86.67% complete, ETA 00:06:38
+# Fork: 4 of 5
+# Warmup Iteration   1: Jun 24, 2026 12:58:16 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+29983.726 ms/op
+# Warmup Iteration   2: 25456.146 ms/op
+# Warmup Iteration   3: 25903.017 ms/op
+Iteration   1: 25642.439 ms/op
+Iteration   2: 25392.813 ms/op
+Iteration   3: 25759.956 ms/op
+Iteration   4: 26569.252 ms/op
+Iteration   5: 26041.138 ms/op
+Iteration   6: 25638.231 ms/op
+Iteration   7: 25170.740 ms/op
+Iteration   8: 25360.985 ms/op
+Iteration   9: 25199.735 ms/op
+Iteration  10: 25600.464 ms/op
+
+# Run progress: 93.33% complete, ETA 00:03:29
+# Fork: 5 of 5
+# Warmup Iteration   1: Jun 24, 2026 1:03:55 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+30139.193 ms/op
+# Warmup Iteration   2: 25579.048 ms/op
+# Warmup Iteration   3: 26140.318 ms/op
+Iteration   1: 25792.760 ms/op
+Iteration   2: 25309.744 ms/op
+Iteration   3: 25572.623 ms/op
+Iteration   4: 25469.998 ms/op
+Iteration   5: 26952.650 ms/op
+Iteration   6: 28539.496 ms/op
+Iteration   7: 25300.304 ms/op
+Iteration   8: 25408.116 ms/op
+Iteration   9: 25212.532 ms/op
+Iteration  10: 25498.943 ms/op
+
+
+Result "dev.hardwood.benchmarks.FlatScanBenchmark.hardwoodRowReaderNamed":
+  25702.306 ±(99.9%) 291.091 ms/op [Average]
+  (min, avg, max) = (25135.022, 25702.306, 28539.496), stdev = 588.018
+  CI (99.9%): [25411.215, 25993.397] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:54:32
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                   Mode  Cnt      Score     Error  Units
+FlatScanBenchmark.hardwoodColumnar          avgt   50  12531.481 ± 255.838  ms/op
+FlatScanBenchmark.hardwoodRowReaderIndexed  avgt   50  11190.618 ± 221.057  ms/op
+FlatScanBenchmark.hardwoodRowReaderNamed    avgt   50  25702.306 ± 291.091  ms/op
+
+=== Throughput (derived: rows / avg time, bytes / avg time) ===
+    dataset: 48,722,602 rows, 830.0 MB
+    Benchmark                                         ms/op     M rows/s       MB/s
+    hardwoodColumnar                                12531.5         3.89         66
+    hardwoodRowReaderIndexed                        11190.6         4.35         74
+    hardwoodRowReaderNamed                          25702.3         1.90         32
+Finished FlatScanBenchmark at 2026-06-24 01:09:36 UTC (duration 2h 46m 45s)
+
+=====================================================================
+Chart input — throughput by contender (raw TSV: target/bench-throughput-FlatScanBenchmark.tsv)
+Only Hardwood is timed pinned. The single-threaded baselines show '-' for
+1-core: not separately measured — pinning doesn't change a single-threaded
+reader, so use their default value as the per-core number too.
+=====================================================================
+benchmark            contender                      default      1-core  def MB/s   1c MB/s
+                                                   M rows/s    M rows/s                    
+FlatScanBenchmark    avroParquetReaderIndexed         1.584           -      27.0         -
+FlatScanBenchmark    avroParquetReaderNamed           1.430           -      24.4         -
+FlatScanBenchmark    hardwoodColumnar                16.542       3.888     281.8      66.2
+FlatScanBenchmark    hardwoodRowReaderIndexed        14.935       4.354     254.4      74.2
+FlatScanBenchmark    hardwoodRowReaderNamed           2.827       1.896      48.2      32.3
+FlatScanBenchmark    parquetJavaColumnar              3.336           -      56.8         -
+
+ASCII charts — default (out-of-box) throughput, M rows/s; 1-core shown where measured
+
+  FlatScanBenchmark — record (materialization)
+    avroParquetReaderIndexed  │███ 1.6
+    avroParquetReaderNamed    │███ 1.4
+    hardwoodRowReaderIndexed  │██████████████████████████████ 14.9   (1-core 4.4)
+    hardwoodRowReaderNamed    │██████ 2.8   (1-core 1.9)
+
+  FlatScanBenchmark — columnar (raw decode)
+    hardwoodColumnar          │██████████████████████████████ 16.5   (1-core 3.9)
+    parquetJavaColumnar       │██████ 3.3
