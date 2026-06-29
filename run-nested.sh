@@ -8,9 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-declare -A BENCH_FLAGS=(
-  [--file]=perf.file
-)
+BENCH_FLAGS='--file perf.file'
 BENCH_USAGE="Nested read benchmark (Overture Maps places, full record reconstruction).
 
 Usage: ./run-nested.sh [options]

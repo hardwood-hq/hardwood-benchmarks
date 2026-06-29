@@ -9,12 +9,10 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-declare -A BENCH_FLAGS=(
-  [--start]=perf.start
-  [--end]=perf.end
-  [--data-dir]=data.dir
-  [--batch-size]=perf.batchSize
-)
+BENCH_FLAGS='--start perf.start
+--end perf.end
+--data-dir data.dir
+--batch-size perf.batchSize'
 BENCH_USAGE="Flat full-scan benchmark (NYC Yellow Taxi, every column).
 
 Usage: ./run-flat.sh [options]

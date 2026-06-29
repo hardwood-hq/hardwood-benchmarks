@@ -12,18 +12,42 @@
 # reaches Arrow C++ over JNI, so only it needs java.nio opened, native access
 # permitted, and Netty's sun.misc.Unsafe access allowed on JDK 23+. The other
 # benchmarks never load Arrow and get no extra flags.
-declare -A BENCH_JVM_FLAGS=(
-  [dev.hardwood.benchmarks.FlatScanBenchmark]="--add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow"
-)
+# Echoes the extra JVM flags a benchmark main class needs (empty for most).
+bench_jvm_flags() {
+  case "$1" in
+    *FlatScanBenchmark)
+      printf '%s' "--add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow"
+      ;;
+  esac
+}
 
-# Common flags every script accepts, mapped to their `-Dperf.*` property.
-declare -A BENCH_COMMON_FLAGS=(
-  [--warmup]=perf.warmup
-  [--meas]=perf.meas
-  [--forks]=perf.forks
-  [--prof]=perf.prof
-  [--include]=perf.include
-)
+# Common flags every script accepts, one "flag property" pair per line. A caller
+# adds its own pairs in BENCH_FLAGS; bench_flag_prop searches both. Plain
+# newline-delimited strings (not associative arrays) so the harness runs on bash
+# 3.2 too, e.g. stock macOS /bin/bash.
+BENCH_COMMON_FLAGS='--warmup perf.warmup
+--meas perf.meas
+--forks perf.forks
+--prof perf.prof
+--include perf.include'
+
+# Resolve a long flag (e.g. --start) to its -Dperf.* property, searching the
+# caller's BENCH_FLAGS first, then BENCH_COMMON_FLAGS. Echoes the property and
+# returns 0 on a hit; returns 1 with no output otherwise.
+bench_flag_prop() {
+  local name="$1" k v
+  while read -r k v; do
+    [ -n "$k" ] || continue
+    if [ "$k" = "$name" ]; then
+      printf '%s' "$v"
+      return 0
+    fi
+  done <<EOF
+${BENCH_FLAGS:-}
+${BENCH_COMMON_FLAGS:-}
+EOF
+  return 1
+}
 
 # Help text for the common flags; each script appends it to its own BENCH_USAGE.
 BENCH_COMMON_USAGE="  --warmup N        JMH warmup iterations (default 3)
@@ -66,7 +90,7 @@ bench_parse_args() {
         ;;
       --*)
         local name="${1%%=*}"
-        local prop="${BENCH_FLAGS[$name]:-${BENCH_COMMON_FLAGS[$name]:-}}"
+        local prop="$(bench_flag_prop "$name")"
         if [[ -z "$prop" ]]; then
           echo "Unknown option: $name (try --help)" >&2
           exit 2
@@ -94,14 +118,15 @@ bench_parse_args() {
   # per-benchmark log under target/, so a run's full console output is archived
   # next to its TSVs and meta sidecar; capture-run.sh then snapshots the lot. The
   # log name comes from the run script (run-flat.sh -> target/flat.log). Set
-  # BENCH_LOG=0 to skip. Needs bash >= 4.4 ($! reflects the tee process
-  # substitution); the EXIT trap drains tee so the tail is never lost to the copy.
+  # BENCH_LOG=0 to skip. The EXIT trap closes the fds and waits for the tee child
+  # so the tail is never lost to the copy. A bare `wait` (rather than `wait $!`)
+  # keeps this correct on bash 3.2, where $! does not reflect a process
+  # substitution.
   if [[ "${BENCH_LOG:-1}" != 0 ]]; then
     local base="${0##*/}"; base="${base#run-}"; base="${base%.sh}"
     mkdir -p target
     exec > >(tee "target/${base}.log") 2>&1
-    local tee_pid=$!
-    trap "exec 1>&- 2>&-; wait $tee_pid 2>/dev/null || true" EXIT
+    trap 'exec 1>&- 2>&-; wait 2>/dev/null || true' EXIT
   fi
 }
 
@@ -135,7 +160,7 @@ bench_build() {
 # intentionally unquoted (word-split).
 bench_run() {
   local main="$1"
-  local flags="${BENCH_JVM_FLAGS[$main]:-}"
+  local flags="$(bench_jvm_flags "$main")"
   local name="${main##*.}"
 
   echo
