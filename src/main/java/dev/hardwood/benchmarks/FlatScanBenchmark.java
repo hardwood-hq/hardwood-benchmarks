@@ -609,11 +609,17 @@ public class FlatScanBenchmark {
         return sum;
     }
 
+    /// Materialise the string the way the record contenders do — `getObject`
+    /// decodes the stored UTF-8 bytes into a `Text` (a `CharSequence`), which we
+    /// fold by its UTF-8 byte length — rather than reading the stored length
+    /// straight off the offset buffer with `getValueLength`. The decode is the work
+    /// a real string-column scan performs, so all contenders must do it for the fold
+    /// to be uniform.
     private static long foldArrowStr(LargeVarCharVector v) {
         int n = v.getValueCount();
         long sum = 0;
         for (int i = 0; i < n; i++) {
-            if (!v.isNull(i)) sum += v.getValueLength(i);
+            if (!v.isNull(i)) sum += v.getObject(i).toString().getBytes(StandardCharsets.UTF_8).length;
         }
         return sum;
     }
@@ -693,11 +699,18 @@ public class FlatScanBenchmark {
         return sum;
     }
 
+    /// Materialise the string the way the record contenders do — UTF-8 decode the
+    /// stored binary to a `String`, then fold its UTF-8 byte length — rather than
+    /// reading the stored byte length straight off the `Binary`. The decode is the
+    /// work a real string-column scan performs (and what every record contender
+    /// already pays), so all contenders must do it for the fold to be uniform.
     private static long pjString(org.apache.parquet.column.ColumnReader cr, ColumnDescriptor cd, long rows) {
         int maxDef = cd.getMaxDefinitionLevel();
         long sum = 0;
         for (long i = 0; i < rows; i++) {
-            if (cr.getCurrentDefinitionLevel() == maxDef) sum += cr.getBinary().length();
+            if (cr.getCurrentDefinitionLevel() == maxDef) {
+                sum += cr.getBinary().toStringUsingUTF8().getBytes(StandardCharsets.UTF_8).length;
+            }
             cr.consume();
         }
         return sum;
