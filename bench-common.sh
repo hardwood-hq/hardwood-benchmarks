@@ -133,7 +133,7 @@ bench_parse_args() {
 # Per-benchmark machine-readable throughput. In benchmark mode bench_run writes
 # target/bench-throughput-<Benchmark>.tsv (one file per benchmark, so separate
 # runs don't clobber each other), pivoted into a chart-ready table by
-# bench_epilogue; make-charts.py reads the whole set. Set per run by bench_run.
+# bench_epilogue; the per-benchmark make-*-chart.py generators read them. Set per run by bench_run.
 BENCH_RESULTS=""
 
 # Compile and resolve the runtime classpath into $CP. Call once per run.
@@ -187,7 +187,7 @@ bench_run() {
         "${ARGS[@]+"${ARGS[@]}"}" -cp "$CP" "$main"
     fi
 
-    if [[ "${PERF_PIN:-1}" != 0 ]] && command -v taskset >/dev/null 2>&1; then
+    if [[ "${PERF_PIN:-1}" != 0 && "${BENCH_SINGLE_CORE:-1}" != 0 ]] && command -v taskset >/dev/null 2>&1; then
       echo
       echo "---- Pinned to a single core (taskset -c 0) — Hardwood contenders only ----"
       taskset -c 0 java $flags -Dperf.results="$BENCH_RESULTS" -Dperf.pass=pinned \
@@ -217,9 +217,11 @@ bench_epilogue() {
     fi
   fi
 
-  if [[ "${PERF_PIN:-1}" == 0 ]]; then
+  if [[ "${BENCH_SINGLE_CORE:-1}" == 0 ]]; then
+    : # benchmark has no single-core pass by design (Hardwood-only, all cores) — no note
+  elif [[ "${PERF_PIN:-1}" == 0 ]]; then
     echo
-    echo "(PERF_PIN=0: ran the all-cores pass only, skipped the single-core pass.)"
+    echo "(--no-pin: ran the all-cores pass only, skipped the single-core pass.)"
   elif ! command -v taskset >/dev/null 2>&1; then
     echo
     echo "(taskset not found: skipped the single-core pass. It is Linux-only;"

@@ -26,12 +26,20 @@ $BENCH_COMMON_USAGE
 
 Two modes: --gate verifies every contender folds to the same checksum as
 parquet-java and exits (no JMH, printing a per-contender confirmation; fails fast
-on a mismatch); without it, the script benchmarks (no gate). So the publish flow
-is gate-check, then measure:
-  ./run-flat.sh --gate
-  ./run-flat.sh --forks 5 --meas 10"
+on a mismatch); without it, the script benchmarks (no gate).
+
+Publish flow — gate, smoke-test, measure, chart:
+  ./run-flat.sh --gate                                                        # correctness, no timing
+  ./run-flat.sh --start 2025-01 --end 2025-01 --warmup 1 --meas 1 --forks 1   # smoke test (throwaway)
+  ./run-flat.sh --forks 5 --meas 10 \\
+    --include 'hardwood|parquetJava|avroParquetReaderNamed|avroParquetReaderIndexed'   # measure
+  python3 charts/make-flat-chart.py --results-dir target                      # chart
+The measure --include restricts timing to the published contenders — the gate
+already checked Arrow Dataset and the SpecificRecord reader, and timing them feeds
+no chart. For publication-grade numbers wrap the measure line in the median-of-3
+tmux loop (README, Publication runs)."
 
 bench_parse_args "$@"
 bench_build
-bench_run dev.hardwood.benchmarks.FlatScanBenchmark
+bench_run dev.hardwood.benchmarks.flat.FlatScanBenchmark
 bench_epilogue

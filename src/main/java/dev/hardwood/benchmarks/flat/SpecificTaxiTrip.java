@@ -5,7 +5,7 @@
  *
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package dev.hardwood.benchmarks;
+package dev.hardwood.benchmarks.flat;
 
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecordBase;
@@ -28,7 +28,7 @@ public class SpecificTaxiTrip extends SpecificRecordBase {
         {
           "type": "record",
           "name": "SpecificTaxiTrip",
-          "namespace": "dev.hardwood.benchmarks",
+          "namespace": "dev.hardwood.benchmarks.flat",
           "aliases": ["schema"],
           "fields": [
             {"name": "VendorID", "type": ["null", "int"], "default": null},

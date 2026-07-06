@@ -142,7 +142,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.5.0</version>
         <configuration>
-          <mainClass>dev.hardwood.benchmarks.FilterBenchmark</mainClass>
+          <mainClass>dev.hardwood.benchmarks.filter.FilterBenchmark</mainClass>
         </configuration>
       </plugin>
     </plugins>
