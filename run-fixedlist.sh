@@ -37,18 +37,21 @@ TSV, so chart (or capture) the sweep before launching the headline run:
   ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5
   python charts/make-fixedlist-bars-chart.py --results-dir target
 
-Publication run (evaluation instance) — three runs for the median, detached under
-tmux so an SSH drop can't kill it; sweep and headline are captured to separate dirs
-(they share a TSV filename). Copy/paste:
-  tmux new -d -s fixedlist '
-    for i in 1 2 3; do
-      ./run-fixedlist.sh --forks 3 --meas 5
-      ./capture-run.sh \"results/2026-07-03-fixed-size-list/sweep/run-\$i\"
-      ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5
-      ./capture-run.sh \"results/2026-07-03-fixed-size-list/headline/run-\$i\"
-      [ \"\$i\" -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
-    done'
-  # reattach:  tmux attach -t fixedlist    (detach: Ctrl-b d)"
+Publication run (evaluation instance) — three runs for the median, in a tmux session
+so an SSH drop can't kill it. Clear any stale sibling artifacts first so capture-run
+grabs only this benchmark's (it archives every bench-* in target/), then start the
+session and PASTE the loop into it (don't cram it into 'tmux new -d <cmd>' — tmux
+mangles the quoting); detach with Ctrl-b d. Sweep and headline capture to separate
+dirs (they share a TSV filename):
+  rm -f target/bench-*.tsv target/*.log
+  tmux new -s fixedlist
+  for i in 1 2 3; do
+    ./run-fixedlist.sh --forks 3 --meas 5
+    ./capture-run.sh results/2026-07-03-fixed-size-list/sweep/run-\$i
+    ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5
+    ./capture-run.sh results/2026-07-03-fixed-size-list/headline/run-\$i
+    [ \$i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
+  done"
 
 bench_parse_args "$@"
 # All contenders are Hardwood (fast path vs. baseline), so there is no

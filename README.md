@@ -45,22 +45,23 @@ measurement command from that recipe inside the loop below.
 A single timed run isn't publication-grade: on a shared host run-to-run variance is
 ~5–10%, so quote the **median of several runs**. Do **three full runs with a
 5-minute break between them** — sampling across a span of time rather than one
-momentary machine state — started **detached** under `tmux` so an SSH drop can't
-kill it. Gate-check first (the gate line in the benchmark's `--help` recipe) so
-environment problems surface before the long run.
+momentary machine state — in a `tmux` session so an SSH drop can't kill them.
+Gate-check first (the gate line in the benchmark's `--help` recipe) so environment
+problems surface before the long run.
 
-Drop the benchmark's measurement command — the measure line of its `--help` recipe —
-into the loop; each run self-logs to `target/<bench>.log` and `capture-run.sh`
-archives it into its own directory:
+Start the session, then **paste** the loop into it (don't cram it into `tmux new -d
+<cmd>` — tmux mangles the embedded quoting) with the benchmark's measurement command
+— the measure line of its `--help` recipe — dropped in. Each run self-logs to
+`target/<bench>.log` and `capture-run.sh` archives it into its own directory; detach
+with `Ctrl-b d` and the loop keeps running:
 
 ```sh
-tmux new -d -s bench '
-  for i in 1 2 3; do
-    <benchmark measurement command>              # e.g. ./run-flat.sh --forks 5 --meas 10 --include "…"
-    ./capture-run.sh "results/2026-06-25-hardwood-1.0/run-$i"
-    [ "$i" -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
-  done'
-# reattach to watch:  tmux attach -t bench      (detach again: Ctrl-b d)
+tmux new -s bench        # then paste:
+for i in 1 2 3; do
+  <benchmark measurement command>              # e.g. ./run-flat.sh --forks 5 --meas 10 --include "…"
+  ./capture-run.sh results/2026-06-25-hardwood-1.0/run-$i
+  [ $i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
+done
 ```
 
 Results are filed one directory per publication, `results/<YYYY-MM-DD>-<slug>/run-N/`
