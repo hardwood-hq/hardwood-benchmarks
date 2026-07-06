@@ -39,8 +39,12 @@ replay_pid*
 # macOS
 .DS_Store
 
-# Committed run archives under results/run-*/ are tracked for reproducibility:
+# Committed run archives under results/<publication>/run-*/ are tracked for reproducibility:
 # keep their logs (the blanket *.log above would otherwise drop them), but never
-# commit the regenerable charts (make-charts.py --results-dir rebuilds them).
+# commit the regenerable charts (the make-*-chart.py generators rebuild them).
 results/**/charts/
 !results/**/*.log
+
+# Python bytecode caches from the chart generators
+__pycache__/
+*.pyc
