@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="516" viewBox="0 0 780 516" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="780" height="516" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">Reading fixed-size-list vectors — k=$k</text>
+  <text x="40" y="50" font-size="12.5" fill="#495057">Fast path vs. record-reconstruction baseline · $ds</text>
+  <text x="40" y="67" font-size="11" fill="#868e96">$subline</text>
+
+  <!-- Legend -->
+  <rect x="40"  y="82" width="12" height="12" rx="2" fill="#a5d8ff"/>
+  <rect x="55"  y="82" width="12" height="12" rx="2" fill="#1971c2"/>
+  <text x="72"  y="92" font-size="11.5" fill="#495057">column reader (baseline · fast)</text>
+  <rect x="270" y="82" width="12" height="12" rx="2" fill="#fab005"/>
+  <rect x="285" y="82" width="12" height="12" rx="2" fill="#f08c00"/>
+  <text x="302" y="92" font-size="11.5" fill="#495057">row reader (baseline · fast)</text>
+  <line x1="490" y1="88" x2="516" y2="88" stroke="#2f9e44" stroke-width="1.6" stroke-dasharray="5 3"/>
+  <text x="521" y="92" font-size="11.5" fill="#495057">flat-column floor</text>
+
+  <g transform="translate(0, 16)">
+  <!-- Y axis title -->
+  <text x="22" y="250" font-size="12.5" fill="#495057" transform="rotate(-90 22 250)" text-anchor="middle">throughput (M float32 values/s · higher is better)</text>
+
+  <!-- Gridlines + y ticks (data-driven) -->
+  <g stroke="#ececec" stroke-width="1">
+    $gridlines
+  </g>
+  <g font-size="11" fill="#adb5bd" text-anchor="end">
+    $ticklabels
+  </g>
+  <line x1="70" y1="400" x2="740" y2="400" stroke="#bbb" stroke-width="1.5"/>
+
+  <!-- Column reader group -->
+  <rect x="190" y="$c_base_y" width="56" height="$c_base_h" rx="2" fill="#a5d8ff"/>
+  <text x="218" y="$c_base_ly" font-size="12.5" font-weight="700" fill="#495057" text-anchor="middle">$c_base_v</text>
+  <rect x="258" y="$c_fast_y" width="56" height="$c_fast_h" rx="2" fill="#1971c2"/>
+  <text x="286" y="$c_fast_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$c_fast_v</text>
+  <text x="252" y="420" font-size="12.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">Column reader</text>
+  <text x="252" y="437" font-size="12" fill="#1971c2" text-anchor="middle">$c_speedup× faster</text>
+
+  <!-- Row reader group -->
+  <rect x="472" y="$r_base_y" width="56" height="$r_base_h" rx="2" fill="#fab005"/>
+  <text x="500" y="$r_base_ly" font-size="12.5" font-weight="700" fill="#495057" text-anchor="middle">$r_base_v</text>
+  <rect x="540" y="$r_fast_y" width="56" height="$r_fast_h" rx="2" fill="#f08c00"/>
+  <text x="568" y="$r_fast_ly" font-size="12.5" font-weight="700" fill="#f08c00" text-anchor="middle">$r_fast_v</text>
+  <text x="534" y="420" font-size="12.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">Row reader</text>
+  <text x="534" y="437" font-size="12" fill="#f08c00" text-anchor="middle">$r_speedup× faster</text>
+
+  <!-- Flat-column decode floor (the fastest these bytes move) -->
+  <line x1="70" y1="$floor_y" x2="740" y2="$floor_y" stroke="#2f9e44" stroke-width="1.6" stroke-dasharray="5 3"/>
+  <text x="736" y="$floor_y" dy="-5" font-size="11.5" font-weight="700" fill="#2f9e44" text-anchor="end">flat-column floor  $floor_v</text>
+
+  <!-- footnote -->
+  <text x="40" y="490" font-size="11" fill="#868e96">Floor = a plain float32 column read through the column reader — the fastest these bytes move. All bars decode identical values.</text>
+  </g>
+</svg>

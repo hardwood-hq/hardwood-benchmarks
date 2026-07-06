@@ -16,6 +16,7 @@ each lives in [The Benchmarks](#the-benchmarks).
 | `run-flat.sh` | Full scan of every column (NYC Yellow Taxi) | Hardwood columnar + record readers ↔ parquet-java / Avro, Arrow reference |
 | `run-filter.sh` | Range predicate over a time-clustered file | Hardwood filtered reader ↔ parquet-java |
 | `run-nested.sh` | Full read of deeply nested struct/list/map records (Overture Maps) | Hardwood row reader ↔ `AvroParquetReader` |
+| `run-fixedlist.sh` | Fixed-width vector column (embeddings, points) read with the fast path on vs. off | Hardwood column & row readers, fast path ↔ baseline |
 
 **Two modes.** By default a script **benchmarks** (see [Output](#output) for the
 one or two timed passes). With `--gate` it runs a **gate check** instead: it folds
@@ -142,6 +143,45 @@ chart).
 existing file instead.
 
 **Charts.** None — the nested record comparison is reported as numbers only.
+
+### Fixed-size-list scan — `run-fixedlist.sh`
+
+A full scan of a `LIST<float32>` column of fixed-width vectors (embeddings, 3-D
+points) with the fixed-size-list fast path **on and off**, across a sweep of vector
+lengths `k`, through both the column reader and the row reader. Every contender is
+the Hardwood reader — fast path vs. reconstruction baseline, plus a flat-column
+decode floor — so the run is all-cores only. This is the macro, whole-file
+counterpart to core's micro `FixedSizeListDecodeBenchmark`, producing the
+speedup-vs-`k` curve and the headline embedding / 3-D-point numbers for the blog
+post. The `flatFloor` contender is a single columnar read of the same values as a
+plain float column — the fastest these bytes move — and `main` prints each reader's
+time as a multiple of it (`column/floor`, `row/floor`); a row-read of the flat
+column is not a floor (`k`× more rows, so per-row overhead dominates).
+
+Two file sizes feed the two charts: the speedup **ratio** (baseline ÷ fast) is
+size-robust — per-file fixed costs cancel between fast and baseline — so the `k`
+sweep runs on cheap 32 MB files; absolute **throughput** is size-sensitive, so the
+two headline points (`k = 3` 3-D points, `k = 768` embeddings) are measured on
+realistic ~512 MB files, out of cache and past per-file overhead. All-cores only —
+every contender is Hardwood, so there is no pinned single-core pass.
+
+**Run:** `./run-fixedlist.sh --help` — gate, smoke test, the two sweep/headline
+runs (captured separately), and the publication tmux loop.
+
+**Data.** Generated on demand by `FixedSizeListFileGenerator` as a 3-level
+compliant required `LIST<float32>` (the shape the reader accelerates), no dictionary
+and no compression, so a bare run needs no pyarrow venv. `-Dperf.pageVersion=v1`
+selects DataPageV1 (default V2); both are fast-pathed.
+
+**Charts** — two generators, both reading this benchmark's TSV:
+
+- `make-fixedlist-bars-chart.py` → `fixedlist_bars.svg` (the lead visual): absolute
+  read throughput (M float32 values/s) at one `k` (`--k`, default 768) — column and
+  row readers, baseline vs. fast, with the flat-column floor as a dashed reference
+  line. Uses the `values` denominator from the `bench-meta` sidecar.
+- `make-fixedlist-chart.py` → `fixedlist_speedup.svg`: fast-path speedup
+  (baseline ÷ fast) vs. vector length `k`, one line per reader — shows the win holds
+  across vector lengths.
 
 ### Common flags
 
