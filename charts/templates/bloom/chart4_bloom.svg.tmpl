@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="550" viewBox="0 0 780 550" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="780" height="550" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">Bloom-filter point lookup (equality push-down)</text>
+  <text x="40" y="50" font-size="12.5" fill="#495057">Hardwood ↔ parquet-java · bloom-bearing file vs statistics-only twin · $bds</text>
+  <text x="40" y="67" font-size="11" fill="#868e96">$machine, warm cache · $java</text>
+
+  <!-- Legend: engine = colour, bloom = solid / no-bloom = light -->
+  <rect x="40"  y="82" width="12" height="12" rx="2" fill="#1971c2"/>
+  <text x="57"  y="92" font-size="11.5" fill="#495057">Hardwood · bloom</text>
+  <rect x="185" y="82" width="12" height="12" rx="2" fill="#a5d8ff"/>
+  <text x="202" y="92" font-size="11.5" fill="#495057">Hardwood · no bloom</text>
+  <rect x="360" y="82" width="12" height="12" rx="2" fill="#f08c00"/>
+  <text x="377" y="92" font-size="11.5" fill="#495057">parquet-java · bloom</text>
+  <rect x="520" y="82" width="12" height="12" rx="2" fill="#ffd8a8"/>
+  <text x="537" y="92" font-size="11.5" fill="#495057">parquet-java · no bloom</text>
+
+  <!-- everything below the legend is shifted down for legend-to-plot whitespace -->
+  <g transform="translate(0, 10)">
+  <!-- Y axis title -->
+  <text x="22" y="250" font-size="12.5" fill="#495057" transform="rotate(-90 22 250)" text-anchor="middle">time per lookup (ms · lower is better)</text>
+
+  <!-- Gridlines + tick labels: linear 0..top, data-driven (make-bloom-chart.py chart4). -->
+  <g stroke="#ececec" stroke-width="1">
+    $gridlines
+  </g>
+  <g font-size="11" fill="#adb5bd" text-anchor="end">
+    $ticklabels
+  </g>
+  <line x1="70" y1="400" x2="740" y2="400" stroke="#bbb" stroke-width="1.5"/>
+
+  <!-- ===== PRESENT group (centre 237.5) ===== -->
+  <rect x="123.5" y="$p_hwb_y" width="48" height="$p_hwb_h" rx="2" fill="#1971c2"/>
+  <text x="147.5" y="$p_hwb_ly" font-size="11.5" font-weight="700" fill="#1971c2" text-anchor="middle">$p_hwb_v</text>
+  <rect x="183.5" y="$p_hwn_y" width="48" height="$p_hwn_h" rx="2" fill="#a5d8ff"/>
+  <text x="207.5" y="$p_hwn_ly" font-size="11.5" font-weight="700" fill="#1971c2" text-anchor="middle">$p_hwn_v</text>
+  <rect x="243.5" y="$p_pjb_y" width="48" height="$p_pjb_h" rx="2" fill="#f08c00"/>
+  <text x="267.5" y="$p_pjb_ly" font-size="11.5" font-weight="700" fill="#e8590c" text-anchor="middle">$p_pjb_v</text>
+  <rect x="303.5" y="$p_pjn_y" width="48" height="$p_pjn_h" rx="2" fill="#ffd8a8"/>
+  <text x="327.5" y="$p_pjn_ly" font-size="11.5" font-weight="700" fill="#e8590c" text-anchor="middle">$p_pjn_v</text>
+
+  <!-- ===== ABSENT group (centre 572.5) ===== -->
+  <rect x="458.5" y="$a_hwb_y" width="48" height="$a_hwb_h" rx="2" fill="#1971c2"/>
+  <text x="482.5" y="$a_hwb_ly" font-size="11.5" font-weight="700" fill="#1971c2" text-anchor="middle">$a_hwb_v</text>
+  <rect x="518.5" y="$a_hwn_y" width="48" height="$a_hwn_h" rx="2" fill="#a5d8ff"/>
+  <text x="542.5" y="$a_hwn_ly" font-size="11.5" font-weight="700" fill="#1971c2" text-anchor="middle">$a_hwn_v</text>
+  <rect x="578.5" y="$a_pjb_y" width="48" height="$a_pjb_h" rx="2" fill="#f08c00"/>
+  <text x="602.5" y="$a_pjb_ly" font-size="11.5" font-weight="700" fill="#e8590c" text-anchor="middle">$a_pjb_v</text>
+  <rect x="638.5" y="$a_pjn_y" width="48" height="$a_pjn_h" rx="2" fill="#ffd8a8"/>
+  <text x="662.5" y="$a_pjn_ly" font-size="11.5" font-weight="700" fill="#e8590c" text-anchor="middle">$a_pjn_v</text>
+
+  <!-- Group labels -->
+  <text x="237.5" y="424" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">PRESENT PROBE</text>
+  <text x="237.5" y="440" font-size="11.5" fill="#868e96" text-anchor="middle">bloom keeps one row group · HW $p_hw_x×, PJ $p_pj_x× vs no-bloom</text>
+  <text x="572.5" y="424" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">ABSENT PROBE</text>
+  <text x="572.5" y="440" font-size="11.5" fill="#868e96" text-anchor="middle">bloom drops every row group · HW $a_hw_x×, PJ $a_pj_x× vs no-bloom</text>
+
+  <!-- group divider -->
+  <line x1="405" y1="100" x2="405" y2="400" stroke="#f0f0f0" stroke-width="1"/>
+
+  <!-- footnote -->
+  <text x="40" y="494" font-size="11.5" fill="#868e96">No-bloom = the statistics-only twin (dictionary off), where nothing prunes and the whole column is scanned. N× = no-bloom ÷ bloom.</text>
+  <text x="40" y="510" font-size="11.5" fill="#868e96">The absent probe is an in-range fare never charged: its bloom bars drop every row group (a near-zero stub) — the case statistics cannot catch.</text>
+  </g>
+</svg>

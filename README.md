@@ -15,6 +15,7 @@ each lives in [The Benchmarks](#the-benchmarks).
 | --- | --- | --- |
 | `run-flat.sh` | Full scan of every column (NYC Yellow Taxi) | Hardwood columnar + record readers ↔ parquet-java / Avro, Arrow reference |
 | `run-filter.sh` | Range predicate over a time-clustered file | Hardwood filtered reader ↔ parquet-java |
+| `run-bloom.sh` | Equality point-lookup where only a bloom filter can prune (NYC Yellow Taxi) | Hardwood ↔ parquet-java, bloom file vs statistics-only twin |
 | `run-nested.sh` | Full read of deeply nested struct/list/map records (Overture Maps) | Hardwood row reader ↔ `AvroParquetReader` |
 | `run-fixedlist.sh` | Fixed-width vector column (embeddings, points) read with the fast path on vs. off | Hardwood column & row readers, fast path ↔ baseline |
 
@@ -124,6 +125,35 @@ different `--rows` regenerates rather than reusing a stale file.
 **Charts** (`make-filter-chart.py`) — `filtered_chart.svg`, ms/op (**lower is
 better**), the two selectivity groups on a broken axis so the match-all bar stays
 readable next to the selective one.
+
+### Bloom-filter point lookup — `run-bloom.sh`
+
+An equality push-down (`total_amount = k`) on the **real** NYC taxi rows, rewritten
+through parquet-java with a bloom filter added on `total_amount` — a
+high-cardinality, unclustered fare column — plus a statistics-only twin. Dictionary
+encoding is disabled on that column, so min/max statistics prune nothing and only
+the per-row-group bloom filter can. Each reader (Hardwood, parquet-java) probes both
+files, isolating two effects: **what a bloom filter buys** (`hardwoodBloom` vs
+`hardwoodNoBloom`) and **Hardwood's bloom vs parquet-java's bloom** on the same file
+(`hardwoodBloom` vs `parquetJavaBloom` — their pruning *decisions* already proven
+identical by Hardwood's oracle test; this times them). Two probes: `present` (a real
+fare from the data) and `absent` (an in-range fare with sub-cent precision never
+charged — the bloom drops every row group, the case statistics cannot catch).
+Hardwood does not yet *write* bloom filters, so the files are written by
+parquet-java; this is purely a read-path comparison.
+
+**Run:** `./run-bloom.sh --help` — gate, smoke test, measure, chart.
+
+**Data.** Downloads the same NYC Yellow Taxi files as the flat scan (same cache and
+`--data-dir` / `-Ddata.dir=…` override), then rewrites the window under `target/`
+into a bloom-bearing file and a statistics-only twin, keyed on the window and row
+cap so a different window regenerates rather than reusing a stale pair.
+
+**Charts** (`make-bloom-chart.py`) — `bloom_chart.svg`, ms/op (**lower is better**),
+the two probe groups (present, absent), each with the four read paths
+(Hardwood/parquet-java × bloom/no-bloom). The no-bloom full-scan bars set the scale;
+the bloom bars prune to the matching row group(s), and the absent-probe bloom bars
+drop every row group. Unpinned bars only, so it renders from a `--no-pin` run too.
 
 ### Nested scan — `run-nested.sh`
 
