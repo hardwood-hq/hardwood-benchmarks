@@ -1,3 +1,4 @@
 rows	50000000
 bytes	1038398864
 java	Java 25 (Eclipse Adoptium)
+machine	AWS m7i.2xlarge (8 vCPU / 4 physical cores)

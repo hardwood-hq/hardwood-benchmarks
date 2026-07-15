@@ -96,8 +96,9 @@ def main():
     ap.add_argument("--results", default=None,
                     help="override flat throughput TSV")
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")
-    ap.add_argument("--machine", default="AWS m7i.2xlarge (8 vCPU / 4 physical cores)",
-                    help="hardware label for the chart subtitle")
+    ap.add_argument("--machine", default=None,
+                    help="override the hardware label (default: the `machine` key from "
+                         "the meta sidecar, recorded by the capture script)")
     args = ap.parse_args()
 
     results = args.results or os.path.join(args.results_dir, "bench-throughput-FlatScanBenchmark.tsv")
@@ -109,8 +110,9 @@ def main():
     data = load(results)
     meta = require_meta(results, ["rows", "bytes", "java", "window"])
     ds = flat_descriptor(meta)
-    c1 = chart1(data, results); c1["ds"] = ds; c1["java"] = meta["java"]; c1["machine"] = args.machine
-    c2 = chart2(data, results); c2["ds"] = ds; c2["java"] = meta["java"]; c2["machine"] = args.machine
+    machine = args.machine or meta.get("machine") or "unknown machine"
+    c1 = chart1(data, results); c1["ds"] = ds; c1["java"] = meta["java"]; c1["machine"] = machine
+    c2 = chart2(data, results); c2["ds"] = ds; c2["java"] = meta["java"]; c2["machine"] = machine
     rendered = [
         render("flat/chart1_columnar.svg.tmpl", out / "flat_chart1_columnar.svg", c1),
         render("flat/chart2_record.svg.tmpl", out / "flat_chart2_record.svg", c2),

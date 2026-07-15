@@ -122,8 +122,9 @@ def main():
                          "results/2026-06-25-hardwood-1.0/run-2)")
     ap.add_argument("--results", default=None, help="override filter throughput TSV")
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")
-    ap.add_argument("--machine", default="AWS m7i.2xlarge (8 vCPU / 4 physical cores)",
-                    help="hardware label for the chart subtitle")
+    ap.add_argument("--machine", default=None,
+                    help="override the hardware label (default: the `machine` key from "
+                         "the meta sidecar, recorded by the capture script)")
     args = ap.parse_args()
 
     results = args.results or os.path.join(args.results_dir, "bench-throughput-FilterBenchmark.tsv")
@@ -134,8 +135,9 @@ def main():
 
     data = load(results)
     meta = require_meta(results, ["rows", "bytes", "java"])
+    machine = args.machine or meta.get("machine") or "unknown machine"
     c3 = chart3(data, results, filter_descriptor(meta))
-    c3["java"] = meta["java"]; c3["machine"] = args.machine
+    c3["java"] = meta["java"]; c3["machine"] = machine
     rendered = [render("filter/chart3_filtered.svg.tmpl", out / "filtered_chart.svg", c3)]
     render_pngs(rendered)
 
