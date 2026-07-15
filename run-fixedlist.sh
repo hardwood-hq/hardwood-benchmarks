@@ -46,12 +46,15 @@ dirs (they share a TSV filename):
   rm -f target/bench-*.tsv target/*.log
   tmux new -s fixedlist
   for i in 1 2 3; do
-    ./run-fixedlist.sh --forks 3 --meas 5
+    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --forks 3 --meas 5
     ./capture-run.sh results/2026-07-03-fixed-size-list/sweep/run-\$i
-    ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5
+    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --k 3,768 --total-values 128000000 --forks 3 --meas 5
     ./capture-run.sh results/2026-07-03-fixed-size-list/headline/run-\$i
     [ \$i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
-  done"
+  done
+
+The auto-detected label (lscpu CPU model + core count) is used when --machine is
+omitted; pass it as above so the published chart names the evaluation instance."
 
 bench_parse_args "$@"
 # All contenders are Hardwood (fast path vs. baseline), so there is no

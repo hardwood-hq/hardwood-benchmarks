@@ -55,6 +55,9 @@ BENCH_COMMON_USAGE="  --warmup N        JMH warmup iterations (default 3)
   --forks N         JMH forks (default 1; 0 = in-process, non-forked debug run)
   --prof LIST       JMH profilers, e.g. gc,stack
   --include REGEX   restrict to benchmark methods matching REGEX
+  --machine LABEL   hardware label recorded in the meta sidecar for the chart
+                    subtitle (default: auto-detected CPU model + core count). The
+                    chart derives all-cores vs single-core from the pass itself.
   --no-pin          all-cores pass only (skip the taskset-pinned single-core pass)
   --pin-only        taskset-pinned single-core pass only (skip the all-cores pass);
                     handy for 1-core profiling. Needs taskset (Linux).
@@ -86,6 +89,18 @@ bench_parse_args() {
         ;;
       --gate)
         BENCH_GATE=1
+        shift
+        ;;
+      --machine)
+        if (( $# < 2 )); then
+          echo "Option --machine needs a value (try --help)" >&2
+          exit 2
+        fi
+        BENCH_MACHINE="$2"
+        shift 2
+        ;;
+      --machine=*)
+        BENCH_MACHINE="${1#*=}"
         shift
         ;;
       --*)
@@ -158,6 +173,23 @@ bench_build() {
 # of a user --include (a publish-run --include then only narrows the all-cores pass,
 # e.g. to drop the non-published Arrow / SpecificRecord contenders). $flags is
 # intentionally unquoted (word-split).
+# Hardware label for the current run — the CPU model and core count. Hardware
+# only: the all-cores vs single-core distinction is the chart's to derive from the
+# `pass` column, so this one label serves both passes. Overridden by --machine
+# (BENCH_MACHINE); otherwise auto-detected from lscpu, falling back to uname.
+bench_machine() {
+  if [[ -n "${BENCH_MACHINE:-}" ]]; then
+    printf '%s' "$BENCH_MACHINE"
+    return
+  fi
+  local model cores
+  model="$(lscpu 2>/dev/null | sed -n 's/^Model name:[[:space:]]*//p' | head -1)"
+  # lscpu prints "-" for an unknown model (common in VMs/containers); fall back.
+  [[ -n "$model" && "$model" != "-" ]] || model="$(uname -sm)"
+  cores="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo '?')"
+  printf '%s (%s cores)' "$model" "$cores"
+}
+
 bench_run() {
   local main="$1"
   local flags="$(bench_jvm_flags "$main")"
@@ -195,6 +227,14 @@ bench_run() {
         -Dperf.include=hardwood -cp "$CP" "$main"
     elif [[ -n "${BENCH_PIN_ONLY:-}" ]]; then
       echo "(--pin-only set but the pinned pass can't run: $(command -v taskset >/dev/null 2>&1 && echo 'PERF_PIN=0' || echo 'taskset not found'). Nothing ran.)" >&2
+    fi
+
+    # Append the run's hardware label to the meta sidecar the benchmark just wrote
+    # (bench-meta-* beside bench-throughput-*). The harness owns this — the JVM
+    # writes the dataset/java/hardwood keys, the capture script adds where it ran.
+    local meta="${BENCH_RESULTS/bench-throughput-/bench-meta-}"
+    if [[ -f "$meta" ]]; then
+      printf 'machine\t%s\n' "$(bench_machine)" >> "$meta"
     fi
   fi
 

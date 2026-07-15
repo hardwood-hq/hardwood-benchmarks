@@ -120,8 +120,9 @@ def main():
                     help="override TSV (default <results-dir>/bench-throughput-FixedSizeListScanBenchmark.tsv)")
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")
     ap.add_argument("--pass", dest="pass_", default="unpinned", help="JMH pass to plot (default unpinned)")
-    ap.add_argument("--machine", default="AWS m7i.2xlarge (8 vCPU / 4 physical cores)",
-                    help="hardware label for the chart subtitle")
+    ap.add_argument("--machine", default=None,
+                    help="override the hardware label (default: the `machine` key from "
+                         "the meta sidecar, recorded by the capture script)")
     args = ap.parse_args()
 
     results = args.results or os.path.join(
@@ -131,14 +132,18 @@ def main():
     rows = load_k(results, args.pass_, args.k)
     if not rows:
         sys.exit("no rows for k={} in {} — run the benchmark with that k in the sweep".format(args.k, results))
-    meta = read_meta(results, ["values", "java", "hardwood"])
+    meta = read_meta(results, ["values", "java", "hardwood", "machine"])
     if not meta.get("values"):
         sys.exit("bench-meta is missing 'values' — re-run the benchmark (it writes the "
                  "throughput denominator alongside the results TSV).")
 
     out = Path(args.out) if args.out else Path(args.results_dir) / "charts"
     out.mkdir(parents=True, exist_ok=True)
-    subst = build(rows, args.k, int(meta["values"]), args.machine,
+    # Hardware label comes from the meta (recorded by the capture script), --machine
+    # overrides it; the all-cores vs single-core mode is derived from the pass.
+    machine = args.machine or meta.get("machine") or "unknown machine"
+    mode = "single core" if args.pass_ == "pinned" else "all cores"
+    subst = build(rows, args.k, int(meta["values"]), machine + " · " + mode,
                   meta.get("java"), meta.get("hardwood"))
     svg = render("fixedlist/fixedlist_bars.svg.tmpl", out / "fixedlist_bars.svg", subst)
     render_pngs([svg])

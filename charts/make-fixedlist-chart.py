@@ -203,8 +203,9 @@ def main():
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")
     ap.add_argument("--pass", dest="pass_", default="unpinned",
                     help="which JMH pass to plot (default unpinned / all-cores)")
-    ap.add_argument("--machine", default="AWS m7i.2xlarge (8 vCPU / 4 physical cores)",
-                    help="hardware label for the chart subtitle")
+    ap.add_argument("--machine", default=None,
+                    help="override the hardware label (default: the `machine` key from "
+                         "the meta sidecar, recorded by the capture script)")
     args = ap.parse_args()
 
     results = args.results or os.path.join(
@@ -215,8 +216,12 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     data = load(results, args.pass_)
-    meta = read_meta(results, ["java", "hardwood"])
-    subst = build(data, meta, args.machine)
+    meta = read_meta(results, ["java", "hardwood", "machine"])
+    # Hardware label comes from the meta (recorded by the capture script), --machine
+    # overrides it; the all-cores vs single-core mode is derived from the pass.
+    machine = args.machine or meta.get("machine") or "unknown machine"
+    mode = "single core" if args.pass_ == "pinned" else "all cores"
+    subst = build(data, meta, machine + " · " + mode)
     svg = render("fixedlist/fixedlist_speedup.svg.tmpl", out / "fixedlist_speedup.svg", subst)
     render_pngs([svg])
 
