@@ -186,8 +186,10 @@ def build(data, meta, machine):
                 return "{:.1f}x".format(v)
         return "-"
 
-    subst["ds"] = "float32 vectors · {} · {}".format(
-        meta.get("java", "") or "warm cache", machine)
+    hardwood = meta.get("hardwood", "")
+    subst["ds"] = "float32 vectors · {} · {}{}".format(
+        meta.get("java", "") or "warm cache", machine,
+        " · Hardwood " + hardwood if hardwood else "")
     subst["headline"] = "k=3 (points): column {} · k=768 (embeddings): column {}".format(
         headline(col, 3), headline(col, 768))
     return subst
@@ -213,7 +215,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     data = load(results, args.pass_)
-    meta = read_meta(results, ["java"])
+    meta = read_meta(results, ["java", "hardwood"])
     subst = build(data, meta, args.machine)
     svg = render("fixedlist/fixedlist_speedup.svg.tmpl", out / "fixedlist_speedup.svg", subst)
     render_pngs([svg])

@@ -8,12 +8,18 @@
 package dev.hardwood.benchmarks;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 
+import dev.hardwood.reader.ColumnReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
@@ -78,15 +84,18 @@ public final class BenchReport {
     /// reads them from the run itself rather than from CLI flags or back-computed
     /// throughput. Echoes them to stdout and writes a sidecar TSV next to the
     /// `-Dperf.results` file (`bench-throughput-<X>.tsv` → `bench-meta-<X>.tsv`),
-    /// `key\tvalue` per line: `rows`, `bytes`, `java`, and `window` when non-blank.
+    /// `key\tvalue` per line: `rows`, `bytes`, `java`, `hardwood`, and `window`
+    /// when non-blank.
     /// No-op for the meta file when `-Dperf.results` is unset or does not follow the
     /// `bench-throughput-` convention (the stdout line still prints).
     public static void writeRunParams(long rows, long bytes, String window) {
         String java = "Java " + System.getProperty("java.version")
                 + " (" + System.getProperty("java.vendor") + ")";
+        String hardwood = hardwoodVersion();
         double mb = bytes / 1_000_000.0;
-        System.out.printf("Run params: %,d rows, %,.1f MB, %s%s%n",
-                rows, mb, java, window == null || window.isBlank() ? "" : " (" + window + ")");
+        System.out.printf("Run params: %,d rows, %,.1f MB, %s, Hardwood %s%s%n",
+                rows, mb, java, hardwood,
+                window == null || window.isBlank() ? "" : " (" + window + ")");
 
         String resultsPath = System.getProperty("perf.results");
         if (resultsPath == null || resultsPath.isBlank()) {
@@ -100,6 +109,7 @@ public final class BenchReport {
         sb.append("rows\t").append(rows).append('\n');
         sb.append("bytes\t").append(bytes).append('\n');
         sb.append("java\t").append(java).append('\n');
+        sb.append("hardwood\t").append(hardwood).append('\n');
         if (window != null && !window.isBlank()) {
             sb.append("window\t").append(window).append('\n');
         }
@@ -107,6 +117,32 @@ public final class BenchReport {
             Files.writeString(Path.of(metaPath), sb.toString());
         } catch (IOException e) {
             System.err.println("Could not write run params to " + metaPath + ": " + e);
+        }
+    }
+
+    /// The resolved `hardwood-core` build as `<version> (<git-sha>)`, read from the
+    /// jar's `META-INF/MANIFEST.MF` — `Implementation-Version` and
+    /// `Implementation-Build`, the latter stamped by the Hardwood build from
+    /// `git rev-parse`. This is the authoritative record of which commit a run
+    /// measured, since the dependency is a floating `-SNAPSHOT`. Returns `unknown`
+    /// when core is on the classpath as loose classes rather than a jar.
+    private static String hardwoodVersion() {
+        URL classUrl = ColumnReader.class.getResource(ColumnReader.class.getSimpleName() + ".class");
+        if (classUrl == null || !"jar".equals(classUrl.getProtocol())) {
+            return "unknown";
+        }
+        String jarRef = classUrl.toString();
+        String manifestUrl = jarRef.substring(0, jarRef.lastIndexOf('!') + 1) + "/META-INF/MANIFEST.MF";
+        try (InputStream in = URI.create(manifestUrl).toURL().openStream()) {
+            Attributes attrs = new Manifest(in).getMainAttributes();
+            String version = attrs.getValue("Implementation-Version");
+            String build = attrs.getValue("Implementation-Build");
+            if (version == null && build == null) {
+                return "unknown";
+            }
+            return version + " (" + build + ")";
+        } catch (IOException e) {
+            return "unknown";
         }
     }
 

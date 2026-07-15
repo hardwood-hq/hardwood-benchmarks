@@ -80,7 +80,7 @@ def block(prefix, throughput, scale):
             prefix + "_v": fmt(throughput)}
 
 
-def build(rows, k, values, machine, java):
+def build(rows, k, values, machine, java, hardwood):
     needed = ["columnBaseline", "columnFast", "rowBaseline", "rowFast", "flatFloor"]
     missing = [n for n in needed if n not in rows]
     if missing:
@@ -107,7 +107,8 @@ def build(rows, k, values, machine, java):
 
     subst["k"] = str(k)
     subst["ds"] = "{}-element float32 vectors · {:.0f}M values/file".format(k, values / 1e6)
-    subst["subline"] = machine + " · warm cache" + (" · " + java if java else "")
+    subst["subline"] = (machine + " · warm cache" + (" · " + java if java else "")
+                        + (" · Hardwood " + hardwood if hardwood else ""))
     return subst
 
 
@@ -130,14 +131,15 @@ def main():
     rows = load_k(results, args.pass_, args.k)
     if not rows:
         sys.exit("no rows for k={} in {} — run the benchmark with that k in the sweep".format(args.k, results))
-    meta = read_meta(results, ["values", "java"])
+    meta = read_meta(results, ["values", "java", "hardwood"])
     if not meta.get("values"):
         sys.exit("bench-meta is missing 'values' — re-run the benchmark (it writes the "
                  "throughput denominator alongside the results TSV).")
 
     out = Path(args.out) if args.out else Path(args.results_dir) / "charts"
     out.mkdir(parents=True, exist_ok=True)
-    subst = build(rows, args.k, int(meta["values"]), args.machine, meta.get("java"))
+    subst = build(rows, args.k, int(meta["values"]), args.machine,
+                  meta.get("java"), meta.get("hardwood"))
     svg = render("fixedlist/fixedlist_bars.svg.tmpl", out / "fixedlist_bars.svg", subst)
     render_pngs([svg])
 
