@@ -5,8 +5,7 @@ Reads the FixedSizeListScanBenchmark ms/op TSV (default
 target/bench-throughput-FixedSizeListScanBenchmark.tsv), whose contender labels
 carry the vector length as `columnFast[768]`. For each k it plots the speedup
 (baseline ms / fast ms) of the fast path over the reconstruction baseline, one
-line per reader (column, row). A dashed line at 1x marks "no speedup"; the
-k=9..15 band (scalar-verified, not byte-aligned) is shaded.
+line per reader (column, row). A dashed line at 1x marks "no speedup".
 
 Fills charts/templates/fixedlist/fixedlist_speedup.svg.tmpl.
 
@@ -89,13 +88,17 @@ def label_sides(series, xmin, xspan):
     return sides
 
 
-def dots(points, values, color, sides):
+def dots(points, values, sides, ks, color, label_ks):
+    """Draw a marker at every point, but a value label only where `k` is in
+    `label_ks` — the flat plateau carries markers without repeating near-identical
+    numbers (e.g. several 2.8x) at slightly different heights."""
     out = []
-    for (x, y), v, side in zip(points, values, sides):
+    for (x, y), v, side, k in zip(points, values, sides, ks):
         out.append('<circle cx="{:.1f}" cy="{:.1f}" r="3.5" fill="{}"/>'.format(x, y, color))
-        dy = -8 if side > 0 else 16
-        out.append('<text x="{:.1f}" y="{:.1f}" font-size="10.5" font-weight="700" '
-                   'fill="{}" text-anchor="middle">{:.1f}</text>'.format(x, y + dy, color, v))
+        if k in label_ks:
+            dy = -8 if side > 0 else 16
+            out.append('<text x="{:.1f}" y="{:.1f}" font-size="10.5" font-weight="700" '
+                       'fill="{}" text-anchor="middle">{:.1f}</text>'.format(x, y + dy, color, v))
     return "\n    ".join(out)
 
 
@@ -147,13 +150,6 @@ def build(data, meta, machine):
         "baseline_y": "{:.1f}".format(ypix(1.0, scale)),
     }
 
-    # Shade the scalar-verified band (k in 9..15): between the k=8 and k=16 columns.
-    left = xpix(9, xmin, xspan) if 9 >= all_k[0] else X0
-    right = xpix(16, xmin, xspan) if 16 <= all_k[-1] else X1
-    subst["notch_x"] = "{:.1f}".format(left)
-    subst["notch_w"] = "{:.1f}".format(max(0.0, right - left))
-    subst["notch_lx"] = "{:.1f}".format((left + right) / 2.0)
-
     col_sides = label_sides(col, xmin, xspan)
     row_sides = label_sides(row, xmin, xspan)
     # Cross-reader: where both lines carry a point at the same k and their labels
@@ -168,12 +164,21 @@ def build(data, meta, machine):
             col_sides[col_idx[k]] = -1 if col_low else 1
             row_sides[row_idx[k]] = 1 if col_low else -1
 
+    # Label only the callout k's (headline embeddings/points + the k=1 edge) plus
+    # each reader's peak; the plateau in between reads as one flat line, so labelling
+    # every point would just repeat ~2.8x at slightly different heights.
+    row_peak_k = max(row, key=lambda kv: kv[1])[0] if row else None
+    label_ks = {
+        "col": {1, 3, 768},
+        "row": {1, 3, 768, row_peak_k},
+    }
     for base, series, color, sides in (("col", col, "#1971c2", col_sides),
                                        ("row", row, "#f08c00", row_sides)):
         pts = [(xpix(k, xmin, xspan), ypix(v, scale)) for k, v in series]
         vals = [v for _, v in series]
+        ks = [k for k, _ in series]
         subst[base + "_line"] = polyline(pts)
-        subst[base + "_dots"] = dots(pts, vals, color, sides)
+        subst[base + "_dots"] = dots(pts, vals, sides, ks, color, label_ks[base])
 
     def headline(series, k):
         for kk, v in series:
