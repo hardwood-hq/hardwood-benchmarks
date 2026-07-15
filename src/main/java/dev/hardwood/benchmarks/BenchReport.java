@@ -82,42 +82,64 @@ public final class BenchReport {
     /// Records the run's dataset parameters — record count, on-disk size, the JVM,
     /// and (for a date-windowed dataset) the window label — so the chart generator
     /// reads them from the run itself rather than from CLI flags or back-computed
-    /// throughput. Echoes them to stdout and writes a sidecar TSV next to the
-    /// `-Dperf.results` file (`bench-throughput-<X>.tsv` → `bench-meta-<X>.tsv`),
-    /// `key\tvalue` per line: `rows`, `bytes`, `java`, `hardwood`, and `window`
-    /// when non-blank.
-    /// No-op for the meta file when `-Dperf.results` is unset or does not follow the
-    /// `bench-throughput-` convention (the stdout line still prints).
+    /// throughput. Echoes them to stdout and writes the meta sidecar via
+    /// [#writeMeta(String...)] (which also records `java` and `hardwood`).
     public static void writeRunParams(long rows, long bytes, String window) {
-        String java = "Java " + System.getProperty("java.version")
-                + " (" + System.getProperty("java.vendor") + ")";
         String hardwood = hardwoodVersion();
         double mb = bytes / 1_000_000.0;
         System.out.printf("Run params: %,d rows, %,.1f MB, %s, Hardwood %s%s%n",
-                rows, mb, java, hardwood,
+                rows, mb, javaVersion(), hardwood,
                 window == null || window.isBlank() ? "" : " (" + window + ")");
 
-        String resultsPath = System.getProperty("perf.results");
-        if (resultsPath == null || resultsPath.isBlank()) {
+        if (window == null || window.isBlank()) {
+            writeMeta("rows", Long.toString(rows), "bytes", Long.toString(bytes));
+        }
+        else {
+            writeMeta("rows", Long.toString(rows), "bytes", Long.toString(bytes), "window", window);
+        }
+    }
+
+    /// Writes the run's meta sidecar next to the `-Dperf.results` file
+    /// (`bench-throughput-<X>.tsv` → `bench-meta-<X>.tsv`), one `key\tvalue` per
+    /// line: the given benchmark-specific `pairs` (`key, value, key, value, …`)
+    /// followed by `java` and the resolved `hardwood` build. Centralising the JVM
+    /// and Hardwood-SHA capture here means every benchmark's meta records them, so
+    /// no per-benchmark writer can drift and drop a field. No-op when
+    /// `-Dperf.results` is unset or is not the conventional `bench-throughput-` path.
+    public static void writeMeta(String... pairs) {
+        String metaPath = metaPath();
+        if (metaPath == null) {
             return;
         }
-        String metaPath = resultsPath.replace("bench-throughput-", "bench-meta-");
-        if (metaPath.equals(resultsPath)) {
-            return; // not the conventional results path — don't risk clobbering it
-        }
         StringBuilder sb = new StringBuilder();
-        sb.append("rows\t").append(rows).append('\n');
-        sb.append("bytes\t").append(bytes).append('\n');
-        sb.append("java\t").append(java).append('\n');
-        sb.append("hardwood\t").append(hardwood).append('\n');
-        if (window != null && !window.isBlank()) {
-            sb.append("window\t").append(window).append('\n');
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            sb.append(pairs[i]).append('\t').append(pairs[i + 1]).append('\n');
         }
+        sb.append("java\t").append(javaVersion()).append('\n');
+        sb.append("hardwood\t").append(hardwoodVersion()).append('\n');
         try {
             Files.writeString(Path.of(metaPath), sb.toString());
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             System.err.println("Could not write run params to " + metaPath + ": " + e);
         }
+    }
+
+    /// The `bench-meta-<X>.tsv` sidecar path derived from `-Dperf.results`, or
+    /// `null` when it is unset or not the conventional `bench-throughput-` path
+    /// (in which case the meta write is skipped rather than risking a clobber).
+    private static String metaPath() {
+        String resultsPath = System.getProperty("perf.results");
+        if (resultsPath == null || resultsPath.isBlank()) {
+            return null;
+        }
+        String metaPath = resultsPath.replace("bench-throughput-", "bench-meta-");
+        return metaPath.equals(resultsPath) ? null : metaPath;
+    }
+
+    private static String javaVersion() {
+        return "Java " + System.getProperty("java.version")
+                + " (" + System.getProperty("java.vendor") + ")";
     }
 
     /// The resolved `hardwood-core` build as `<version> (<git-sha>)`, read from the

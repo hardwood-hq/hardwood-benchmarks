@@ -6,8 +6,8 @@
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package dev.hardwood.benchmarks.fixedlist;
+
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -225,27 +225,12 @@ public class FixedSizeListScanBenchmark {
 
     /// Writes the run's throughput denominator to `bench-meta-*.tsv` next to the
     /// results TSV (`values` = leaf floats per file, constant across `k`; `bytes` =
-    /// their float payload; plus the JVM), so make-fixedlist-bars-chart.py can turn
-    /// each contender's ms/op into M values/s. No-op when `-Dperf.results` is unset.
+    /// their float payload), so make-fixedlist-bars-chart.py can turn each
+    /// contender's ms/op into M values/s. The shared [BenchReport#writeMeta(String...)]
+    /// appends the JVM and Hardwood build. No-op when `-Dperf.results` is unset.
     private static void writeMeta() {
-        String resultsPath = System.getProperty("perf.results");
-        if (resultsPath == null || resultsPath.isBlank()) {
-            return;
-        }
-        String metaPath = resultsPath.replace("bench-throughput-", "bench-meta-");
-        if (metaPath.equals(resultsPath)) {
-            return;
-        }
         long values = totalValues();
-        String java = "Java " + System.getProperty("java.version")
-                + " (" + System.getProperty("java.vendor") + ")";
-        String content = "values\t" + values + "\nbytes\t" + (values * 4L) + "\njava\t" + java + "\n";
-        try {
-            Files.writeString(Path.of(metaPath), content);
-        }
-        catch (IOException e) {
-            System.err.println("Could not write meta to " + metaPath + ": " + e);
-        }
+        BenchReport.writeMeta("values", Long.toString(values), "bytes", Long.toString(values * 4L));
     }
 
     /// Correctness gate: for each `k`, the fast path and the reconstruction baseline
