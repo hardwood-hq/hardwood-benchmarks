@@ -150,10 +150,13 @@ into a bloom-bearing file and a statistics-only twin, keyed on the window and ro
 cap so a different window regenerates rather than reusing a stale pair.
 
 **Charts** (`make-bloom-chart.py`) — `bloom_chart.svg`, ms/op (**lower is better**),
-the two probe groups (present, absent), each with the four read paths
-(Hardwood/parquet-java × bloom/no-bloom). The no-bloom full-scan bars set the scale;
-the bloom bars prune to the matching row group(s), and the absent-probe bloom bars
-drop every row group. Unpinned bars only, so it renders from a `--no-pin` run too.
+the two probe groups (present, absent), each with the four all-cores read paths
+(Hardwood/parquet-java × bloom/no-bloom) plus a hatched single-core (`taskset -c 0`)
+bar beside each Hardwood bar. The no-bloom full-scan bars set the scale. The present
+value is a common fare in *every* row group, so its bloom prunes nothing (no win);
+the absent value is in no row group, so its bloom drops them all (a near-zero stub).
+The single-core bars need the pinned pass, so this requires a full run — not
+`--no-pin` — and only Hardwood is re-timed pinned (parquet-java is single-threaded).
 
 ### Nested scan — `run-nested.sh`
 

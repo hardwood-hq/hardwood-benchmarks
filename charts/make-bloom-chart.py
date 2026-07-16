@@ -4,11 +4,12 @@
 Reads the bloom ms/op TSV (default
 target/bench-throughput-BloomFilterBenchmark.tsv) and fills
 charts/templates/bloom/chart4_bloom.svg.tmpl. Plots ms/op (lower is better) on a
-linear axis, two probe groups (present, absent), each with the four read paths
-(Hardwood/parquet-java × bloom/no-bloom). The no-bloom full-scan bars set the
+linear axis, two probe groups (present, absent), each with the four all-cores read
+paths (Hardwood/parquet-java × bloom/no-bloom) plus a hatched single-core
+(taskset-pinned) bar beside each Hardwood bar. The no-bloom full-scan bars set the
 scale; the bloom bars prune to the matching row group(s), and the absent-probe
-bloom bars drop every row group (a stub). Unpinned bars only, so it renders from a
---no-pin run too.
+bloom bars drop every row group (a stub). The 1-core bars need the pinned pass, so
+this requires a full run (not --no-pin).
 
 Row count, on-disk size, JVM, and the date window come from the run's
 bench-meta-BloomFilterBenchmark.tsv sidecar; generation fails early if it is
@@ -74,13 +75,15 @@ def bloom_block(prefix, value, scale, floor=2.0):
 
 def chart4(data, name, dataset_label):
     """Bloom point lookup: two probe groups (present, absent), each with the four
-    read paths — Hardwood/parquet-java × bloom/no-bloom. The no-bloom twins scan the
-    whole column (tall, they set the scale); the bloom bars prune to the matching
-    row group(s) (short), and the absent-probe bloom bars drop every row group (a
-    stub). Unpinned only — the pruning story doesn't need the 1-core pass, so the
-    chart renders from a --no-pin run too. Lower is better."""
-    g = lambda c: cell(data, c, "unpinned", name)["ms"]
-    bars = [
+    all-cores read paths — Hardwood/parquet-java × bloom/no-bloom — plus a hatched
+    single-core (taskset-pinned) bar next to each Hardwood bar. The no-bloom twins
+    scan the whole column (tall); the bloom bars prune to the matching row group(s),
+    and the absent-probe bloom bars drop every row group (a stub). The 1-core bars
+    need the pinned pass, so the chart requires a full run (not --no-pin); only
+    Hardwood is timed pinned (parquet-java is single-threaded). Lower is better."""
+    ac = lambda c: cell(data, c, "unpinned", name)["ms"]
+    pin = lambda c: cell(data, c, "pinned", name)["ms"]
+    ac_bars = [
         ("p_hwb", "hardwoodBloom[present]"),
         ("p_hwn", "hardwoodNoBloom[present]"),
         ("p_pjb", "parquetJavaBloom[present]"),
@@ -90,7 +93,14 @@ def chart4(data, name, dataset_label):
         ("a_pjb", "parquetJavaBloom[absent]"),
         ("a_pjn", "parquetJavaNoBloom[absent]"),
     ]
-    vals = {pre: g(c) for pre, c in bars}
+    pin_bars = [
+        ("p_hwb1", "hardwoodBloom[present]"),
+        ("p_hwn1", "hardwoodNoBloom[present]"),
+        ("a_hwb1", "hardwoodBloom[absent]"),
+        ("a_hwn1", "hardwoodNoBloom[absent]"),
+    ]
+    vals = {pre: ac(c) for pre, c in ac_bars}
+    vals.update({pre: pin(c) for pre, c in pin_bars})
     scale, grid, labels = flat_axis(list(vals.values()))
     subst = {"gridlines": grid, "ticklabels": labels}
     for pre, v in vals.items():
