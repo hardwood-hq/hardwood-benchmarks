@@ -95,14 +95,17 @@ public class FixedSizeListScanBenchmark {
     private static final long DEFAULT_TOTAL_VALUES = 8_000_000L;
 
     /// The default `k` sweep, kept in sync with [#K_SWEEP] (used by `--gate` and by
-    /// generation): `1, 2` probe short lists (guarding against a fast-path penalty),
-    /// small-`k` bit-packed (`3, 4, 8`), the scalar-verified notch (`9, 12`),
-    /// large-`k` RLE stride (`16, 64, 128, 768, 1536`). `k = 3` and `k = 768` are the
-    /// two headline points.
-    @Param({ "1", "2", "3", "4", "8", "9", "12", "16", "64", "128", "768", "1536" })
+    /// generation): evenly geometric on the log-`k` axis so no region is over- or
+    /// under-sampled. `1` anchors the short-list edge (guarding against a fast-path
+    /// penalty); `1, 2, 3, 4, 8, 16` resolve the steep small-`k` rise; `32, 64, 128,
+    /// 256, 512` sample the plateau densely enough that the row reader's peak near
+    /// `k = 64` reads as a real feature; `768, 1536` are the embedding-scale tail.
+    /// `k = 3` (points) and `k = 768` (embeddings) are the two headline points, also
+    /// labelled by the charts.
+    @Param({ "1", "2", "3", "4", "8", "16", "32", "64", "128", "256", "512", "768", "1536" })
     private int k;
 
-    private static final int[] K_SWEEP = { 1, 2, 3, 4, 8, 9, 12, 16, 64, 128, 768, 1536 };
+    private static final int[] K_SWEEP = { 1, 2, 3, 4, 8, 16, 32, 64, 128, 256, 512, 768, 1536 };
 
     private Path listPath;
     private Path flatPath;
