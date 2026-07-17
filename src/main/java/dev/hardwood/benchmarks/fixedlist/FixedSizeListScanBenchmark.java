@@ -139,12 +139,12 @@ public class FixedSizeListScanBenchmark {
 
     @Benchmark
     public double columnFast() throws IOException {
-        return sumColumn(listPath, LIST_COLUMN, context, fastConfig);
+        return sumColumn(listPath, LIST_COLUMN, context, fastConfig, k);
     }
 
     @Benchmark
     public double columnBaseline() throws IOException {
-        return sumColumn(listPath, LIST_COLUMN, context, noFastConfig);
+        return sumColumn(listPath, LIST_COLUMN, context, noFastConfig, k);
     }
 
     @Benchmark
@@ -159,17 +159,28 @@ public class FixedSizeListScanBenchmark {
 
     @Benchmark
     public double flatFloor() throws IOException {
-        return sumColumn(flatPath, FLAT_COLUMN, context, fastConfig);
+        return sumColumn(flatPath, FLAT_COLUMN, context, fastConfig, 1);
     }
 
     /// Full scan of a float leaf through the column reader: pull each batch's
     /// `float[]` and fold every value. On the LIST column this is what the fast
     /// path accelerates; on the flat column it is the decode floor.
     private static double sumColumn(Path path, String column, HardwoodContext context,
-                                    ReaderConfig config) throws IOException {
+                                    ReaderConfig config, int valuesPerRow) throws IOException {
+        // -Dperf.batchSize forces an explicit batch size, overriding the fan-out-aware
+        // auto-sizing. It is expressed in leaf *values* and converted to the reader's
+        // record count (`values / valuesPerRow`: k for the LIST column, 1 for the flat
+        // column), so every contender gets the same value-batch bytes. Used to control
+        // for batch shape when comparing the fast path to the flat floor: the auto-sizer
+        // gives the repeated column a smaller value batch (it also budgets for the level
+        // arrays), so equalizing the size isolates batch-residency from the structural
+        // decode difference.
+        int batchValues = Integer.getInteger("perf.batchSize", 0);
         double sum = 0;
         try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(path), context, config);
-             ColumnReader col = reader.columnReader(column)) {
+             ColumnReader col = batchValues > 0
+                     ? reader.buildColumnReader(column).batchSize(Math.max(1, batchValues / valuesPerRow)).build()
+                     : reader.columnReader(column)) {
             while (col.nextBatch()) {
                 float[] values = col.getFloats();
                 int n = col.getValueCount();
@@ -252,11 +263,11 @@ public class FixedSizeListScanBenchmark {
             for (int k : ks) {
                 Path listPath = FixedSizeListFileGenerator.listFile(dir, k, totalValues);
                 Path flatPath = FixedSizeListFileGenerator.flatFile(dir, k, totalValues);
-                double columnFast = sumColumn(listPath, LIST_COLUMN, context, fast);
-                double columnBaseline = sumColumn(listPath, LIST_COLUMN, context, base);
+                double columnFast = sumColumn(listPath, LIST_COLUMN, context, fast, k);
+                double columnBaseline = sumColumn(listPath, LIST_COLUMN, context, base, k);
                 double rowFast = sumRows(listPath, LIST_FIELD, context, fast);
                 double rowBaseline = sumRows(listPath, LIST_FIELD, context, base);
-                double flat = sumColumn(flatPath, FLAT_COLUMN, context, fast);
+                double flat = sumColumn(flatPath, FLAT_COLUMN, context, fast, 1);
                 requireEqual("k=" + k + " column fast vs baseline", columnFast, columnBaseline);
                 requireEqual("k=" + k + " row fast vs baseline", rowFast, rowBaseline);
                 requireClose("k=" + k + " column vs flat floor", columnFast, flat);
