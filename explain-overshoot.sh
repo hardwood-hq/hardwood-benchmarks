@@ -19,12 +19,18 @@
 #   C  batch-size A/B    — fast/floor at k=768 with natural sizing vs. both forced
 #                         to the same value-batch size. If the gap survives, it is
 #                         structural (rep-levels + row index), not batch shape.
+#   D  matched-size sweep — fast/floor at k=768 with both paths forced to the same
+#                         value-batch size across a range (1/2/4/6 MB). Maps each
+#                         path's batch-size sensitivity apples-to-apples: the fast
+#                         path optimizes small (~2 MB), the flat floor is flatter,
+#                         and they cross where the small-batch advantage runs out.
 #
-# Requires the -Dperf.batchSize knob (for C) — present in this repo's benchmark.
+# Requires the -Dperf.batchSize knob (for C and D) — present in this repo's benchmark.
 #
-# Usage: ./explain-overshoot.sh            # full A+B+C at 128M values
+# Usage: ./explain-overshoot.sh            # full A+B+C+D at 128M values
 #        TOTAL_VALUES=64000000 ./explain-overshoot.sh
 #        KS="3,64,256,768" CORES="0 0-3 0-7" FORKS=5 ./explain-overshoot.sh
+#        MATCHED_SIZES="500000 1000000" ./explain-overshoot.sh   # narrow exp D
 #
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -33,6 +39,7 @@ TOTAL_VALUES="${TOTAL_VALUES:-128000000}"   # 512 MB files → DRAM-bound
 KS="${KS:-3,16,64,128,256,768,1536}"        # k sweep for experiment A
 CORES="${CORES:-0 0-1 0-3 0-7}"             # taskset core sets for experiment B
 BATCH_EQUAL="${BATCH_EQUAL:-1000000}"       # equal value-batch size for experiment C
+MATCHED_SIZES="${MATCHED_SIZES:-250000 500000 1000000 1500000}"  # exp D: shared value-batch sizes (1/2/4/6 MB)
 FORKS="${FORKS:-3}"
 MEAS="${MEAS:-5}"
 
@@ -93,3 +100,17 @@ cf="$(ms "$TSV" "columnFast[768]")"; ff="$(ms "$TSV" "flatFloor[768]")"
 printf "   %-16s %12s %12s %10s\n" "equal($BATCH_EQUAL)" "$cf" "$ff" "$(ratio "$cf" "$ff")"
 echo "   → if the ratio barely moves, the gap is structural (rep-levels + row index),"
 echo "     not batch shape."
+echo
+
+echo "== D. matched batch-size sweep at k=768 (both paths at the SAME value-batch size) =="
+printf "   %-16s %12s %12s %10s\n" batch_values columnFast flatFloor fast/floor
+for v in $MATCHED_SIZES; do
+  run "" 768 "-Dperf.batchSize=$v"
+  cf="$(ms "$TSV" "columnFast[768]")"; ff="$(ms "$TSV" "flatFloor[768]")"
+  mb="$(awk -v v="$v" 'BEGIN { printf "%.1f", v * 4 / 1000000 }')"
+  printf "   %-16s %12s %12s %10s\n" "$v (${mb}MB)" "$cf" "$ff" "$(ratio "$cf" "$ff")"
+done
+echo "   → each path's batch-size sensitivity at identical sizes. The fast path optimizes"
+echo "     small (~2 MB), the flat floor is flatter; they cross where the fast path's"
+echo "     smaller-batch advantage runs out. Not the same-size artifact — at a matched"
+echo "     small batch the fast path is genuinely faster."
