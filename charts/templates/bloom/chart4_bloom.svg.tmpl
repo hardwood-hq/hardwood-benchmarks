@@ -83,7 +83,7 @@
 
   <!-- footnote -->
   <text x="40" y="478" font-size="11.5" fill="#868e96">No-bloom = the statistics-only twin, where nothing prunes and the whole column is scanned. N× = no-bloom ÷ bloom.</text>
-  <text x="40" y="494" font-size="11.5" fill="#868e96">The key is unique, so a present probe matches one row in one row group (the rest are dropped) and an absent probe matches none, dropping every row group.</text>
+  <text x="40" y="494" font-size="11.5" fill="#868e96">The key is unique, so a present probe keeps only the row group holding it, and an absent probe keeps none.</text>
   <text x="40" y="510" font-size="11.5" fill="#868e96">* 1 core = taskset -c 0 (one SMT thread sharing a physical core); only Hardwood is re-timed pinned (parquet-java is single-threaded).</text>
   </g>
 </svg>
