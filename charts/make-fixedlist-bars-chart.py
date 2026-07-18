@@ -3,9 +3,9 @@
 
 The lead visual for the post: grouped bars of read throughput (M float32
 values/s, higher is better) at a single `k` (default 768, the embedding hero
-size) — column reader baseline vs. fast, row reader baseline vs. fast — with the
-flat-column decode floor drawn as a dashed reference line (the fastest these
-bytes move; `columnFast` should land near it). The speedup-vs-k curve
+size) — column reader baseline vs. fast, row reader baseline vs. fast — with a
+plain flat-column read of the same values drawn as a dashed reference line
+(`columnFast` should land near it). The speedup-vs-k curve
 (make-fixedlist-chart.py) is the companion that shows the win holds across `k`.
 
 Reads the ms/op TSV (default

@@ -14,7 +14,7 @@
   <rect x="285" y="82" width="12" height="12" rx="2" fill="#f08c00"/>
   <text x="302" y="92" font-size="11.5" fill="#495057">row reader (baseline · fast)</text>
   <line x1="490" y1="88" x2="516" y2="88" stroke="#2f9e44" stroke-width="1.6" stroke-dasharray="5 3"/>
-  <text x="521" y="92" font-size="11.5" fill="#495057">flat-column floor</text>
+  <text x="521" y="92" font-size="11.5" fill="#495057">flat-column read</text>
 
   <g transform="translate(0, 16)">
   <!-- Y axis title -->
@@ -45,11 +45,11 @@
   <text x="534" y="420" font-size="12.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">Row reader</text>
   <text x="534" y="437" font-size="12" fill="#f08c00" text-anchor="middle">$r_speedup× faster</text>
 
-  <!-- Flat-column decode floor (the fastest these bytes move) -->
+  <!-- Flat-column read: a plain float32 column of the same values, no list structure -->
   <line x1="70" y1="$floor_y" x2="740" y2="$floor_y" stroke="#2f9e44" stroke-width="1.6" stroke-dasharray="5 3"/>
-  <text x="736" y="$floor_y" dy="-5" font-size="11.5" font-weight="700" fill="#2f9e44" text-anchor="end">flat-column floor  $floor_v</text>
+  <text x="736" y="$floor_y" dy="-5" font-size="11.5" font-weight="700" fill="#2f9e44" text-anchor="end">flat-column read  $floor_v</text>
 
   <!-- footnote -->
-  <text x="40" y="490" font-size="11" fill="#868e96">Floor = a plain float32 column read through the column reader — the fastest these bytes move. All bars decode identical values.</text>
+  <text x="40" y="490" font-size="11" fill="#868e96">Dashed line = a plain float32 column read of the same values — no list structure. All bars decode identical values.</text>
   </g>
 </svg>
