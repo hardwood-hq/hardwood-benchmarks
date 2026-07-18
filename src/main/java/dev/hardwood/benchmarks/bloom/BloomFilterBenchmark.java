@@ -11,7 +11,7 @@ import dev.hardwood.benchmarks.BenchReport;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.YearMonth;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.Benchmark;
@@ -31,12 +31,14 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
-/// Bloom-filter point-lookup benchmark on the **real** NYC TLC yellow-taxi data.
-/// The published TLC files carry no bloom filters, so [TaxiBloomGenerator] rewrites
-/// the real rows through parquet-java with a bloom filter added on `total_amount`
-/// (a high-cardinality, unclustered fare column) and a statistics-only twin —
-/// where min/max statistics can prune nothing and, with dictionary encoding
-/// disabled, only the bloom filter can. It measures two things at once:
+/// Bloom-filter point-lookup benchmark: an equality probe on a **unique,
+/// unclustered 64-bit key**, the workload bloom filters exist for. [LookupFileGenerator]
+/// writes the corpus twice — once with a bloom filter on `key`, once without — so the
+/// same probe against the two files isolates exactly what the filter buys. Because
+/// every key is distinct and pseudorandomly ordered, statistics cannot prune (every
+/// row group's range covers any probe) and the dictionary cannot prune (the column
+/// falls back to plain encoding on its own), leaving the bloom filter as the sole
+/// pruner. It measures two things at once:
 ///
 /// - **what a bloom filter buys** — Hardwood reading the bloom-bearing file
 ///   ([#hardwoodBloom]) vs the same probe on the statistics-only file
@@ -47,12 +49,13 @@ import org.openjdk.jmh.runner.options.TimeValue;
 ///   pruning *decisions* are already proven identical by Hardwood's own
 ///   `BloomFilterParquetJavaOracleTest`; this times them.
 ///
-/// Two probes via `@Param`: `present` (a real `total_amount` from the data) and
-/// `absent` (an in-range fare with sub-cent precision that was never charged —
-/// bloom drops every row group, the case statistics cannot catch).
+/// Two probes via `@Param`: `present` (a key that was written — unique, so the bloom
+/// keeps the one row group holding it and drops the rest) and `absent` (a key that
+/// was never written but is in range for every row group — the bloom drops them all,
+/// the case statistics cannot catch).
 ///
-/// Run with `run-bloom.sh`. Hardwood does not yet *write* bloom filters, so the
-/// files are written by parquet-java; this is purely a read-path comparison.
+/// Run with `run-bloom.sh`. Hardwood does not yet *write* bloom filters, so the files
+/// are written by parquet-java; this is purely a read-path comparison.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -61,47 +64,50 @@ import org.openjdk.jmh.runner.options.TimeValue;
 @Fork(1)
 public class BloomFilterBenchmark {
 
-    /// Source TLC window and optional row cap. Defaults to the first quarter of
-    /// 2025 (several 128 MB row groups); `perf.limit=0` uses every row in the window.
-    private static final YearMonth START = YearMonth.parse(System.getProperty("perf.start", "2025-01"));
-    private static final YearMonth END = YearMonth.parse(System.getProperty("perf.end", "2025-03"));
-    private static final long LIMIT = Long.getLong("perf.limit", 0L);
+    /// Corpus size (`perf.rows`). The default spans ~10 row groups at Parquet's
+    /// default 128 MB row-group size, so the present probe keeps one and drops nine.
+    private static final long ROWS = Long.getLong("perf.rows", LookupFileGenerator.DEFAULT_ROWS);
 
-    private static final Path BLOOM = TaxiBloomGenerator.bloomFile(START, END, LIMIT);
-    private static final Path NO_BLOOM = TaxiBloomGenerator.noBloomFile(START, END, LIMIT);
+    private static final Path BLOOM = LookupFileGenerator.bloomFile(ROWS);
+    private static final Path NO_BLOOM = LookupFileGenerator.noBloomFile(ROWS);
 
-    /// `present` probes a real fare that exists; `absent` probes an in-range fare
-    /// that was never charged (returns zero rows).
+    /// `present` probes a key that exists (exactly one row); `absent` probes a key
+    /// that was never written (zero rows).
     @Param({ "present", "absent" })
     private String probe;
 
-    private double amount;
+    private long key;
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
-        TaxiBloomGenerator.ensure(START, END, LIMIT);
-        amount = probeAmount(probe);
+        LookupFileGenerator.ensure(ROWS);
+        key = probeKey(probe);
     }
 
-    private static double probeAmount(String probe) throws IOException {
-        return "present".equals(probe) ? TaxiBloomGenerator.presentProbe(START, END, LIMIT)
-                : TaxiBloomGenerator.absentProbe(START, END, LIMIT);
+    private static long probeKey(String probe) {
+        return "present".equals(probe) ? LookupFileGenerator.presentProbe(ROWS)
+                : LookupFileGenerator.absentProbe(ROWS);
     }
 
-    /// Correctness gate for one probe: all four contenders must return the same
-    /// rows and sum. Run once per probe from [main], outside JMH's per-trial
-    /// dispatch — the result is deterministic. Crucially this proves Hardwood and
-    /// parquet-java prune the *same* row groups (an over-eager bloom drop would
-    /// show up as a missing present row here), and that the absent probe really is
-    /// absent (zero rows).
+    /// Correctness gate for one probe: all four contenders must return the same rows
+    /// and sum. Run once per probe from [main], outside JMH's per-trial dispatch —
+    /// the result is deterministic. Crucially this proves Hardwood and parquet-java
+    /// prune the *same* row groups (an over-eager bloom drop would show up as a
+    /// missing present row here), that the present probe matches exactly one row, and
+    /// that the absent probe really is absent (zero rows).
     private static void gate(String probe) throws IOException {
-        double amount = probeAmount(probe);
-        Scans.Result pj = Scans.parquetJavaEqDouble(BLOOM, amount);
-        assertMatches(probe, "parquet-java (no bloom)", Scans.parquetJavaEqDouble(NO_BLOOM, amount), pj);
-        assertMatches(probe, "Hardwood (bloom)", Scans.hardwoodEqDouble(BLOOM, amount), pj);
-        assertMatches(probe, "Hardwood (no bloom)", Scans.hardwoodEqDouble(NO_BLOOM, amount), pj);
-        System.out.printf("Gate passed [%s, amount=%s] — Hardwood agrees with parquet-java on both files (%d rows, sum %.3f).%n",
-                probe, amount, pj.count(), pj.sum());
+        long key = probeKey(probe);
+        Scans.Result pj = Scans.parquetJavaEqLong(BLOOM, key);
+        assertMatches(probe, "parquet-java (no bloom)", Scans.parquetJavaEqLong(NO_BLOOM, key), pj);
+        assertMatches(probe, "Hardwood (bloom)", Scans.hardwoodEqLong(BLOOM, key), pj);
+        assertMatches(probe, "Hardwood (no bloom)", Scans.hardwoodEqLong(NO_BLOOM, key), pj);
+        long expected = "present".equals(probe) ? 1 : 0;
+        if (pj.count() != expected) {
+            throw new IllegalStateException(String.format(
+                    "[%s] expected %d matching row(s) for a unique key, got %d", probe, expected, pj.count()));
+        }
+        System.out.printf("Gate passed [%s, key=%d] — Hardwood agrees with parquet-java on both files (%d rows, sum %.3f).%n",
+                probe, key, pj.count(), pj.sum());
     }
 
     private static void assertMatches(String probe, String name, Scans.Result actual, Scans.Result ref) {
@@ -113,31 +119,55 @@ public class BloomFilterBenchmark {
         }
     }
 
+    /// Proves the layout preconditions the benchmark rests on, rather than assuming
+    /// them: the corpus spans several row groups (so there is something to prune),
+    /// and the unique key column fell back to plain encoding by itself (so no
+    /// dictionary filter can prune, and the bloom filter is the only pruner).
+    private static void gateLayout() throws IOException {
+        List<Long> rowCounts = Scans.rowGroupRowCounts(BLOOM);
+        List<String> encodings = Scans.probeColumnEncodings(BLOOM);
+        System.out.printf("Layout: %d row groups, rows/group=%s%n", rowCounts.size(), rowCounts);
+        System.out.printf("Probe-column encodings per row group: %s%n", encodings);
+        if (rowCounts.size() < 2) {
+            throw new IllegalStateException(
+                    "expected several row groups so pruning has something to drop, got " + rowCounts.size()
+                            + " — raise perf.rows");
+        }
+        for (String e : encodings) {
+            if (e.contains("DICTIONARY")) {
+                throw new IllegalStateException(
+                        "probe column is dictionary-encoded (" + e + "); the dictionary filter could prune "
+                                + "instead of the bloom filter, which the benchmark must isolate");
+            }
+        }
+    }
+
     @Benchmark
     public Scans.Result hardwoodBloom() throws IOException {
-        return Scans.hardwoodEqDouble(BLOOM, amount);
+        return Scans.hardwoodEqLong(BLOOM, key);
     }
 
     @Benchmark
     public Scans.Result hardwoodNoBloom() throws IOException {
-        return Scans.hardwoodEqDouble(NO_BLOOM, amount);
+        return Scans.hardwoodEqLong(NO_BLOOM, key);
     }
 
     @Benchmark
     public Scans.Result parquetJavaBloom() throws IOException {
-        return Scans.parquetJavaEqDouble(BLOOM, amount);
+        return Scans.parquetJavaEqLong(BLOOM, key);
     }
 
     @Benchmark
     public Scans.Result parquetJavaNoBloom() throws IOException {
-        return Scans.parquetJavaEqDouble(NO_BLOOM, amount);
+        return Scans.parquetJavaEqLong(NO_BLOOM, key);
     }
 
     public static void main(String[] args) throws Exception {
         String param = System.getProperty("perf.param");
         // Gate-check mode: verify every contender agrees, then exit — no JMH.
         if (Boolean.getBoolean("perf.gate")) {
-            TaxiBloomGenerator.ensure(START, END, LIMIT);
+            LookupFileGenerator.ensure(ROWS);
+            gateLayout();
             if (param != null && !param.isBlank()) {
                 gate(param);
             }
@@ -149,8 +179,9 @@ public class BloomFilterBenchmark {
         }
         // Generate (if needed) and log the dataset params before timing. The bloom
         // file is the reported dataset; the no-bloom twin holds the same rows.
-        TaxiBloomGenerator.ensure(START, END, LIMIT);
-        BenchReport.writeRunParams(BenchReport.totalRows(java.util.List.of(BLOOM)), Files.size(BLOOM), START + ".." + END);
+        LookupFileGenerator.ensure(ROWS);
+        BenchReport.writeRunParams(BenchReport.totalRows(java.util.List.of(BLOOM)), Files.size(BLOOM),
+                "unique 64-bit key");
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(BloomFilterBenchmark.class))
                 .warmupIterations(Integer.getInteger("perf.warmup", 3))
@@ -162,7 +193,7 @@ public class BloomFilterBenchmark {
             opts.param("probe", param);
         }
         // JMH forks a fresh JVM that does not inherit -D props; forward perf.* so
-        // the forked benchmark sees the same window, etc.
+        // the forked benchmark sees the same row count, etc.
         System.getProperties().forEach((k, v) -> {
             if (((String) k).startsWith("perf.")) {
                 opts.jvmArgsAppend("-D" + k + "=" + v);

@@ -15,7 +15,7 @@ each lives in [The Benchmarks](#the-benchmarks).
 | --- | --- | --- |
 | `run-flat.sh` | Full scan of every column (NYC Yellow Taxi) | Hardwood columnar + record readers ↔ parquet-java / Avro, Arrow reference |
 | `run-filter.sh` | Range predicate over a time-clustered file | Hardwood filtered reader ↔ parquet-java |
-| `run-bloom.sh` | Equality point-lookup where only a bloom filter can prune (NYC Yellow Taxi) | Hardwood ↔ parquet-java, bloom file vs statistics-only twin |
+| `run-bloom.sh` | Equality point-lookup on a unique, unclustered key where only a bloom filter can prune (generated) | Hardwood ↔ parquet-java, bloom file vs statistics-only twin |
 | `run-nested.sh` | Full read of deeply nested struct/list/map records (Overture Maps) | Hardwood row reader ↔ `AvroParquetReader` |
 | `run-fixedlist.sh` | Fixed-width vector column (embeddings, points) read with the fast path on vs. off | Hardwood column & row readers, fast path ↔ baseline |
 
@@ -128,35 +128,71 @@ readable next to the selective one.
 
 ### Bloom-filter point lookup — `run-bloom.sh`
 
-An equality push-down (`total_amount = k`) on the **real** NYC taxi rows, rewritten
-through parquet-java with a bloom filter added on `total_amount` — a
-high-cardinality, unclustered fare column — plus a statistics-only twin. Dictionary
-encoding is disabled on that column, so min/max statistics prune nothing and only
-the per-row-group bloom filter can. Each reader (Hardwood, parquet-java) probes both
-files, isolating two effects: **what a bloom filter buys** (`hardwoodBloom` vs
-`hardwoodNoBloom`) and **Hardwood's bloom vs parquet-java's bloom** on the same file
-(`hardwoodBloom` vs `parquetJavaBloom` — their pruning *decisions* already proven
-identical by Hardwood's oracle test; this times them). Two probes: `present` (a real
-fare from the data) and `absent` (an in-range fare with sub-cent precision never
-charged — the bloom drops every row group, the case statistics cannot catch).
-Hardwood does not yet *write* bloom filters, so the files are written by
-parquet-java; this is purely a read-path comparison.
+An equality push-down (`key = k`) on a **unique, unclustered 64-bit key** — the
+workload bloom filters exist for (a point lookup on an id) — against a
+bloom-filter-bearing file and a statistics-only twin holding identical rows. Each
+reader (Hardwood, parquet-java) probes both files, isolating two effects: **what a
+bloom filter buys** (`hardwoodBloom` vs `hardwoodNoBloom`) and **Hardwood's bloom vs
+parquet-java's bloom** on the same file (`hardwoodBloom` vs `parquetJavaBloom` —
+their pruning *decisions* already proven identical by Hardwood's oracle test; this
+times them). Two probes: `present` (a key that was written — being unique it matches
+one row, so the bloom keeps that row group and drops the rest) and `absent` (a key
+never written but in range for every row group — the bloom drops them all, the case
+statistics cannot catch). Hardwood does not yet *write* bloom filters, so the files
+are written by parquet-java; this is purely a read-path comparison.
+
+The corpus is generated rather than taken from the taxi data because the benchmark
+needs a column that is high-cardinality **and** unclustered, and no TLC column is
+both: the highest-cardinality one (`tpep_pickup_datetime`, 48% unique) is
+time-ordered, so statistics prune it and the bloom filter would measure nothing,
+while `total_amount` has only ~45k distinct values across all of 2025 (0.09% of
+rows). A unique key also makes the preconditions *intrinsic* rather than forced by
+writer config: statistics cannot prune because every row group's range covers any
+probe, and the dictionary cannot prune because a fully distinct column overruns its
+dictionary budget and falls back to plain encoding on its own. The gate asserts both.
 
 **Run:** `./run-bloom.sh --help` — gate, smoke test, measure, chart.
 
-**Data.** Downloads the same NYC Yellow Taxi files as the flat scan (same cache and
-`--data-dir` / `-Ddata.dir=…` override), then rewrites the window under `target/`
-into a bloom-bearing file and a statistics-only twin, keyed on the window and row
-cap so a different window regenerates rather than reusing a stale pair.
+**Data.** Generated on first run, no download: keys come from a 64-bit bijection of
+the row index, so they are exactly unique, pseudorandomly ordered, and reproducible
+from the row count alone. The default 84M rows spans ~10 row groups at Parquet's
+default 128 MB row-group size (~8.4M rows each); expect ~2.9 GB for the file pair,
+keyed on row count so a different size generates a fresh pair.
+
+**What the absent probe measures.** Both readers make the *same* pruning decision on
+the absent probe — the gate proves it, dropping every row group — and both consult
+the *same bytes*: instrumenting each read path shows them requesting byte-for-byte
+identical ranges, the full ~10 MB filter for every row group. Neither does a targeted
+block lookup. The gap between them is therefore neither pruning quality nor I/O
+volume but **how the filter is materialized**: Hardwood memory-maps the file and
+probes the filter in place (`InputFile.of(Path)` is a `MappedInputFile` whose
+`readRange` returns a read-only direct buffer, so only the pages actually hashed are
+faulted in), while parquet-java copies each filter onto the heap and builds a filter
+object before probing (`BlockSplitBloomFilter` holds a `byte[] bitset` wrapped as an
+`IntBuffer`). The GC profiler shows the difference directly: for the absent probe
+Hardwood allocates ~19 KB/op against parquet-java's ~63 MB/op, for byte-identical
+reads. Read the absent bars as a filter-materialization comparison, not as one
+reader pruning better than the other — and note two things before quoting them: mmap
+benefits from the warm page cache these runs use, and the gap scales with filter
+size, since it tracks how much parquet-java must copy.
+
+**Sizing caveat — the bloom cap.** parquet-java sizes a filter from (NDV, FPP),
+rounds *up to a power of two*, then clamps to `parquet.bloom.filter.max.bytes` — and
+that clamp is silent. With ~8.4M distinct values per row group, 1% needs ~9.7 MB
+(1.21 bytes/value), so this benchmark sets the cap to 10 MB and measures 0.85% FPP.
+Parquet's 1 MB default would instead yield ~99.7% and 2 MB ~86%: a filter that
+matches everything and prunes nothing, with nothing in the output to explain why.
+The honest cost of that correctly-sized filter is real — ~10 MB per row group, about
+16% of the key column.
 
 **Charts** (`make-bloom-chart.py`) — `bloom_chart.svg`, ms/op (**lower is better**),
 the two probe groups (present, absent), each with the four all-cores read paths
 (Hardwood/parquet-java × bloom/no-bloom) plus a hatched single-core (`taskset -c 0`)
-bar beside each Hardwood bar. The no-bloom full-scan bars set the scale. The present
-value is a common fare in *every* row group, so its bloom prunes nothing (no win);
-the absent value is in no row group, so its bloom drops them all (a near-zero stub).
-The single-core bars need the pinned pass, so this requires a full run — not
-`--no-pin` — and only Hardwood is re-timed pinned (parquet-java is single-threaded).
+bar beside each Hardwood bar. The no-bloom full-scan bars set the scale; the present
+probe keeps one row group and drops the rest, and the absent probe drops every row
+group (a near-zero stub). The single-core bars need the pinned pass, so this requires
+a full run — not `--no-pin` — and only Hardwood is re-timed pinned (parquet-java is
+single-threaded).
 
 ### Nested scan — `run-nested.sh`
 
