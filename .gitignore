@@ -48,3 +48,7 @@ results/**/charts/
 # Python bytecode caches from the chart generators
 __pycache__/
 *.pyc
+
+# IntelliJ
+.idea/
+*.iml
