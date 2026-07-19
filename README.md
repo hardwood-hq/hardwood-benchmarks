@@ -147,9 +147,18 @@ both: the highest-cardinality one (`tpep_pickup_datetime`, 48% unique) is
 time-ordered, so statistics prune it and the bloom filter would measure nothing,
 while `total_amount` has only ~45k distinct values across all of 2025 (0.09% of
 rows). A unique key also makes the preconditions *intrinsic* rather than forced by
-writer config: statistics cannot prune because every row group's range covers any
-probe, and the dictionary cannot prune because a fully distinct column overruns its
-dictionary budget and falls back to plain encoding on its own. The gate asserts both.
+writer config — the no-bloom twin carries full statistics and a column index, and
+none of the three mechanisms they enable can fire:
+
+| mechanism | present | why it cannot prune |
+| --- | --- | --- |
+| row-group min/max | yes | pseudorandom keys put both extremes in every chunk, so its `[min, max]` spans ~99.99998% of the `long` range and covers any probe |
+| page-level column index | yes, 420 pages/chunk | same reason at page scale — the *narrowest* page still spans ~99.97% of the range |
+| dictionary filter | no dictionary | a fully distinct column overruns its dictionary budget and falls back to plain encoding on its own |
+
+That leaves the bloom filter as the only pruner, without a single knob turned off by
+hand — where the taxi corpus needed dictionary encoding disabled explicitly. The gate
+asserts the layout and the plain-encoding fallback rather than assuming them.
 
 **Run:** `./run-bloom.sh --help` — gate, smoke test, measure, chart.
 
@@ -178,12 +187,13 @@ size, since it tracks how much parquet-java must copy.
 
 **Sizing caveat — the bloom cap.** parquet-java sizes a filter from (NDV, FPP),
 rounds *up to a power of two*, then clamps to `parquet.bloom.filter.max.bytes` — and
-that clamp is silent. With ~8.4M distinct values per row group, 1% needs ~9.7 MB
-(1.21 bytes/value), so this benchmark sets the cap to 10 MB and measures 0.85% FPP.
-Parquet's 1 MB default would instead yield ~99.7% and 2 MB ~86%: a filter that
-matches everything and prunes nothing, with nothing in the output to explain why.
-The honest cost of that correctly-sized filter is real — ~10 MB per row group, about
-16% of the key column.
+that clamp is silent. A bloom filter is per *column chunk* — one per (row group ×
+column) — and here only `key` carries one, so there is one filter per row group. With
+~8.4M distinct values in each, 1% needs ~9.7 MB (1.21 bytes/value), so this benchmark
+sets the cap to 10 MB and measures 0.85% FPP. Parquet's 1 MB default would instead
+yield ~99.7% and 2 MB ~86%: a filter that matches everything and prunes nothing, with
+nothing in the output to explain why. The honest cost of that correctly-sized filter
+is real — ~10 MB per bloom-bearing column chunk, about 16% of the key column.
 
 **Charts** (`make-bloom-chart.py`) — `bloom_chart.svg`, ms/op (**lower is better**),
 the two probe groups (present, absent), each with the four all-cores read paths
