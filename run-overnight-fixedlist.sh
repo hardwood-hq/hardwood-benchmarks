@@ -105,7 +105,7 @@ scan() {  # scan <dest-subdir> -- <run-fixedlist args...>
   ./run-fixedlist.sh --machine "$MACHINE" $SCAN_ARGS "$@" 2>&1 | tee "$dest/run.log"
   ./capture-run.sh "$dest"
 }
-cooldown() { [[ $1 -lt $RUNS ]] && { echo "-- 5-min cooldown --"; sleep 300; }; }
+cooldown() { if [[ $1 -lt "$RUNS" ]]; then echo "-- 5-min cooldown --"; sleep 300; fi; }
 
 step "Headline, ZSTD — $RUNS run(s)"
 rm -rf "$HEADLINE_DATA"
