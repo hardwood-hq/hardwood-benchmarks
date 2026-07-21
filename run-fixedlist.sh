@@ -28,13 +28,16 @@ off, and verifies both readers fold to the same sum as the flat floor, then exit
 (no JMH); without it, the script generates (if needed) and benchmarks.
 
 Quick publish flow — two runs at different file sizes. Each run truncates target/'s
-TSV, so chart (or capture) the sweep before launching the headline run:
+TSV, so chart (or capture) the sweep before launching the headline run. The published
+charts use ZSTD (-Dperf.compression=ZSTD, as real Parquet is); the codec is recorded in
+the meta sidecar and the chart subline. Default is UNCOMPRESSED — run that once too as a
+decode-isolation cross-check (its speedups land within noise for high-entropy float data):
   ./run-fixedlist.sh --gate
   # sweep -> speedup-vs-k curve (32 MB files):
-  ./run-fixedlist.sh --forks 3 --meas 5
+  ./run-fixedlist.sh --forks 3 --meas 5 -Dperf.compression=ZSTD
   python charts/make-fixedlist-chart.py --results-dir target
   # two headline ~512 MB files -> absolute-throughput bars:
-  ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5
+  ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5 -Dperf.compression=ZSTD
   python charts/make-fixedlist-bars-chart.py --results-dir target
 
 Publication run (evaluation instance) — three runs for the median, in a tmux session
@@ -46,9 +49,9 @@ dirs (they share a TSV filename):
   rm -f target/bench-*.tsv target/*.log
   tmux new -s fixedlist
   for i in 1 2 3; do
-    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --forks 3 --meas 5
+    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --forks 3 --meas 5 -Dperf.compression=ZSTD
     ./capture-run.sh results/2026-07-03-fixed-size-list/sweep/run-\$i
-    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --k 3,768 --total-values 128000000 --forks 3 --meas 5
+    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --k 3,768 --total-values 128000000 --forks 3 --meas 5 -Dperf.compression=ZSTD
     ./capture-run.sh results/2026-07-03-fixed-size-list/headline/run-\$i
     [ \$i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
   done
