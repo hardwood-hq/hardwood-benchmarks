@@ -51,6 +51,14 @@
       <artifactId>parquet-hadoop</artifactId>
       <version>${parquet.version}</version>
     </dependency>
+    <!-- ZSTD codec: parquet-hadoop's write path and hardwood-core's ZstdDecompressor
+         both use com.github.luben.zstd, needed to write/read a ZSTD-compressed corpus
+         (-Dperf.compression=ZSTD). -->
+    <dependency>
+      <groupId>com.github.luben</groupId>
+      <artifactId>zstd-jni</artifactId>
+      <version>1.5.7-9</version>
+    </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-avro</artifactId>

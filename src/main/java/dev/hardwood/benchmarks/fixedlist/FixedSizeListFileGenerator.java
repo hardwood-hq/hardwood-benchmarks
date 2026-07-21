@@ -142,7 +142,7 @@ public final class FixedSizeListFileGenerator {
                 // PARQUET_2_0 -> DataPageV2, PARQUET_1_0 -> DataPageV1; the fast path
                 // detects both. Default V2; -Dperf.pageVersion=v1 selects V1.
                 .withWriterVersion(writerVersion())
-                .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+                .withCompressionCodec(compressionCodec())
                 .withDictionaryEncoding(false)
                 .withRowGroupSize(512L * 1024 * 1024)
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
@@ -153,6 +153,14 @@ public final class FixedSizeListFileGenerator {
     private static WriterVersion writerVersion() {
         String version = System.getProperty("perf.pageVersion", "v2");
         return "v1".equalsIgnoreCase(version) ? WriterVersion.PARQUET_1_0 : WriterVersion.PARQUET_2_0;
+    }
+
+    /// Page compression codec. Default `UNCOMPRESSED` (isolates level/value decode);
+    /// `-Dperf.compression=SNAPPY` (or ZSTD/GZIP) writes a compressed corpus so the
+    /// fast path's win can be measured against the shared decompression cost.
+    private static CompressionCodecName compressionCodec() {
+        return CompressionCodecName.valueOf(
+                System.getProperty("perf.compression", "UNCOMPRESSED").toUpperCase());
     }
 
     private static boolean present(Path path) throws IOException {

@@ -244,7 +244,8 @@ public class FixedSizeListScanBenchmark {
     /// appends the JVM and Hardwood build. No-op when `-Dperf.results` is unset.
     private static void writeMeta() {
         long values = totalValues();
-        BenchReport.writeMeta("values", Long.toString(values), "bytes", Long.toString(values * 4L));
+        BenchReport.writeMeta("values", Long.toString(values), "bytes", Long.toString(values * 4L),
+                "compression", System.getProperty("perf.compression", "UNCOMPRESSED").toUpperCase());
     }
 
     /// Correctness gate: for each `k`, the fast path and the reconstruction baseline

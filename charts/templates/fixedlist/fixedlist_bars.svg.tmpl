@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="780" height="516" viewBox="0 0 780 516" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
-  <rect width="780" height="516" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="546" viewBox="0 0 780 546" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <rect width="780" height="546" fill="#ffffff"/>
 
   <!-- Title -->
-  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">Reading fixed-size-list vectors — k=$k</text>
-  <text x="40" y="50" font-size="12.5" fill="#495057">Fast path vs. record-reconstruction baseline · $ds</text>
+  <text x="40" y="30" font-size="20" font-weight="700" fill="#1a1a1a">$title</text>
+  <text x="40" y="50" font-size="12.5" fill="#495057">$subtitle</text>
   <text x="40" y="67" font-size="11" fill="#868e96">$subline</text>
 
   <!-- Legend -->
@@ -29,27 +29,15 @@
   </g>
   <line x1="70" y1="400" x2="740" y2="400" stroke="#bbb" stroke-width="1.5"/>
 
-  <!-- Column reader group -->
-  <rect x="190" y="$c_base_y" width="56" height="$c_base_h" rx="2" fill="#a5d8ff"/>
-  <text x="218" y="$c_base_ly" font-size="12.5" font-weight="700" fill="#495057" text-anchor="middle">$c_base_v</text>
-  <rect x="258" y="$c_fast_y" width="56" height="$c_fast_h" rx="2" fill="#1971c2"/>
-  <text x="286" y="$c_fast_ly" font-size="12.5" font-weight="700" fill="#1971c2" text-anchor="middle">$c_fast_v</text>
-  <text x="252" y="420" font-size="12.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">Column reader</text>
-  <text x="252" y="437" font-size="12" fill="#1971c2" text-anchor="middle">$c_speedup× faster</text>
-
-  <!-- Row reader group -->
-  <rect x="472" y="$r_base_y" width="56" height="$r_base_h" rx="2" fill="#fab005"/>
-  <text x="500" y="$r_base_ly" font-size="12.5" font-weight="700" fill="#495057" text-anchor="middle">$r_base_v</text>
-  <rect x="540" y="$r_fast_y" width="56" height="$r_fast_h" rx="2" fill="#f08c00"/>
-  <text x="568" y="$r_fast_ly" font-size="12.5" font-weight="700" fill="#f08c00" text-anchor="middle">$r_fast_v</text>
-  <text x="534" y="420" font-size="12.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">Row reader</text>
-  <text x="534" y="437" font-size="12" fill="#f08c00" text-anchor="middle">$r_speedup× faster</text>
+  <!-- Bars + per-width / per-reader labels (data-driven) -->
+  $bars
 
   <!-- Flat-column read: a plain float32 column of the same values, no list structure -->
   <line x1="70" y1="$floor_y" x2="740" y2="$floor_y" stroke="#2f9e44" stroke-width="1.6" stroke-dasharray="5 3"/>
-  <text x="736" y="$floor_y" dy="-5" font-size="11.5" font-weight="700" fill="#2f9e44" text-anchor="end">flat-column read  $floor_v</text>
+  <text x="74" y="$floor_y" dy="-5" font-size="11.5" font-weight="700" fill="#2f9e44" text-anchor="start">flat-column read  $floor_v</text>
 
-  <!-- footnote -->
-  <text x="40" y="490" font-size="11" fill="#868e96">Dashed line = a plain float32 column read of the same values — no list structure. All bars decode identical values.</text>
+  <!-- footnote (two lines; first line sits 44px below the reader labels, matching the flat chart) -->
+  <text x="40" y="502" font-size="11" fill="#868e96">Dashed line = a plain float32 column read of the same values — no list structure.</text>
+  <text x="40" y="518" font-size="11" fill="#868e96">All bars decode identical values. × = fast vs. baseline speedup.</text>
   </g>
 </svg>
