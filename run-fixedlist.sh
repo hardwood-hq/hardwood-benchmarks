@@ -33,8 +33,9 @@ charts use ZSTD (-Dperf.compression=ZSTD, as real Parquet is); the codec is reco
 the meta sidecar and the chart subline. Default is UNCOMPRESSED — run that once too as a
 decode-isolation cross-check (its speedups land within noise for high-entropy float data):
   ./run-fixedlist.sh --gate
-  # sweep -> speedup-vs-k curve (32 MB files):
-  ./run-fixedlist.sh --forks 3 --meas 5 -Dperf.compression=ZSTD
+  # sweep -> speedup-vs-n curve (32 MB files); --include skips flatFloor, which the
+  # sweep chart doesn't use (fast vs baseline only), trimming ~20% off the run:
+  ./run-fixedlist.sh --forks 3 --meas 5 -Dperf.compression=ZSTD --include 'column|row'
   python charts/make-fixedlist-chart.py --results-dir target
   # two headline ~512 MB files -> absolute-throughput bars:
   ./run-fixedlist.sh --k 3,768 --total-values 128000000 --forks 3 --meas 5 -Dperf.compression=ZSTD
@@ -44,15 +45,21 @@ Publication run (evaluation instance) — three runs for the median, in a tmux s
 so an SSH drop can't kill it. Clear any stale sibling artifacts first so capture-run
 grabs only this benchmark's (it archives every bench-* in target/), then start the
 session and PASTE the loop into it (don't cram it into 'tmux new -d <cmd>' — tmux
-mangles the quoting); detach with Ctrl-b d. Sweep and headline capture to separate
-dirs (they share a TSV filename):
+mangles the quoting); detach with Ctrl-b d. Run the sweep loop first, then the headline
+loop — separate loops so each chart's three runs stay contiguous; both capture to their
+own dir (sweep and headline share a TSV filename):
   rm -f target/bench-*.tsv target/*.log
   tmux new -s fixedlist
+  # headline (~512 MB files) — keep flatFloor; the bars chart draws it as the floor line:
   for i in 1 2 3; do
-    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --forks 3 --meas 5 -Dperf.compression=ZSTD
-    ./capture-run.sh results/2026-07-03-fixed-size-list/sweep/run-\$i
     ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --k 3,768 --total-values 128000000 --forks 3 --meas 5 -Dperf.compression=ZSTD
-    ./capture-run.sh results/2026-07-03-fixed-size-list/headline/run-\$i
+    ./capture-run.sh results/2026-07-21-fixed-size-list/headline/run-\$i
+    sleep 300
+  done
+  # sweep (speedup curve) — --include skips flatFloor, which the sweep chart doesn't use:
+  for i in 1 2 3; do
+    ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --forks 3 --meas 5 -Dperf.compression=ZSTD --include 'column|row'
+    ./capture-run.sh results/2026-07-21-fixed-size-list/sweep/run-\$i
     [ \$i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
   done
 
