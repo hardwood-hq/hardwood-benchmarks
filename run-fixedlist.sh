@@ -24,8 +24,9 @@ Usage: ./run-fixedlist.sh [options]
 $BENCH_COMMON_USAGE
 
 Two modes: --gate generates the corpus, reads each k with the fast path on and
-off, and verifies both readers fold to the same sum as the flat floor, then exits
-(no JMH); without it, the script generates (if needed) and benchmarks.
+off, and verifies the fast path decodes bit-identical values to the baseline (both
+readers, compared element by element) and that both agree with the flat-column
+floor, then exits (no JMH); without it, the script generates (if needed) and benchmarks.
 
 Quick publish flow — two runs at different file sizes. Each run truncates target/'s
 TSV, so chart (or capture) the sweep before launching the headline run. The published

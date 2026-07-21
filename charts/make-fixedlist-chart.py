@@ -68,38 +68,12 @@ def polyline(points):
     return " ".join("{:.1f},{:.1f}".format(x, y) for x, y in points)
 
 
-# Consecutive value labels closer than LABEL_MIN_DX (px) would overlap horizontally
-# on the log-k axis (e.g. k=8 vs k=9); alternate them above/below the point. Two
-# readers' labels at the same k within LABEL_MIN_DY (px) overlap vertically (e.g.
-# k=1, both near 1x); the lower-valued one drops below the line.
-LABEL_MIN_DX = 22.0
-LABEL_MIN_DY = 15.0
-
-
-def label_sides(series, xmin, xspan):
-    """Per-point label side within one reader's line (+1 above the point, -1 below):
-    alternate below when a point sits too close in x to the previous one."""
-    sides, prev_x, side = [], None, 1
-    for k, _ in series:
-        x = xpix(k, xmin, xspan)
-        side = -side if prev_x is not None and (x - prev_x) < LABEL_MIN_DX else 1
-        sides.append(side)
-        prev_x = x
-    return sides
-
-
-def dots(points, values, sides, ks, color, label_ks):
-    """Draw a marker at every point, but a value label only where `k` is in
-    `label_ks` — the flat plateau carries markers without repeating near-identical
-    numbers (e.g. several 2.8x) at slightly different heights."""
-    out = []
-    for (x, y), v, side, k in zip(points, values, sides, ks):
-        out.append('<circle cx="{:.1f}" cy="{:.1f}" r="3.5" fill="{}"/>'.format(x, y, color))
-        if k in label_ks:
-            dy = -8 if side > 0 else 16
-            out.append('<text x="{:.1f}" y="{:.1f}" font-size="10.5" font-weight="700" '
-                       'fill="{}" text-anchor="middle">{:.1f}</text>'.format(x, y + dy, color, v))
-    return "\n    ".join(out)
+def dots(points, color):
+    """Draw a marker at every point (no value labels — the y-axis and the subtitle
+    carry the numbers)."""
+    return "\n    ".join(
+        '<circle cx="{:.1f}" cy="{:.1f}" r="3.5" fill="{}"/>'.format(x, y, color)
+        for x, y in points)
 
 
 def read_meta(results_path, keys):
@@ -139,9 +113,28 @@ def build(data, meta, machine):
         grid.append('<line x1="70" y1="{0:.1f}" x2="740" y2="{0:.1f}"/>'.format(y))
         ticklabels.append('<text x="62" y="{:.1f}">{}x</text>'.format(y + 4, fmt_tick(val)))
 
-    xlabels = []
+    # X tick labels, thinned so densely-spaced points on the log axis (e.g. the
+    # scalar 9/12/15 samples crowding 8 and 16) don't overprint. When two labels
+    # fall within MIN_LABEL_GAP px, keep the "rounder" one: endpoints and the
+    # headline k's (1, 3, 768, max) first, then powers of two. Every point still
+    # gets a dot; only its axis label may be dropped.
+    MIN_LABEL_GAP = 16
+
+    def _label_priority(k):
+        if k in (1, 3, 768) or k == all_k[-1]:
+            return 2
+        return 1 if (k & (k - 1)) == 0 else 0
+
+    kept = []  # (x, k, priority), left to right, each >= MIN_LABEL_GAP apart
     for k in all_k:
-        xlabels.append('<text x="{:.1f}" y="418">{}</text>'.format(xpix(k, xmin, xspan), k))
+        x = xpix(k, xmin, xspan)
+        prio = _label_priority(k)
+        if kept and x - kept[-1][0] < MIN_LABEL_GAP:
+            if prio > kept[-1][2]:
+                kept[-1] = (x, k, prio)  # rounder neighbour wins the slot
+        else:
+            kept.append((x, k, prio))
+    xlabels = ['<text x="{:.1f}" y="418">{}</text>'.format(x, k) for x, k, _ in kept]
 
     subst = {
         "gridlines": "\n    ".join(grid),
@@ -150,35 +143,22 @@ def build(data, meta, machine):
         "baseline_y": "{:.1f}".format(ypix(1.0, scale)),
     }
 
-    col_sides = label_sides(col, xmin, xspan)
-    row_sides = label_sides(row, xmin, xspan)
-    # Cross-reader: where both lines carry a point at the same k and their labels
-    # would overlap vertically (close speedups — in practice the leftmost k, both
-    # near 1x), drop the lower-valued label below the line and keep the higher above.
-    col_idx = {k: i for i, (k, _) in enumerate(col)}
-    row_idx = {k: i for i, (k, _) in enumerate(row)}
-    col_val, row_val = dict(col), dict(row)
-    for k in set(col_idx) & set(row_idx):
-        if abs(col_val[k] - row_val[k]) * scale < LABEL_MIN_DY:
-            col_low = col_val[k] <= row_val[k]
-            col_sides[col_idx[k]] = -1 if col_low else 1
-            row_sides[row_idx[k]] = 1 if col_low else -1
+    # Shade the scalar-fallback band (n in 9..15, rows not byte-aligned): from the
+    # geometric midpoint of (8,9) to that of (15,16), so it brackets the scalar
+    # samples without touching the byte-aligned 8 and 16 points.
+    if all_k[0] <= 8 and all_k[-1] >= 16:
+        band_l = xpix(math.sqrt(8 * 9), xmin, xspan)
+        band_r = xpix(math.sqrt(15 * 16), xmin, xspan)
+    else:
+        band_l = band_r = 0.0
+    subst["notch_x"] = "{:.1f}".format(band_l)
+    subst["notch_w"] = "{:.1f}".format(max(0.0, band_r - band_l))
+    subst["notch_lx"] = "{:.1f}".format((band_l + band_r) / 2.0)
 
-    # Label only the callout k's (headline embeddings/points + the k=1 edge) plus
-    # each reader's peak; the plateau in between reads as one flat line, so labelling
-    # every point would just repeat ~2.8x at slightly different heights.
-    row_peak_k = max(row, key=lambda kv: kv[1])[0] if row else None
-    label_ks = {
-        "col": {1, 3, 768},
-        "row": {1, 3, 768, row_peak_k},
-    }
-    for base, series, color, sides in (("col", col, "#1971c2", col_sides),
-                                       ("row", row, "#f08c00", row_sides)):
+    for base, series, color in (("col", col, "#1971c2"), ("row", row, "#f08c00")):
         pts = [(xpix(k, xmin, xspan), ypix(v, scale)) for k, v in series]
-        vals = [v for _, v in series]
-        ks = [k for k, _ in series]
         subst[base + "_line"] = polyline(pts)
-        subst[base + "_dots"] = dots(pts, vals, sides, ks, color, label_ks[base])
+        subst[base + "_dots"] = dots(pts, color)
 
     def headline(series, k):
         for kk, v in series:

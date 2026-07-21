@@ -250,10 +250,11 @@ public class FixedSizeListScanBenchmark {
     }
 
     /// Correctness gate: for each `k`, the fast path and the reconstruction baseline
-    /// must fold to the *same* sum — through both readers — and both must agree with
-    /// the flat-column floor. `fast == baseline` is asserted exactly (identical
-    /// values, identical leaf order); the cross-path checks (row vs column vs flat)
-    /// allow a rounding epsilon so the assertion is not brittle.
+    /// must decode **bit-identical** values — every element, in order, through both
+    /// readers — and both must agree with the flat-column floor. `fast == baseline`
+    /// is asserted bit-for-bit (raw float bits, leaf order), streamed in lockstep so
+    /// the whole column is never held in memory; the cross-path checks (row vs column
+    /// vs flat) fold the values in different orders, so they allow a rounding epsilon.
     private static void gate(int[] ks) throws IOException {
         generate(ks);
         Path dir = Path.of(dataDir());
@@ -265,25 +266,109 @@ public class FixedSizeListScanBenchmark {
             for (int k : ks) {
                 Path listPath = FixedSizeListFileGenerator.listFile(dir, k, totalValues);
                 Path flatPath = FixedSizeListFileGenerator.flatFile(dir, k, totalValues);
-                double columnFast = sumColumn(listPath, LIST_COLUMN, context, fast, k);
-                double columnBaseline = sumColumn(listPath, LIST_COLUMN, context, base, k);
-                double rowFast = sumRows(listPath, LIST_FIELD, context, fast);
-                double rowBaseline = sumRows(listPath, LIST_FIELD, context, base);
+                // Bit-exact fast-vs-baseline comparison; the returned sum is folded from
+                // the fast side and reused for the rounding-tolerant cross-path checks.
+                double columnSum = compareColumn("k=" + k + " column fast vs baseline",
+                        listPath, LIST_COLUMN, context, fast, base, k);
+                double rowSum = compareRows("k=" + k + " row fast vs baseline",
+                        listPath, LIST_FIELD, context, fast, base);
                 double flat = sumColumn(flatPath, FLAT_COLUMN, context, fast, 1);
-                requireEqual("k=" + k + " column fast vs baseline", columnFast, columnBaseline);
-                requireEqual("k=" + k + " row fast vs baseline", rowFast, rowBaseline);
-                requireClose("k=" + k + " column vs flat floor", columnFast, flat);
-                requireClose("k=" + k + " row vs column", rowFast, columnFast);
-                System.out.printf("  OK  k=%-5d sum=%s%n", k, columnFast);
+                requireClose("k=" + k + " column vs flat floor", columnSum, flat);
+                requireClose("k=" + k + " row vs column", rowSum, columnSum);
+                System.out.printf("  OK  k=%-5d sum=%s%n", k, columnSum);
             }
         }
-        System.out.println("Gate passed — the fast path returns the same values as the baseline.");
+        System.out.println("Gate passed — the fast path decodes bit-identical values to the baseline.");
     }
 
-    private static void requireEqual(String what, double a, double b) {
-        if (a != b) {
-            throw new IllegalStateException("Mismatch (" + what + "): " + a + " != " + b);
+    /// Scans the LIST column with the fast path on and off in lockstep, asserting every
+    /// leaf float is bit-for-bit equal (raw bits, so `-0.0`/`NaN` are not glossed over),
+    /// and returns the fast side's value sum. A fixed record batch is forced on both
+    /// readers so their batch boundaries align for the pairwise compare.
+    private static double compareColumn(String label, Path path, String column,
+                                        HardwoodContext context, ReaderConfig fast, ReaderConfig base,
+                                        int valuesPerRow) throws IOException {
+        int batchRecords = Math.max(1, (1 << 20) / Math.max(1, valuesPerRow));
+        double sum = 0;
+        long index = 0;
+        try (ParquetFileReader fr = ParquetFileReader.open(InputFile.of(path), context, fast);
+             ParquetFileReader br = ParquetFileReader.open(InputFile.of(path), context, base);
+             ColumnReader fc = fr.buildColumnReader(column).batchSize(batchRecords).build();
+             ColumnReader bc = br.buildColumnReader(column).batchSize(batchRecords).build()) {
+            while (true) {
+                boolean fastNext = fc.nextBatch();
+                boolean baseNext = bc.nextBatch();
+                if (fastNext != baseNext) {
+                    throw new IllegalStateException(label + ": batch count differs after " + index + " values");
+                }
+                if (!fastNext) {
+                    break;
+                }
+                int count = fc.getValueCount();
+                if (count != bc.getValueCount()) {
+                    throw new IllegalStateException(label + ": batch value count differs at value " + index);
+                }
+                float[] fastValues = fc.getFloats();
+                float[] baseValues = bc.getFloats();
+                for (int i = 0; i < count; i++, index++) {
+                    if (Float.floatToRawIntBits(fastValues[i]) != Float.floatToRawIntBits(baseValues[i])) {
+                        throw new IllegalStateException(
+                                label + ": value " + index + " differs: " + fastValues[i] + " != " + baseValues[i]);
+                    }
+                    sum += fastValues[i];
+                }
+            }
         }
+        return sum;
+    }
+
+    /// Scans the row reader with the fast path on and off in lockstep, asserting every
+    /// element of every list is bit-for-bit equal, and returns the fast side's value sum.
+    private static double compareRows(String label, Path path, String field,
+                                      HardwoodContext context, ReaderConfig fast, ReaderConfig base) throws IOException {
+        double sum = 0;
+        long row = 0;
+        try (ParquetFileReader fr = ParquetFileReader.open(InputFile.of(path), context, fast);
+             ParquetFileReader br = ParquetFileReader.open(InputFile.of(path), context, base);
+             RowReader fastRows = fr.rowReader();
+             RowReader baseRows = br.rowReader()) {
+            while (true) {
+                boolean fastNext = fastRows.hasNext();
+                boolean baseNext = baseRows.hasNext();
+                if (fastNext != baseNext) {
+                    throw new IllegalStateException(label + ": row count differs at row " + row);
+                }
+                if (!fastNext) {
+                    break;
+                }
+                fastRows.next();
+                baseRows.next();
+                PqList fastVec = fastRows.getList(field);
+                PqList baseVec = baseRows.getList(field);
+                if ((fastVec == null) != (baseVec == null)) {
+                    throw new IllegalStateException(label + ": null-list mismatch at row " + row);
+                }
+                if (fastVec != null) {
+                    int size = fastVec.size();
+                    if (size != baseVec.size()) {
+                        throw new IllegalStateException(
+                                label + ": list size differs at row " + row + " (" + size + " != " + baseVec.size() + ")");
+                    }
+                    List<Float> fastFloats = fastVec.floats();
+                    List<Float> baseFloats = baseVec.floats();
+                    for (int i = 0; i < size; i++) {
+                        if (Float.floatToRawIntBits(fastFloats.get(i)) != Float.floatToRawIntBits(baseFloats.get(i))) {
+                            throw new IllegalStateException(
+                                    label + ": row " + row + " element " + i + " differs: "
+                                            + fastFloats.get(i) + " != " + baseFloats.get(i));
+                        }
+                        sum += fastFloats.get(i);
+                    }
+                }
+                row++;
+            }
+        }
+        return sum;
     }
 
     private static void requireClose(String what, double a, double b) {

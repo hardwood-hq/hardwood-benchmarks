@@ -15,6 +15,10 @@
   <text x="349" y="92" font-size="11.5" fill="#495057">1x (no speedup)</text>
 
   <g transform="translate(0, 16)">
+  <!-- scalar-fallback band (n = 9..15, rows not byte-aligned) -->
+  <rect x="$notch_x" y="100" width="$notch_w" height="300" fill="#f1f3f5"/>
+  <text x="$notch_lx" y="118" font-size="10" fill="#adb5bd" text-anchor="middle">scalar fallback</text>
+  <text x="$notch_lx" y="130" font-size="10" fill="#adb5bd" text-anchor="middle">n = 9–15</text>
   <!-- Y axis title -->
   <text x="22" y="250" font-size="12.5" fill="#495057" transform="rotate(-90 22 250)" text-anchor="middle">speedup (fast ÷ baseline · higher is better)</text>
 
