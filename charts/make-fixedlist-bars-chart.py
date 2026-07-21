@@ -76,7 +76,9 @@ def read_meta(results_path, keys):
 
 def axis(values):
     """Throughput y-axis (higher is better): px-per-unit scale + gridline/label SVG."""
-    axis_max = nice_max(max(values) * 1.08)
+    # Small headroom for the top value label. Kept tight (1.03) so a tallest bar just
+    # under a round number (e.g. ~945) doesn't tip nice_max past it (1000 -> 1500).
+    axis_max = nice_max(max(values) * 1.03)
     step = nice_step(axis_max, target=6)
     scale = PLOT / axis_max
     grid, labels = [], ['<text x="62" y="404">0</text>']

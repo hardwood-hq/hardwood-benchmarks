@@ -97,15 +97,16 @@ public class FixedSizeListScanBenchmark {
     /// The default `k` sweep, kept in sync with [#K_SWEEP] (used by `--gate` and by
     /// generation): evenly geometric on the log-`k` axis so no region is over- or
     /// under-sampled. `1` anchors the short-list edge (guarding against a fast-path
-    /// penalty); `1, 2, 3, 4, 8, 16` resolve the steep small-`k` rise; `32, 64, 128,
-    /// 256, 512` sample the plateau densely enough that the row reader's peak near
+    /// penalty); `2, 3, 4, 8` resolve the steep small-`k` rise; `9, 12, 15` cover the
+    /// scalar-verified notch where rows are not byte-aligned; `16, 32, 64, 128, 256,
+    /// 512` sample the large-`k` plateau densely enough that the row reader's peak near
     /// `k = 64` reads as a real feature; `768, 1536` are the embedding-scale tail.
     /// `k = 3` (points) and `k = 768` (embeddings) are the two headline points, also
     /// labelled by the charts.
-    @Param({ "1", "2", "3", "4", "8", "16", "32", "64", "128", "256", "512", "768", "1536" })
+    @Param({ "1", "2", "3", "4", "8", "9", "12", "15", "16", "32", "64", "128", "256", "512", "768", "1536" })
     private int k;
 
-    private static final int[] K_SWEEP = { 1, 2, 3, 4, 8, 16, 32, 64, 128, 256, 512, 768, 1536 };
+    private static final int[] K_SWEEP = { 1, 2, 3, 4, 8, 9, 12, 15, 16, 32, 64, 128, 256, 512, 768, 1536 };
 
     private Path listPath;
     private Path flatPath;

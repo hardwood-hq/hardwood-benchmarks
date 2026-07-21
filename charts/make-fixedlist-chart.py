@@ -187,10 +187,12 @@ def build(data, meta, machine):
         return "-"
 
     hardwood = meta.get("hardwood", "")
-    subst["ds"] = "float32 vectors · {} · {}{}".format(
+    codec = meta.get("compression")
+    subst["ds"] = "float32 vectors · {} · {}{}{}".format(
         meta.get("java", "") or "warm cache", machine,
+        " · " + codec.upper() if codec else "",
         " · Hardwood " + hardwood if hardwood else "")
-    subst["headline"] = "k=3 (points): column {} · k=768 (embeddings): column {}".format(
+    subst["headline"] = "n=3 (points): column {} · n=768 (embeddings): column {}".format(
         headline(col, 3), headline(col, 768))
     return subst
 
@@ -216,7 +218,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     data = load(results, args.pass_)
-    meta = read_meta(results, ["java", "hardwood", "machine"])
+    meta = read_meta(results, ["java", "hardwood", "machine", "compression"])
     # Hardware label comes from the meta (recorded by the capture script), --machine
     # overrides it; the all-cores vs single-core mode is derived from the pass.
     machine = args.machine or meta.get("machine") or "unknown machine"
