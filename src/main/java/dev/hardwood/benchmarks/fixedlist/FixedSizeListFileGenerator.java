@@ -144,6 +144,16 @@ public final class FixedSizeListFileGenerator {
                 .withWriterVersion(writerVersion())
                 .withCompressionCodec(compressionCodec())
                 .withDictionaryEncoding(false)
+                // Lift parquet-mr's default 20,000-row page cap so the flat floor and the
+                // list file paginate the same way (both size-limited, ~30 pages of ~1 MB) —
+                // making the floor a fair normalizer that isolates list-structure decode
+                // overhead. Without this the flat column (1 value/row) hits the row cap and
+                // is split into ~400 tiny 74 KB pages while the list column (k values/row)
+                // never approaches it and gets ~29 big pages; the reader's page-size
+                // sensitivity (hardwood-hq/hardwood#810) then contaminates the comparison in
+                // a codec-dependent way (tiny pages: fast uncompressed, decompress-starved
+                // under ZSTD). Matching pagination removes that confound.
+                .withPageRowCountLimit(Integer.MAX_VALUE)
                 .withRowGroupSize(512L * 1024 * 1024)
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .withPageWriteChecksumEnabled(false)
