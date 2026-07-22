@@ -1,0 +1,950 @@
+
+######################################################################
+## FixedSizeListScanBenchmark
+######################################################################
+Started FixedSizeListScanBenchmark at 2026-07-21 23:28:00 UTC
+---- Out-of-the-box (all cores) ----
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnBaseline
+# Parameters: (k = 3)
+
+# Run progress: 0.00% complete, ETA 00:08:00
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:28:01 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+698.660 ms/op
+# Warmup Iteration   2: 514.836 ms/op
+# Warmup Iteration   3: 502.644 ms/op
+Iteration   1: 513.623 ms/op
+Iteration   2: 531.485 ms/op
+Iteration   3: 507.752 ms/op
+Iteration   4: 503.194 ms/op
+Iteration   5: 495.316 ms/op
+
+# Run progress: 3.33% complete, ETA 00:08:34
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:28:18 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+675.324 ms/op
+# Warmup Iteration   2: 507.524 ms/op
+# Warmup Iteration   3: 513.093 ms/op
+Iteration   1: 513.921 ms/op
+Iteration   2: 521.711 ms/op
+Iteration   3: 510.907 ms/op
+Iteration   4: 487.009 ms/op
+Iteration   5: 505.244 ms/op
+
+# Run progress: 6.67% complete, ETA 00:08:07
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:28:36 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+684.933 ms/op
+# Warmup Iteration   2: 478.276 ms/op
+# Warmup Iteration   3: 468.984 ms/op
+Iteration   1: 516.100 ms/op
+Iteration   2: 512.737 ms/op
+Iteration   3: 500.093 ms/op
+Iteration   4: 485.947 ms/op
+Iteration   5: 490.773 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnBaseline":
+  506.387 ±(99.9%) 13.826 ms/op [Average]
+  (min, avg, max) = (485.947, 506.387, 531.485), stdev = 12.933
+  CI (99.9%): [492.562, 520.213] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnBaseline
+# Parameters: (k = 768)
+
+# Run progress: 10.00% complete, ETA 00:07:56
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:28:54 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+424.550 ms/op
+# Warmup Iteration   2: 327.640 ms/op
+# Warmup Iteration   3: 321.579 ms/op
+Iteration   1: 308.789 ms/op
+Iteration   2: 306.375 ms/op
+Iteration   3: 301.969 ms/op
+Iteration   4: 309.778 ms/op
+Iteration   5: 302.170 ms/op
+
+# Run progress: 13.33% complete, ETA 00:07:39
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:29:11 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+423.208 ms/op
+# Warmup Iteration   2: 330.671 ms/op
+# Warmup Iteration   3: 325.204 ms/op
+Iteration   1: 311.499 ms/op
+Iteration   2: 306.806 ms/op
+Iteration   3: 303.127 ms/op
+Iteration   4: 297.007 ms/op
+Iteration   5: 303.256 ms/op
+
+# Run progress: 16.67% complete, ETA 00:07:21
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:29:29 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+426.588 ms/op
+# Warmup Iteration   2: 337.933 ms/op
+# Warmup Iteration   3: 327.542 ms/op
+Iteration   1: 304.924 ms/op
+Iteration   2: 295.983 ms/op
+Iteration   3: 291.054 ms/op
+Iteration   4: 292.508 ms/op
+Iteration   5: 287.044 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnBaseline":
+  301.486 ±(99.9%) 7.779 ms/op [Average]
+  (min, avg, max) = (287.044, 301.486, 311.499), stdev = 7.276
+  CI (99.9%): [293.707, 309.265] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnFast
+# Parameters: (k = 3)
+
+# Run progress: 20.00% complete, ETA 00:07:01
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:29:46 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+340.191 ms/op
+# Warmup Iteration   2: 220.064 ms/op
+# Warmup Iteration   3: 207.682 ms/op
+Iteration   1: 200.407 ms/op
+Iteration   2: 201.434 ms/op
+Iteration   3: 199.994 ms/op
+Iteration   4: 200.831 ms/op
+Iteration   5: 201.518 ms/op
+
+# Run progress: 23.33% complete, ETA 00:06:41
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:30:03 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+310.381 ms/op
+# Warmup Iteration   2: 213.423 ms/op
+# Warmup Iteration   3: 206.135 ms/op
+Iteration   1: 201.657 ms/op
+Iteration   2: 200.851 ms/op
+Iteration   3: 199.905 ms/op
+Iteration   4: 201.516 ms/op
+Iteration   5: 202.590 ms/op
+
+# Run progress: 26.67% complete, ETA 00:06:23
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:30:20 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+352.158 ms/op
+# Warmup Iteration   2: 215.726 ms/op
+# Warmup Iteration   3: 203.113 ms/op
+Iteration   1: 201.896 ms/op
+Iteration   2: 201.538 ms/op
+Iteration   3: 201.090 ms/op
+Iteration   4: 201.245 ms/op
+Iteration   5: 200.619 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnFast":
+  201.139 ±(99.9%) 0.773 ms/op [Average]
+  (min, avg, max) = (199.905, 201.139, 202.590), stdev = 0.723
+  CI (99.9%): [200.367, 201.912] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnFast
+# Parameters: (k = 768)
+
+# Run progress: 30.00% complete, ETA 00:06:04
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:30:37 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+208.423 ms/op
+# Warmup Iteration   2: 170.376 ms/op
+# Warmup Iteration   3: 163.433 ms/op
+Iteration   1: 161.953 ms/op
+Iteration   2: 162.520 ms/op
+Iteration   3: 163.037 ms/op
+Iteration   4: 161.266 ms/op
+Iteration   5: 161.597 ms/op
+
+# Run progress: 33.33% complete, ETA 00:05:46
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:30:54 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+207.042 ms/op
+# Warmup Iteration   2: 170.294 ms/op
+# Warmup Iteration   3: 164.269 ms/op
+Iteration   1: 161.619 ms/op
+Iteration   2: 162.845 ms/op
+Iteration   3: 162.998 ms/op
+Iteration   4: 162.222 ms/op
+Iteration   5: 161.808 ms/op
+
+# Run progress: 36.67% complete, ETA 00:05:28
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:31:11 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+208.387 ms/op
+# Warmup Iteration   2: 173.756 ms/op
+# Warmup Iteration   3: 163.285 ms/op
+Iteration   1: 162.416 ms/op
+Iteration   2: 162.613 ms/op
+Iteration   3: 162.394 ms/op
+Iteration   4: 162.222 ms/op
+Iteration   5: 161.807 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.columnFast":
+  162.221 ±(99.9%) 0.575 ms/op [Average]
+  (min, avg, max) = (161.266, 162.221, 163.037), stdev = 0.538
+  CI (99.9%): [161.646, 162.796] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.flatFloor
+# Parameters: (k = 3)
+
+# Run progress: 40.00% complete, ETA 00:05:11
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+206.626 ms/op
+# Warmup Iteration   2: 168.755 ms/op
+# Warmup Iteration   3: 167.238 ms/op
+Iteration   1: 163.929 ms/op
+Iteration   2: 164.251 ms/op
+Iteration   3: 164.036 ms/op
+Iteration   4: 164.048 ms/op
+Iteration   5: 163.603 ms/op
+
+# Run progress: 43.33% complete, ETA 00:04:53
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+208.824 ms/op
+# Warmup Iteration   2: 171.142 ms/op
+# Warmup Iteration   3: 165.348 ms/op
+Iteration   1: 163.178 ms/op
+Iteration   2: 163.293 ms/op
+Iteration   3: 164.678 ms/op
+Iteration   4: 162.977 ms/op
+Iteration   5: 163.732 ms/op
+
+# Run progress: 46.67% complete, ETA 00:04:36
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+205.844 ms/op
+# Warmup Iteration   2: 168.345 ms/op
+# Warmup Iteration   3: 164.781 ms/op
+Iteration   1: 163.331 ms/op
+Iteration   2: 165.323 ms/op
+Iteration   3: 163.898 ms/op
+Iteration   4: 163.073 ms/op
+Iteration   5: 163.721 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.flatFloor":
+  163.805 ±(99.9%) 0.674 ms/op [Average]
+  (min, avg, max) = (162.977, 163.805, 165.323), stdev = 0.630
+  CI (99.9%): [163.131, 164.478] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.flatFloor
+# Parameters: (k = 768)
+
+# Run progress: 50.00% complete, ETA 00:04:18
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+207.632 ms/op
+# Warmup Iteration   2: 169.768 ms/op
+# Warmup Iteration   3: 165.943 ms/op
+Iteration   1: 163.782 ms/op
+Iteration   2: 163.421 ms/op
+Iteration   3: 163.202 ms/op
+Iteration   4: 163.193 ms/op
+Iteration   5: 163.934 ms/op
+
+# Run progress: 53.33% complete, ETA 00:04:01
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+208.045 ms/op
+# Warmup Iteration   2: 168.767 ms/op
+# Warmup Iteration   3: 165.445 ms/op
+Iteration   1: 164.697 ms/op
+Iteration   2: 163.503 ms/op
+Iteration   3: 164.385 ms/op
+Iteration   4: 163.522 ms/op
+Iteration   5: 162.086 ms/op
+
+# Run progress: 56.67% complete, ETA 00:03:44
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+207.848 ms/op
+# Warmup Iteration   2: 169.320 ms/op
+# Warmup Iteration   3: 166.139 ms/op
+Iteration   1: 165.699 ms/op
+Iteration   2: 164.625 ms/op
+Iteration   3: 163.094 ms/op
+Iteration   4: 165.231 ms/op
+Iteration   5: 166.169 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.flatFloor":
+  164.036 ±(99.9%) 1.169 ms/op [Average]
+  (min, avg, max) = (162.086, 164.036, 166.169), stdev = 1.094
+  CI (99.9%): [162.867, 165.205] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowBaseline
+# Parameters: (k = 3)
+
+# Run progress: 60.00% complete, ETA 00:03:26
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:33:11 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+1551.043 ms/op
+# Warmup Iteration   2: 801.183 ms/op
+# Warmup Iteration   3: 812.758 ms/op
+Iteration   1: 794.837 ms/op
+Iteration   2: 764.272 ms/op
+Iteration   3: 745.805 ms/op
+Iteration   4: 775.283 ms/op
+Iteration   5: 773.256 ms/op
+
+# Run progress: 63.33% complete, ETA 00:03:11
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:33:31 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+1535.271 ms/op
+# Warmup Iteration   2: 781.057 ms/op
+# Warmup Iteration   3: 807.997 ms/op
+Iteration   1: 763.595 ms/op
+Iteration   2: 745.192 ms/op
+Iteration   3: 783.068 ms/op
+Iteration   4: 752.006 ms/op
+Iteration   5: 763.013 ms/op
+
+# Run progress: 66.67% complete, ETA 00:02:54
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:33:51 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+1495.585 ms/op
+# Warmup Iteration   2: 758.214 ms/op
+# Warmup Iteration   3: 770.245 ms/op
+Iteration   1: 782.458 ms/op
+Iteration   2: 793.335 ms/op
+Iteration   3: 754.446 ms/op
+Iteration   4: 765.977 ms/op
+Iteration   5: 746.259 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowBaseline":
+  766.853 ±(99.9%) 17.720 ms/op [Average]
+  (min, avg, max) = (745.192, 766.853, 794.837), stdev = 16.575
+  CI (99.9%): [749.133, 784.574] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowBaseline
+# Parameters: (k = 768)
+
+# Run progress: 70.00% complete, ETA 00:02:38
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:34:10 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+719.680 ms/op
+# Warmup Iteration   2: 514.991 ms/op
+# Warmup Iteration   3: 503.274 ms/op
+Iteration   1: 532.699 ms/op
+Iteration   2: 667.938 ms/op
+Iteration   3: 650.010 ms/op
+Iteration   4: 635.013 ms/op
+Iteration   5: 648.447 ms/op
+
+# Run progress: 73.33% complete, ETA 00:02:21
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:34:29 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+738.142 ms/op
+# Warmup Iteration   2: 513.815 ms/op
+# Warmup Iteration   3: 511.506 ms/op
+Iteration   1: 505.392 ms/op
+Iteration   2: 589.856 ms/op
+Iteration   3: 614.411 ms/op
+Iteration   4: 611.796 ms/op
+Iteration   5: 618.808 ms/op
+
+# Run progress: 76.67% complete, ETA 00:02:03
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:34:48 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+803.631 ms/op
+# Warmup Iteration   2: 641.360 ms/op
+# Warmup Iteration   3: 637.561 ms/op
+Iteration   1: 624.851 ms/op
+Iteration   2: 628.238 ms/op
+Iteration   3: 620.116 ms/op
+Iteration   4: 610.095 ms/op
+Iteration   5: 597.280 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowBaseline":
+  610.330 ±(99.9%) 45.448 ms/op [Average]
+  (min, avg, max) = (505.392, 610.330, 667.938), stdev = 42.512
+  CI (99.9%): [564.883, 655.778] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowFast
+# Parameters: (k = 3)
+
+# Run progress: 80.00% complete, ETA 00:01:46
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:35:08 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+1449.133 ms/op
+# Warmup Iteration   2: 688.521 ms/op
+# Warmup Iteration   3: 700.364 ms/op
+Iteration   1: 702.074 ms/op
+Iteration   2: 717.132 ms/op
+Iteration   3: 719.287 ms/op
+Iteration   4: 680.160 ms/op
+Iteration   5: 729.433 ms/op
+
+# Run progress: 83.33% complete, ETA 00:01:29
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:35:26 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+1482.117 ms/op
+# Warmup Iteration   2: 689.316 ms/op
+# Warmup Iteration   3: 695.006 ms/op
+Iteration   1: 685.785 ms/op
+Iteration   2: 695.885 ms/op
+Iteration   3: 701.395 ms/op
+Iteration   4: 700.828 ms/op
+Iteration   5: 710.241 ms/op
+
+# Run progress: 86.67% complete, ETA 00:01:11
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:35:44 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+1463.715 ms/op
+# Warmup Iteration   2: 722.960 ms/op
+# Warmup Iteration   3: 693.296 ms/op
+Iteration   1: 715.898 ms/op
+Iteration   2: 685.634 ms/op
+Iteration   3: 693.284 ms/op
+Iteration   4: 707.688 ms/op
+Iteration   5: 708.154 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowFast":
+  703.525 ±(99.9%) 14.845 ms/op [Average]
+  (min, avg, max) = (680.160, 703.525, 729.433), stdev = 13.886
+  CI (99.9%): [688.680, 718.371] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25, OpenJDK 64-Bit Server VM, 25+36-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25-tem/bin/java
+# VM options: -Xms4g -Xmx4g --add-modules jdk.incubator.vector -Dperf.dataDir=/home/build/projects/hardwood-benchmarks/target/fsl-headline-data -Dperf.meas=5 -Dperf.results=target/bench-throughput-FixedSizeListScanBenchmark.tsv -Dperf.compression=ZSTD -Dperf.k=3,768 -Dperf.forks=3 -Dperf.pass=unpinned -Dperf.totalValues=128000000
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowFast
+# Parameters: (k = 768)
+
+# Run progress: 90.00% complete, ETA 00:00:53
+# Fork: 1 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:36:02 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+286.057 ms/op
+# Warmup Iteration   2: 177.980 ms/op
+# Warmup Iteration   3: 166.834 ms/op
+Iteration   1: 165.307 ms/op
+Iteration   2: 164.388 ms/op
+Iteration   3: 166.692 ms/op
+Iteration   4: 167.265 ms/op
+Iteration   5: 163.797 ms/op
+
+# Run progress: 93.33% complete, ETA 00:00:35
+# Fork: 2 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:36:19 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+268.524 ms/op
+# Warmup Iteration   2: 174.932 ms/op
+# Warmup Iteration   3: 167.188 ms/op
+Iteration   1: 165.430 ms/op
+Iteration   2: 165.002 ms/op
+Iteration   3: 165.808 ms/op
+Iteration   4: 165.992 ms/op
+Iteration   5: 164.473 ms/op
+
+# Run progress: 96.67% complete, ETA 00:00:17
+# Fork: 3 of 3
+WARNING: Using incubator modules: jdk.incubator.vector
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-SNAPSHOT/hardwood-core-1.1.0-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Jul 21, 2026 11:36:36 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: enabled (512-bit vectors)
+268.502 ms/op
+# Warmup Iteration   2: 175.607 ms/op
+# Warmup Iteration   3: 167.149 ms/op
+Iteration   1: 165.627 ms/op
+Iteration   2: 164.904 ms/op
+Iteration   3: 165.935 ms/op
+Iteration   4: 164.409 ms/op
+Iteration   5: 164.219 ms/op
+
+
+Result "dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark.rowFast":
+  165.283 ±(99.9%) 1.032 ms/op [Average]
+  (min, avg, max) = (163.797, 165.283, 167.265), stdev = 0.965
+  CI (99.9%): [164.252, 166.315] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:08:52
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                  (k)  Mode  Cnt    Score    Error  Units
+FixedSizeListScanBenchmark.columnBaseline    3  avgt   15  506.387 ± 13.826  ms/op
+FixedSizeListScanBenchmark.columnBaseline  768  avgt   15  301.486 ±  7.779  ms/op
+FixedSizeListScanBenchmark.columnFast        3  avgt   15  201.139 ±  0.773  ms/op
+FixedSizeListScanBenchmark.columnFast      768  avgt   15  162.221 ±  0.575  ms/op
+FixedSizeListScanBenchmark.flatFloor         3  avgt   15  163.805 ±  0.674  ms/op
+FixedSizeListScanBenchmark.flatFloor       768  avgt   15  164.036 ±  1.169  ms/op
+FixedSizeListScanBenchmark.rowBaseline       3  avgt   15  766.853 ± 17.720  ms/op
+FixedSizeListScanBenchmark.rowBaseline     768  avgt   15  610.330 ± 45.448  ms/op
+FixedSizeListScanBenchmark.rowFast           3  avgt   15  703.525 ± 14.845  ms/op
+FixedSizeListScanBenchmark.rowFast         768  avgt   15  165.283 ±  1.032  ms/op
+
+=== Fast path vs. flat-column decode floor (columnar - the fastest these bytes move) ===
+         k   columnFast    rowFast   flatFloor   column/floor   row/floor
+         3      201.139    703.525     163.805          1.23x       4.29x
+       768      162.221    165.283     164.036          0.99x       1.01x
+Finished FixedSizeListScanBenchmark at 2026-07-21 23:36:53 UTC (duration 0h 08m 53s)
+
+=====================================================================
+Chart input — ms/op by contender (raw TSV: target/bench-throughput-FixedSizeListScanBenchmark.tsv) · lower is better
+=====================================================================
+benchmark          contender                            ms/op
+FixedSizeListScanBenchmark columnBaseline[3]                  506.387
+FixedSizeListScanBenchmark columnBaseline[768]                301.486
+FixedSizeListScanBenchmark columnFast[3]                      201.139
+FixedSizeListScanBenchmark columnFast[768]                    162.221
+FixedSizeListScanBenchmark flatFloor[3]                       163.805
+FixedSizeListScanBenchmark flatFloor[768]                     164.036
+FixedSizeListScanBenchmark rowBaseline[3]                     766.853
+FixedSizeListScanBenchmark rowBaseline[768]                   610.330
+FixedSizeListScanBenchmark rowFast[3]                         703.525
+FixedSizeListScanBenchmark rowFast[768]                       165.283
+
+ASCII chart — ms/op (lower is better)
+
+  FixedSizeListScanBenchmark — 3
+    columnBaseline        │████████████████████ 506.4
+    columnFast            │████████ 201.1
+    flatFloor             │██████ 163.8
+    rowBaseline           │██████████████████████████████ 766.9
+    rowFast               │████████████████████████████ 703.5
+
+  FixedSizeListScanBenchmark — 768
+    columnBaseline        │███████████████ 301.5
+    columnFast            │████████ 162.2
+    flatFloor             │████████ 164.0
+    rowBaseline           │██████████████████████████████ 610.3
+    rowFast               │████████ 165.3

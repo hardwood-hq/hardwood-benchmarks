@@ -160,20 +160,22 @@ def build(data, meta, machine):
         subst[base + "_line"] = polyline(pts)
         subst[base + "_dots"] = dots(pts, color)
 
-    def headline(series, k):
-        for kk, v in series:
-            if kk == k:
-                return "{:.1f}x".format(v)
-        return "-"
-
     hardwood = meta.get("hardwood", "")
     codec = meta.get("compression")
-    subst["ds"] = "float32 vectors · {} · {}{}{}".format(
-        meta.get("java", "") or "warm cache", machine,
-        " · " + codec.upper() if codec else "",
-        " · Hardwood " + hardwood if hardwood else "")
-    subst["headline"] = "n=3 (points): column {} · n=768 (embeddings): column {}".format(
-        headline(col, 3), headline(col, 768))
+    # Drop the JDK vendor parenthetical ("Java 25 (Eclipse Adoptium)" -> "Java 25")
+    # so the line does not overflow the chart width and clip the trailing commit SHA.
+    java = (meta.get("java", "") or "").split(" (")[0]
+    values = meta.get("values")
+    per_file = " · {:.0f}M values/file".format(int(values) / 1e6) if values else ""
+    codec_s = " · " + codec.upper() if codec else ""
+    # Line 2 ("what we see"): this chart is a sweep of the fast-path speedup across
+    # vector widths — describe that, not any single k's numbers.
+    subst["headline"] = ("Fast-path speedup (higher is better) swept over vector length "
+                         "n = {}–{}{}{}".format(all_k[0], all_k[-1], per_file, codec_s))
+    # Line 3 (context): identical in shape to the bars chart's third line.
+    subst["ds"] = (machine + " · warm cache"
+                   + (" · " + java if java else "")
+                   + (" · Hardwood " + hardwood if hardwood else ""))
     return subst
 
 
@@ -198,7 +200,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     data = load(results, args.pass_)
-    meta = read_meta(results, ["java", "hardwood", "machine", "compression"])
+    meta = read_meta(results, ["values", "java", "hardwood", "machine", "compression"])
     # Hardware label comes from the meta (recorded by the capture script), --machine
     # overrides it; the all-cores vs single-core mode is derived from the pass.
     machine = args.machine or meta.get("machine") or "unknown machine"

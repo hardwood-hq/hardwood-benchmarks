@@ -1,0 +1,2116 @@
+[
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "4"
+        },
+        "primaryMetric" : {
+            "score" : 10.317264894691764,
+            "scoreError" : 0.5039767196301972,
+            "scoreConfidence" : [
+                9.813288175061567,
+                10.821241614321961
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.621692625,
+                "50.0" : 9.935482178217821,
+                "90.0" : 11.190407404444445,
+                "95.0" : 11.267727108389513,
+                "99.0" : 11.292491078651686,
+                "99.9" : 11.292491078651686,
+                "99.99" : 11.292491078651686,
+                "99.999" : 11.292491078651686,
+                "99.9999" : 11.292491078651686,
+                "100.0" : 11.292491078651686
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.960813881188118,
+                    9.867763911764706,
+                    9.829838196078432,
+                    9.681976240384616,
+                    9.703062942307692
+                ],
+                [
+                    9.963339069306931,
+                    9.85757944117647,
+                    9.748491475728155,
+                    9.720066184466019,
+                    9.662446701923077
+                ],
+                [
+                    11.292491078651686,
+                    11.177382666666666,
+                    11.116790098901099,
+                    11.038501846153846,
+                    10.948263945652174
+                ],
+                [
+                    9.935482178217821,
+                    9.843846215686275,
+                    9.690351538461538,
+                    9.621692625,
+                    9.699735451923077
+                ],
+                [
+                    11.209944511111111,
+                    11.136768155555556,
+                    11.09403212087912,
+                    11.101646615384615,
+                    11.029315274725274
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "9"
+        },
+        "primaryMetric" : {
+            "score" : 10.21330853921179,
+            "scoreError" : 0.4969661648225531,
+            "scoreConfidence" : [
+                9.716342374389237,
+                10.710274704034342
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.461327905660378,
+                "50.0" : 9.741628728155339,
+                "90.0" : 11.090719097094016,
+                "95.0" : 11.125500957777778,
+                "99.0" : 11.129865044444445,
+                "99.9" : 11.129865044444445,
+                "99.99" : 11.129865044444445,
+                "99.999" : 11.129865044444445,
+                "99.9999" : 11.129865044444445,
+                "100.0" : 11.129865044444445
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.734438339805825,
+                    9.639240471153846,
+                    10.10020947,
+                    11.129865044444445,
+                    10.926704054347827
+                ],
+                [
+                    9.685399086538462,
+                    9.656245740384616,
+                    10.04933841,
+                    11.074319769230769,
+                    10.883282902173914
+                ],
+                [
+                    9.6958885,
+                    9.741628728155339,
+                    10.977496402173912,
+                    10.93868022826087,
+                    11.11531808888889
+                ],
+                [
+                    9.653763182692307,
+                    9.682843980769231,
+                    10.941264945652174,
+                    10.949169282608695,
+                    10.971239402173913
+                ],
+                [
+                    9.669842923076923,
+                    9.625009752380953,
+                    9.53098319047619,
+                    9.499213679245283,
+                    9.461327905660378
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "15"
+        },
+        "primaryMetric" : {
+            "score" : 9.981074832487401,
+            "scoreError" : 0.05987499068054804,
+            "scoreConfidence" : [
+                9.921199841806853,
+                10.04094982316795
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.798960165048543,
+                "50.0" : 9.972842178217821,
+                "90.0" : 10.109615608080809,
+                "95.0" : 10.128152922222222,
+                "99.0" : 10.133824828282828,
+                "99.9" : 10.133824828282828,
+                "99.99" : 10.133824828282828,
+                "99.999" : 10.133824828282828,
+                "99.9999" : 10.133824828282828,
+                "100.0" : 10.133824828282828
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    10.01264674,
+                    9.945814415841584,
+                    9.970955613861387,
+                    9.972842178217821,
+                    9.955932099009901
+                ],
+                [
+                    10.114918474747475,
+                    9.918853811881188,
+                    9.940063643564356,
+                    9.933052267326733,
+                    9.950335178217822
+                ],
+                [
+                    10.133824828282828,
+                    9.911800534653466,
+                    9.991414524752475,
+                    10.0436841,
+                    9.872630607843137
+                ],
+                [
+                    9.930123465346535,
+                    9.798960165048543,
+                    10.00918652,
+                    10.05949952,
+                    10.106080363636364
+                ],
+                [
+                    10.001626792079207,
+                    9.880748264705883,
+                    9.98851000990099,
+                    10.08314702,
+                    10.000219673267326
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "768"
+        },
+        "primaryMetric" : {
+            "score" : 7.713759877220985,
+            "scoreError" : 0.10766544641185287,
+            "scoreConfidence" : [
+                7.606094430809132,
+                7.821425323632838
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.541538052631579,
+                "50.0" : 7.675958473282443,
+                "90.0" : 7.8338090484375,
+                "95.0" : 8.132122521529201,
+                "99.0" : 8.259885918032786,
+                "99.9" : 8.259885918032786,
+                "99.99" : 8.259885918032786,
+                "99.999" : 8.259885918032786,
+                "99.9999" : 8.259885918032786,
+                "100.0" : 8.259885918032786
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    7.6954013923076925,
+                    7.601220424242424,
+                    7.6217701363636365,
+                    7.8336764609375,
+                    7.659768328244275
+                ],
+                [
+                    7.675958473282443,
+                    7.645567290076336,
+                    7.78137472868217,
+                    7.7992181782945735,
+                    7.643842091603053
+                ],
+                [
+                    7.565544330827068,
+                    7.732733259541985,
+                    7.721934753846154,
+                    7.8308293984375,
+                    7.556958706766918
+                ],
+                [
+                    7.644522977272727,
+                    7.647412492424243,
+                    7.780729643410853,
+                    7.8340079296875,
+                    8.259885918032786
+                ],
+                [
+                    7.650831175572519,
+                    7.613339568181818,
+                    7.739920638461538,
+                    7.766010581395349,
+                    7.541538052631579
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "4"
+        },
+        "primaryMetric" : {
+            "score" : 10.045497262911974,
+            "scoreError" : 0.38775264260132025,
+            "scoreConfidence" : [
+                9.657744620310654,
+                10.433249905513295
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.64147760576923,
+                "50.0" : 9.792257,
+                "90.0" : 11.02915321236715,
+                "95.0" : 11.233872899138577,
+                "99.0" : 11.280411460674157,
+                "99.9" : 11.280411460674157,
+                "99.99" : 11.280411460674157,
+                "99.999" : 11.280411460674157,
+                "99.9999" : 11.280411460674157,
+                "100.0" : 11.280411460674157
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    11.280411460674157,
+                    11.125282922222222,
+                    10.965066739130435,
+                    10.96095047826087,
+                    10.77412259139785
+                ],
+                [
+                    9.957706554455445,
+                    9.768499514563107,
+                    9.819645107843137,
+                    9.74322086407767,
+                    9.642085711538462
+                ],
+                [
+                    10.00840064,
+                    9.886521637254901,
+                    9.764638718446601,
+                    9.662429298076923,
+                    9.64147760576923
+                ],
+                [
+                    10.06316787,
+                    9.999278237623763,
+                    9.792257,
+                    9.682507951923077,
+                    9.739108757281553
+                ],
+                [
+                    9.967023188118812,
+                    9.789188563106796,
+                    9.697888115384615,
+                    9.679841298076923,
+                    9.726710747572815
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "9"
+        },
+        "primaryMetric" : {
+            "score" : 10.10290856391041,
+            "scoreError" : 0.5597449688984849,
+            "scoreConfidence" : [
+                9.543163595011924,
+                10.662653532808894
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.39671561682243,
+                "50.0" : 9.664605596153846,
+                "90.0" : 11.196799246666668,
+                "95.0" : 11.208318222222223,
+                "99.0" : 11.20988938888889,
+                "99.9" : 11.20988938888889,
+                "99.99" : 11.20988938888889,
+                "99.999" : 11.20988938888889,
+                "99.9999" : 11.20988938888889,
+                "100.0" : 11.20988938888889
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.664605596153846,
+                    9.547790857142857,
+                    9.48242596226415,
+                    9.51939762264151,
+                    9.446690358490565
+                ],
+                [
+                    9.539604628571428,
+                    9.694077365384615,
+                    11.133968955555556,
+                    11.11628657142857,
+                    11.104750252747253
+                ],
+                [
+                    9.568269333333333,
+                    9.618163,
+                    10.150305252525252,
+                    11.144442522222223,
+                    11.20988938888889
+                ],
+                [
+                    9.713367582524272,
+                    9.56646800952381,
+                    9.598024171428571,
+                    9.467018849056604,
+                    9.39671561682243
+                ],
+                [
+                    9.628867442307692,
+                    9.763938757281553,
+                    11.191563966666667,
+                    11.204652166666667,
+                    11.101429868131868
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "15"
+        },
+        "primaryMetric" : {
+            "score" : 10.088004866778443,
+            "scoreError" : 0.1579000336799213,
+            "scoreConfidence" : [
+                9.930104833098522,
+                10.245904900458363
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.853795843137254,
+                "50.0" : 10.03614096,
+                "90.0" : 10.563833018947369,
+                "95.0" : 10.602499684210526,
+                "99.0" : 10.610467715789474,
+                "99.9" : 10.610467715789474,
+                "99.99" : 10.610467715789474,
+                "99.999" : 10.610467715789474,
+                "99.9999" : 10.610467715789474,
+                "100.0" : 10.610467715789474
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    10.08998267,
+                    9.994260485148516,
+                    9.993400178217822,
+                    10.140176636363636,
+                    10.610467715789474
+                ],
+                [
+                    10.19099691919192,
+                    9.916430336633663,
+                    10.10135144,
+                    10.03614096,
+                    10.550449957894736
+                ],
+                [
+                    10.09070899,
+                    9.98244699009901,
+                    9.98122700990099,
+                    9.995772,
+                    10.583907610526316
+                ],
+                [
+                    9.853795843137254,
+                    9.86708522330097,
+                    9.877564970588235,
+                    9.916354356435644,
+                    9.870255950980392
+                ],
+                [
+                    10.167687191919192,
+                    10.03018768,
+                    10.08711322,
+                    10.130525292929294,
+                    10.14183204040404
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.detectorThenFallback",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "768"
+        },
+        "primaryMetric" : {
+            "score" : 7.922828551662702,
+            "scoreError" : 0.3921167034954997,
+            "scoreConfidence" : [
+                7.530711848167202,
+                8.314945255158202
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.523104481203007,
+                "50.0" : 7.701676376923077,
+                "90.0" : 9.143476331068683,
+                "95.0" : 9.259195352030241,
+                "99.0" : 9.270394101851851,
+                "99.9" : 9.270394101851851,
+                "99.99" : 9.270394101851851,
+                "99.999" : 9.270394101851851,
+                "99.9999" : 9.270394101851851,
+                "100.0" : 9.270394101851851
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    7.639006045801526,
+                    7.625074977272727,
+                    7.7289305384615385,
+                    8.318279214876034,
+                    9.083750594594594
+                ],
+                [
+                    7.65323358778626,
+                    7.558923834586466,
+                    7.725144776923077,
+                    7.766809186046512,
+                    7.8604548828125
+                ],
+                [
+                    7.677493053435114,
+                    7.657948219696969,
+                    7.670041625954198,
+                    8.230807614754099,
+                    9.233064935779817
+                ],
+                [
+                    7.647783290076336,
+                    7.614867045454545,
+                    7.754589325581395,
+                    7.735254023076923,
+                    7.523104481203007
+                ],
+                [
+                    7.566206,
+                    7.596719984848485,
+                    7.701676376923077,
+                    8.231156073770492,
+                    9.270394101851851
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "4"
+        },
+        "primaryMetric" : {
+            "score" : 3.5963478619824887,
+            "scoreError" : 0.04150671092182655,
+            "scoreConfidence" : [
+                3.5548411510606623,
+                3.637854572904315
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4973440454545455,
+                "50.0" : 3.5886404408602153,
+                "90.0" : 3.67344256040724,
+                "95.0" : 3.6915456221646408,
+                "99.0" : 3.6947936125461256,
+                "99.9" : 3.6947936125461256,
+                "99.99" : 3.6947936125461256,
+                "99.999" : 3.6947936125461256,
+                "99.9999" : 3.6947936125461256,
+                "100.0" : 3.6947936125461256
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.5951461362007167,
+                    3.657142386861314,
+                    3.6377614763636363,
+                    3.523012176056338,
+                    3.55975890747331
+                ],
+                [
+                    3.6651432189781024,
+                    3.5737573214285714,
+                    3.5311706408450703,
+                    3.548685413427562,
+                    3.612755007220217
+                ],
+                [
+                    3.6839669779411763,
+                    3.6288743550724636,
+                    3.5723182989323843,
+                    3.4973440454545455,
+                    3.5915444265232974
+                ],
+                [
+                    3.637823373188406,
+                    3.664131684981685,
+                    3.5886404408602153,
+                    3.551210645390071,
+                    3.554436514184397
+                ],
+                [
+                    3.584903186379928,
+                    3.6947936125461256,
+                    3.666426282051282,
+                    3.5433515406360425,
+                    3.544598480565371
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "9"
+        },
+        "primaryMetric" : {
+            "score" : 3.6121318971689425,
+            "scoreError" : 0.061292909768481604,
+            "scoreConfidence" : [
+                3.5508389874004607,
+                3.6734248069374242
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4673940968858132,
+                "50.0" : 3.6085636043165468,
+                "90.0" : 3.748580890636704,
+                "95.0" : 3.762119373211118,
+                "99.0" : 3.767186067669173,
+                "99.9" : 3.767186067669173,
+                "99.99" : 3.767186067669173,
+                "99.999" : 3.767186067669173,
+                "99.9999" : 3.767186067669173,
+                "100.0" : 3.767186067669173
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.6017257086330936,
+                    3.63164043115942,
+                    3.569206765124555,
+                    3.5117374105263157,
+                    3.56257114893617
+                ],
+                [
+                    3.6260793369565216,
+                    3.7474367602996255,
+                    3.590349164874552,
+                    3.4722210934256057,
+                    3.5135162736842105
+                ],
+                [
+                    3.6723428205128203,
+                    3.6959768081180813,
+                    3.666260405109489,
+                    3.538354784452297,
+                    3.6471965163636364
+                ],
+                [
+                    3.750297086142322,
+                    3.767186067669173,
+                    3.650468621818182,
+                    3.5838764285714286,
+                    3.5535823971631206
+                ],
+                [
+                    3.6648496886446886,
+                    3.6532963467153285,
+                    3.5571676631205675,
+                    3.4673940968858132,
+                    3.6085636043165468
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "15"
+        },
+        "primaryMetric" : {
+            "score" : 3.5917881378883876,
+            "scoreError" : 0.062371163128774096,
+            "scoreConfidence" : [
+                3.5294169747596134,
+                3.654159301017162
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4657780761245673,
+                "50.0" : 3.5688102135231317,
+                "90.0" : 3.7394305661361957,
+                "95.0" : 3.762443058988764,
+                "99.0" : 3.764558357142857,
+                "99.9" : 3.764558357142857,
+                "99.99" : 3.764558357142857,
+                "99.999" : 3.764558357142857,
+                "99.9999" : 3.764558357142857,
+                "100.0" : 3.764558357142857
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.75750736329588,
+                    3.710006122222222,
+                    3.5751588392857143,
+                    3.509492311188811,
+                    3.5682670747330962
+                ],
+                [
+                    3.7273793680297396,
+                    3.764558357142857,
+                    3.5898270824372758,
+                    3.5290337570422534,
+                    3.536326512367491
+                ],
+                [
+                    3.6418909563636364,
+                    3.5754767642857144,
+                    3.564864053380783,
+                    3.511024,
+                    3.5669818790035586
+                ],
+                [
+                    3.6919693173431734,
+                    3.609613751798561,
+                    3.5688102135231317,
+                    3.4657780761245673,
+                    3.497097470383275
+                ],
+                [
+                    3.6217832093862814,
+                    3.549797829787234,
+                    3.6290862971014493,
+                    3.5035625804195805,
+                    3.52941026056338
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "768"
+        },
+        "primaryMetric" : {
+            "score" : 3.6118245660512884,
+            "scoreError" : 0.05544340918752834,
+            "scoreConfidence" : [
+                3.55638115686376,
+                3.6672679752388166
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4958688780487805,
+                "50.0" : 3.587741340501792,
+                "90.0" : 3.697371101845018,
+                "95.0" : 3.7621616403597784,
+                "99.0" : 3.789051375,
+                "99.9" : 3.789051375,
+                "99.99" : 3.789051375,
+                "99.999" : 3.789051375,
+                "99.9999" : 3.789051375,
+                "100.0" : 3.789051375
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.789051375,
+                    3.679860448529412,
+                    3.6676467372262773,
+                    3.572021110320285,
+                    3.570894288256228
+                ],
+                [
+                    3.67458541025641,
+                    3.6391499454545455,
+                    3.576629685714286,
+                    3.5349772402826853,
+                    3.5744207
+                ],
+                [
+                    3.6845601323529413,
+                    3.65181648,
+                    3.641643989090909,
+                    3.523952968309859,
+                    3.560322769503546
+                ],
+                [
+                    3.6713984945054947,
+                    3.699418926199262,
+                    3.587741340501792,
+                    3.52636061971831,
+                    3.4958688780487805
+                ],
+                [
+                    3.641873418181818,
+                    3.696005885608856,
+                    3.587392695340502,
+                    3.5476985709219857,
+                    3.500322041958042
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "4"
+        },
+        "primaryMetric" : {
+            "score" : 3.6207526502006817,
+            "scoreError" : 0.07629976977958157,
+            "scoreConfidence" : [
+                3.5444528804211,
+                3.6970524199802632
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4809568125,
+                "50.0" : 3.626791481884058,
+                "90.0" : 3.7493682527437997,
+                "95.0" : 3.8585019239036304,
+                "99.0" : 3.89456953307393,
+                "99.9" : 3.89456953307393,
+                "99.99" : 3.89456953307393,
+                "99.999" : 3.89456953307393,
+                "99.9999" : 3.89456953307393,
+                "100.0" : 3.89456953307393
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.7743441691729323,
+                    3.667801322344322,
+                    3.633071945652174,
+                    3.513909733333333,
+                    3.5305428450704226
+                ],
+                [
+                    3.7140550037037037,
+                    3.6251870398550725,
+                    3.568170864768683,
+                    3.5134283986013988,
+                    3.5309861408450702
+                ],
+                [
+                    3.717049848148148,
+                    3.66637858974359,
+                    3.531635158450704,
+                    3.4809568125,
+                    3.639552810909091
+                ],
+                [
+                    3.7246359925650556,
+                    3.6394118945454546,
+                    3.528289003521127,
+                    3.5423092756183747,
+                    3.634461144927536
+                ],
+                [
+                    3.732717641791045,
+                    3.89456953307393,
+                    3.626791481884058,
+                    3.4812018090277776,
+                    3.6073577949640288
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "9"
+        },
+        "primaryMetric" : {
+            "score" : 3.6189633592452863,
+            "scoreError" : 0.05366002145202723,
+            "scoreConfidence" : [
+                3.5653033377932593,
+                3.6726233806973134
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.5256086584507043,
+                "50.0" : 3.625935657039711,
+                "90.0" : 3.7272538161048687,
+                "95.0" : 3.761095721289178,
+                "99.0" : 3.7666718345864663,
+                "99.9" : 3.7666718345864663,
+                "99.99" : 3.7666718345864663,
+                "99.999" : 3.7666718345864663,
+                "99.9999" : 3.7666718345864663,
+                "100.0" : 3.7666718345864663
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.7133665,
+                    3.684486757352941,
+                    3.5780162321428572,
+                    3.5581797127659573,
+                    3.5256086584507043
+                ],
+                [
+                    3.699764900369004,
+                    3.6291315036231886,
+                    3.569542975088968,
+                    3.5520299574468086,
+                    3.636875010869565
+                ],
+                [
+                    3.6913501291512913,
+                    3.6563026532846714,
+                    3.5800777785714284,
+                    3.5396799436619717,
+                    3.625935657039711
+                ],
+                [
+                    3.7666718345864663,
+                    3.6645021025641027,
+                    3.6346505688405797,
+                    3.555415014184397,
+                    3.526751735915493
+                ],
+                [
+                    3.748084790262172,
+                    3.5582818226950357,
+                    3.5570166666666667,
+                    3.5541002624113474,
+                    3.668260813186813
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "15"
+        },
+        "primaryMetric" : {
+            "score" : 3.6001177185003765,
+            "scoreError" : 0.047354574657426984,
+            "scoreConfidence" : [
+                3.5527631438429497,
+                3.6474722931578034
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.506724867132867,
+                "50.0" : 3.614054371841155,
+                "90.0" : 3.680867086565833,
+                "95.0" : 3.702486102917862,
+                "99.0" : 3.7067641296296294,
+                "99.9" : 3.7067641296296294,
+                "99.99" : 3.7067641296296294,
+                "99.999" : 3.7067641296296294,
+                "99.9999" : 3.7067641296296294,
+                "100.0" : 3.7067641296296294
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.7067641296296294,
+                    3.656983729927007,
+                    3.6018715755395685,
+                    3.5783979,
+                    3.553451904255319
+                ],
+                [
+                    3.6449629672727273,
+                    3.6350338695652176,
+                    3.614054371841155,
+                    3.5098159825174826,
+                    3.5142940280701755
+                ],
+                [
+                    3.6925040405904057,
+                    3.672203161172161,
+                    3.6199305198555956,
+                    3.5303429366197183,
+                    3.5178533228070177
+                ],
+                [
+                    3.6600406861313868,
+                    3.6731091172161174,
+                    3.5162182350877194,
+                    3.6259248007246376,
+                    3.5255131830985915
+                ],
+                [
+                    3.588540200716846,
+                    3.64273464,
+                    3.629835391304348,
+                    3.506724867132867,
+                    3.585837401433692
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.flatFloor",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "768"
+        },
+        "primaryMetric" : {
+            "score" : 3.6039720228871817,
+            "scoreError" : 0.06256903934357894,
+            "scoreConfidence" : [
+                3.5414029835436027,
+                3.6665410622307606
+            ],
+            "scorePercentiles" : {
+                "0.0" : 3.4125687482993197,
+                "50.0" : 3.5893831935483873,
+                "90.0" : 3.721378304089219,
+                "95.0" : 3.7370259781057538,
+                "99.0" : 3.743014014925373,
+                "99.9" : 3.743014014925373,
+                "99.99" : 3.743014014925373,
+                "99.999" : 3.743014014925373,
+                "99.9999" : 3.743014014925373,
+                "100.0" : 3.743014014925373
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    3.7040580740740743,
+                    3.6683049523809523,
+                    3.743014014925373,
+                    3.463800197231834,
+                    3.5377997137809185
+                ],
+                [
+                    3.72026124535316,
+                    3.664980736263736,
+                    3.5497284645390073,
+                    3.4125687482993197,
+                    3.590081089605735
+                ],
+                [
+                    3.7230538921933087,
+                    3.5893831935483873,
+                    3.631051768115942,
+                    3.492431905923345,
+                    3.5851204372759855
+                ],
+                [
+                    3.568453540925267,
+                    3.7120616962962965,
+                    3.576778103571429,
+                    3.553502039007092,
+                    3.5737255035714286
+                ],
+                [
+                    3.634181231884058,
+                    3.662001923357664,
+                    3.5653444733096085,
+                    3.5604115978647686,
+                    3.6172020288808664
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "4"
+        },
+        "primaryMetric" : {
+            "score" : 10.028096930229138,
+            "scoreError" : 0.37274290548805267,
+            "scoreConfidence" : [
+                9.655354024741085,
+                10.400839835717191
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.65076941346154,
+                "50.0" : 9.826673735294118,
+                "90.0" : 10.964754978595318,
+                "95.0" : 11.191600017458946,
+                "99.0" : 11.26283113483146,
+                "99.9" : 11.26283113483146,
+                "99.99" : 11.26283113483146,
+                "99.999" : 11.26283113483146,
+                "99.9999" : 11.26283113483146,
+                "100.0" : 11.26283113483146
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    11.26283113483146,
+                    11.025394076923076,
+                    10.924328913043478,
+                    10.859564752688172,
+                    10.799617182795698
+                ],
+                [
+                    9.941581346534653,
+                    9.879147205882353,
+                    9.811570519607843,
+                    9.666595894230769,
+                    9.71958486407767
+                ],
+                [
+                    10.00377105,
+                    9.856400156862746,
+                    9.819062960784313,
+                    9.689696961538461,
+                    9.657340634615384
+                ],
+                [
+                    9.890627921568628,
+                    9.838377823529411,
+                    9.730719223300971,
+                    9.720566194174758,
+                    9.721976466019418
+                ],
+                [
+                    9.952337049504951,
+                    9.826673735294118,
+                    9.65076941346154,
+                    9.770182543689321,
+                    9.683705230769231
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "9"
+        },
+        "primaryMetric" : {
+            "score" : 10.1634038661539,
+            "scoreError" : 0.49812186301648625,
+            "scoreConfidence" : [
+                9.665282003137413,
+                10.661525729170386
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.370119644859813,
+                "50.0" : 9.732854572815533,
+                "90.0" : 10.992532148662209,
+                "95.0" : 11.04328156923077,
+                "99.0" : 11.058461945054946,
+                "99.9" : 11.058461945054946,
+                "99.99" : 11.058461945054946,
+                "99.999" : 11.058461945054946,
+                "99.9999" : 11.058461945054946,
+                "100.0" : 11.058461945054946
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.63163185576923,
+                    9.584767838095239,
+                    10.06592121,
+                    10.915815119565217,
+                    10.834898150537635
+                ],
+                [
+                    9.66822153846154,
+                    9.732854572815533,
+                    10.935066739130434,
+                    10.916388913043479,
+                    11.058461945054946
+                ],
+                [
+                    9.583210314285715,
+                    9.560998914285713,
+                    9.606722638095238,
+                    9.441114452830188,
+                    9.370119644859813
+                ],
+                [
+                    9.55659338095238,
+                    9.473289575471698,
+                    10.08728885,
+                    10.968580967391304,
+                    10.982313119565218
+                ],
+                [
+                    9.626337413461538,
+                    9.710233873786407,
+                    10.85415506451613,
+                    11.007860692307693,
+                    10.912249869565217
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "15"
+        },
+        "primaryMetric" : {
+            "score" : 9.777021783651891,
+            "scoreError" : 0.13394532033901715,
+            "scoreConfidence" : [
+                9.643076463312875,
+                9.910967103990908
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.52916079047619,
+                "50.0" : 9.724728427184466,
+                "90.0" : 10.029611308,
+                "95.0" : 10.099023827242425,
+                "99.0" : 10.118560606060607,
+                "99.9" : 10.118560606060607,
+                "99.99" : 10.118560606060607,
+                "99.999" : 10.118560606060607,
+                "99.9999" : 10.118560606060607,
+                "100.0" : 10.118560606060607
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.653037326923076,
+                    9.538886371428571,
+                    9.634500769230769,
+                    9.662681548076923,
+                    9.530788238095239
+                ],
+                [
+                    9.724728427184466,
+                    9.575826628571429,
+                    9.655401586538462,
+                    9.721518592233009,
+                    9.727826048543688
+                ],
+                [
+                    10.00702699,
+                    9.85663375490196,
+                    10.01372684,
+                    9.921044188118811,
+                    9.911064198019801
+                ],
+                [
+                    9.661392269230769,
+                    9.686166701923076,
+                    9.73817395145631,
+                    9.65214860576923,
+                    9.52916079047619
+                ],
+                [
+                    9.958829742574258,
+                    9.953017099009902,
+                    9.939965306930693,
+                    10.05343801,
+                    10.118560606060607
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "last",
+            "k" : "768"
+        },
+        "primaryMetric" : {
+            "score" : 7.771253195652571,
+            "scoreError" : 0.25316707138712874,
+            "scoreConfidence" : [
+                7.518086124265443,
+                8.0244202670397
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.477025835820895,
+                "50.0" : 7.686046938931297,
+                "90.0" : 8.367914649058962,
+                "95.0" : 8.858084374699068,
+                "99.0" : 9.040322783783784,
+                "99.9" : 9.040322783783784,
+                "99.99" : 9.040322783783784,
+                "99.999" : 9.040322783783784,
+                "99.9999" : 9.040322783783784,
+                "100.0" : 9.040322783783784
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    7.595534196969697,
+                    7.687325618320611,
+                    7.725956553846154,
+                    7.7437360153846155,
+                    7.477025835820895
+                ],
+                [
+                    7.638391780303031,
+                    7.635111583333333,
+                    7.699692230769231,
+                    8.324616801652892,
+                    9.040322783783784
+                ],
+                [
+                    7.688110732824428,
+                    7.617807212121212,
+                    7.667223030534351,
+                    7.707221492307692,
+                    7.652769572519084
+                ],
+                [
+                    7.620993068181818,
+                    7.608778651515151,
+                    7.686046938931297,
+                    7.745171861538462,
+                    7.564914030075188
+                ],
+                [
+                    7.575913187969925,
+                    7.6568043129770995,
+                    7.686614824427481,
+                    7.80238615503876,
+                    8.432861420168067
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "4"
+        },
+        "primaryMetric" : {
+            "score" : 10.038244759764186,
+            "scoreError" : 0.3970812107239311,
+            "scoreConfidence" : [
+                9.641163549040256,
+                10.435325970488117
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.635090375,
+                "50.0" : 9.807101215686275,
+                "90.0" : 11.113566273064713,
+                "95.0" : 11.194716954444443,
+                "99.0" : 11.20484681111111,
+                "99.9" : 11.20484681111111,
+                "99.99" : 11.20484681111111,
+                "99.999" : 11.20484681111111,
+                "99.9999" : 11.20484681111111,
+                "100.0" : 11.20484681111111
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.961291376237623,
+                    9.91643311881188,
+                    9.740036796116504,
+                    9.752267980582523,
+                    9.72397195145631
+                ],
+                [
+                    11.20484681111111,
+                    11.171080622222222,
+                    11.075223373626374,
+                    10.917793847826086,
+                    10.914357673913043
+                ],
+                [
+                    9.809980068627452,
+                    9.689152057692308,
+                    9.807101215686275,
+                    9.762390242718446,
+                    9.666805451923077
+                ],
+                [
+                    9.974806099009902,
+                    9.809926264705883,
+                    9.70115726923077,
+                    9.635090375,
+                    9.72021877669903
+                ],
+                [
+                    9.94803712871287,
+                    9.836252696078432,
+                    9.762698330097088,
+                    9.735978601941747,
+                    9.71922086407767
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "9"
+        },
+        "primaryMetric" : {
+            "score" : 10.33034636812601,
+            "scoreError" : 0.5411121652177672,
+            "scoreConfidence" : [
+                9.789234202908244,
+                10.871458533343777
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.379958644859814,
+                "50.0" : 9.828741352941176,
+                "90.0" : 11.113473223638584,
+                "95.0" : 11.175089952222223,
+                "99.0" : 11.188496555555556,
+                "99.9" : 11.188496555555556,
+                "99.99" : 11.188496555555556,
+                "99.999" : 11.188496555555556,
+                "99.9999" : 11.188496555555556,
+                "100.0" : 11.188496555555556
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.6028426,
+                    9.737411378640777,
+                    11.044414032967033,
+                    10.99614895652174,
+                    11.143807877777778
+                ],
+                [
+                    9.828741352941176,
+                    9.684180375,
+                    9.590268190476191,
+                    9.479073066037737,
+                    9.379958644859814
+                ],
+                [
+                    9.742714417475728,
+                    9.725645320388349,
+                    11.093250120879121,
+                    11.006575593406593,
+                    11.08419323076923
+                ],
+                [
+                    9.662937346153846,
+                    9.68174410576923,
+                    11.089454978021978,
+                    11.082454153846154,
+                    11.188496555555556
+                ],
+                [
+                    9.683066538461539,
+                    9.732686524271845,
+                    11.01382354945055,
+                    10.982410847826086,
+                    11.002359445652173
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "15"
+        },
+        "primaryMetric" : {
+            "score" : 10.036244151159641,
+            "scoreError" : 0.18461880496379496,
+            "scoreConfidence" : [
+                9.851625346195846,
+                10.220862956123437
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.718270485436893,
+                "50.0" : 10.04889954,
+                "90.0" : 10.583222136842105,
+                "95.0" : 10.593939166315788,
+                "99.0" : 10.595202936842105,
+                "99.9" : 10.595202936842105,
+                "99.99" : 10.595202936842105,
+                "99.999" : 10.595202936842105,
+                "99.9999" : 10.595202936842105,
+                "100.0" : 10.595202936842105
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    9.91330900990099,
+                    9.768898737864077,
+                    9.744577145631068,
+                    9.751439883495145,
+                    9.718270485436893
+                ],
+                [
+                    10.08310479,
+                    10.08982614,
+                    10.07972719,
+                    10.04889954,
+                    10.590990368421053
+                ],
+                [
+                    10.113926707070707,
+                    10.06747147,
+                    10.04251203,
+                    10.12253577,
+                    10.595202936842105
+                ],
+                [
+                    10.107572292929293,
+                    10.0130275,
+                    10.08877466,
+                    10.06380064,
+                    10.578043315789474
+                ],
+                [
+                    9.834138274509804,
+                    9.785471058252428,
+                    9.895536705882353,
+                    9.929393950495049,
+                    9.879653176470589
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dev.hardwood.benchmarks.FixedSizeListFallbackBenchmark.regularNoDetector",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 5,
+        "jvm" : "/home/build/.sdkman/candidates/java/25-tem/bin/java",
+        "jvmArgs" : [
+            "-Xms2g",
+            "-Xmx2g",
+            "--add-modules",
+            "jdk.incubator.vector"
+        ],
+        "jdkVersion" : "25",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25+36-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "1 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "1 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "dataDir" : "/tmp/fsl-micro-data",
+            "differPos" : "second",
+            "k" : "768"
+        },
+        "primaryMetric" : {
+            "score" : 7.801092101249887,
+            "scoreError" : 0.27246005718881794,
+            "scoreConfidence" : [
+                7.5286320440610695,
+                8.073552158438705
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.4502904,
+                "50.0" : 7.7049498,
+                "90.0" : 8.286806523966943,
+                "95.0" : 9.010392499020508,
+                "99.0" : 9.31911748148148,
+                "99.9" : 9.31911748148148,
+                "99.99" : 9.31911748148148,
+                "99.999" : 9.31911748148148,
+                "99.9999" : 9.31911748148148,
+                "100.0" : 9.31911748148148
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    7.664865824427481,
+                    7.644917412213741,
+                    7.746914323076923,
+                    8.29003420661157,
+                    9.31911748148148
+                ],
+                [
+                    7.67073646969697,
+                    7.656386446969697,
+                    7.788707496124031,
+                    7.7049498,
+                    7.682377122137405
+                ],
+                [
+                    7.706581661538461,
+                    7.674480290076336,
+                    7.7476699,
+                    7.758858728682171,
+                    8.28465473553719
+                ],
+                [
+                    7.623262856060606,
+                    7.638255351145038,
+                    7.676792290076336,
+                    7.785092031007752,
+                    7.7678561627906975
+                ],
+                [
+                    7.618495666666667,
+                    7.6628092595419846,
+                    7.711767415384616,
+                    7.7514292,
+                    7.4502904
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+

@@ -1,0 +1,11 @@
+pass	benchmark	contender	ms_per_op	m_rows_per_s	mb_per_s
+unpinned	FixedSizeListScanBenchmark	columnBaseline[3]	513.395	-	-
+unpinned	FixedSizeListScanBenchmark	columnBaseline[768]	395.542	-	-
+unpinned	FixedSizeListScanBenchmark	columnFast[3]	191.073	-	-
+unpinned	FixedSizeListScanBenchmark	columnFast[768]	134.737	-	-
+unpinned	FixedSizeListScanBenchmark	flatFloor[3]	134.569	-	-
+unpinned	FixedSizeListScanBenchmark	flatFloor[768]	134.136	-	-
+unpinned	FixedSizeListScanBenchmark	rowBaseline[3]	730.104	-	-
+unpinned	FixedSizeListScanBenchmark	rowBaseline[768]	609.492	-	-
+unpinned	FixedSizeListScanBenchmark	rowFast[3]	674.540	-	-
+unpinned	FixedSizeListScanBenchmark	rowFast[768]	139.229	-	-

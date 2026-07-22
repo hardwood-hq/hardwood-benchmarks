@@ -5,9 +5,10 @@ The lead visual for the post: grouped bars of read throughput (M float32 values/
 higher is better) at two vector lengths (default n=3 "coordinates" and n=768
 "embeddings"). For each reader (column, row) the baseline and fast bars are shown at
 each width, with a plain flat-column read of the same values as a dashed reference
-line. The point the chart makes: the win GROWS with vector width — modest for short
-vectors, large for embeddings, and largest for the row reader (which additionally
-stops materializing a list object per record).
+line. The point the chart makes: the fast path closes the gap to a plain flat column
+— a steady ~2.5x for the column reader across widths, and for the row reader growing
+from modest at short vectors to reaching the flat-column floor at embedding width
+(the row reader additionally stops materializing a list object per record).
 
 Reads the ms/op TSV (default
 target/bench-throughput-FixedSizeListScanBenchmark.tsv) and the `values` denominator
@@ -144,11 +145,18 @@ def build(data, ks, values, machine, java, hardwood, compression=None):
     subst = {"gridlines": grid, "ticklabels": ticklabels,
              "bars": emit_bars(tput, ks, scale),
              "floor_y": "{:.1f}".format(Y0 - floor * scale), "floor_v": fmt(floor)}
-    subst["title"] = "Reading fixed-size-list vectors: the win grows with width"
-    subst["subtitle"] = ("Read throughput (higher is better) at n={} (coordinates) and "
-                         "n={} (embeddings) · {:.0f}M values/file".format(ks[0], ks[1], values / 1e6))
+    subst["title"] = "Reading fixed-length vectors: fast path vs. a flat column"
     codec = (" · " + compression.upper()) if compression else ""
-    subst["subline"] = (machine + " · warm cache" + codec + (" · " + java if java else "")
+    # Line 2 ("what we see"): the plotted metric and the conditions, codec included.
+    subst["subtitle"] = ("Read throughput (higher is better) at n={} (coordinates) and "
+                         "n={} (embeddings) · {:.0f}M values/file{}".format(
+                             ks[0], ks[1], values / 1e6, codec))
+    # Line 3 (context): machine, mode, cache, JVM, Hardwood build — kept identical in
+    # shape to the sweep chart's third line. Drop the JDK vendor parenthetical
+    # ("Java 25 (Eclipse Adoptium)" -> "Java 25") so the line does not overflow.
+    java_short = java.split(" (")[0] if java else ""
+    subst["subline"] = (machine + " · warm cache"
+                        + (" · " + java_short if java_short else "")
                         + (" · Hardwood " + hardwood if hardwood else ""))
     return subst
 
