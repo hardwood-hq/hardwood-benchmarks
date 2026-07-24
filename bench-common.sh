@@ -278,6 +278,7 @@ bench_epilogue_throughput() {
     echo "Only Hardwood is timed pinned. The single-threaded baselines show '-' for"
     echo "1-core: not separately measured — pinning doesn't change a single-threaded"
     echo "reader, so use their default value as the per-core number too."
+    echo "MB/s is on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate."
     echo "====================================================================="
     awk -F'\t' '
       NR==1 { next }

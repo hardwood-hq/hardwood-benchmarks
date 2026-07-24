@@ -29,9 +29,12 @@ import org.openjdk.jmh.results.RunResult;
 ///
 /// JMH reports `ms/op` only. For a **full-scan** benchmark every contender
 /// processes the same rows and bytes, so throughput is just `rows ÷ time` and
-/// `bytes ÷ time` over a shared denominator. (Filtered scans are not full
-/// scans — their honest denominators are rows-returned and surviving-page
-/// bytes — so they are reported as `ms/op` and not handled here.)
+/// `bytes ÷ time` over a shared denominator. Here `bytes` is the **on-disk
+/// (compressed) file size** ([#totalBytes(List)]), so `MB/s` is a full-scan read
+/// rate over the bytes actually pulled from storage — not a decode rate over the
+/// uncompressed payload, and honest only because a full scan touches every column.
+/// (Filtered scans are not full scans — their honest denominators are rows-returned
+/// and surviving-page bytes — so they are reported as `ms/op` and not handled here.)
 public final class BenchReport {
 
     private BenchReport() {
@@ -179,7 +182,8 @@ public final class BenchReport {
         System.out.println();
         System.out.println("=== Throughput (derived: rows / avg time, bytes / avg time) ===");
         System.out.printf("    dataset: %,d rows, %,.1f MB%n", rows, mb);
-        System.out.printf("    %-44s %10s %12s %10s%n", "Benchmark", "ms/op", "M rows/s", "MB/s");
+        System.out.println("    MB/s = on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate.");
+        System.out.printf("    %-44s %10s %12s %10s%n", "Benchmark", "ms/op", "M rows/s", "MB/s disk");
         for (RunResult result : results) {
             String fullName = result.getParams().getBenchmark();
             if (!fullName.startsWith(prefix)) {
@@ -231,11 +235,17 @@ public final class BenchReport {
     }
 
     /// Append per-contender **ms/op** to the TSV at `-Dperf.results`, tagged with
-    /// the `-Dperf.pass`. The throughput columns are written as `-`: a fixed
-    /// rows/bytes denominator is selectivity-dependent and would mislead, so the
-    /// runner renders a lower-is-better ms/op chart instead. JMH params (e.g.
-    /// `selectivity`) are folded into the contender label, one row per
-    /// (method, params) combination. No-op when `-Dperf.results` is unset.
+    /// the `-Dperf.pass`. The `m_rows_per_s`/`mb_per_s` columns are written as `-`
+    /// because this path serves benches whose throughput denominator is not the
+    /// footer's records/on-disk-bytes: the filtered scan's honest denominator is
+    /// selectivity-dependent (rows-returned / surviving-page bytes), and the
+    /// fixed-size-list scan measures leaf **values** (constant across the `k`-sweep,
+    /// whereas the record count is `values / k` and so varies with `k`). Those
+    /// benches record their own denominator in the meta sidecar and derive
+    /// throughput in their chart generator; the runner renders a lower-is-better
+    /// ms/op chart. JMH params (e.g. `selectivity`, `k`) are folded into the
+    /// contender label, one row per (method, params) combination. No-op when
+    /// `-Dperf.results` is unset.
     public static void appendMsPerOpTsv(Collection<RunResult> results, Class<?> benchmark) {
         String resultsPath = System.getProperty("perf.results");
         if (resultsPath == null || resultsPath.isBlank()) {
