@@ -247,7 +247,7 @@ public class FlatScanBenchmark {
     /// reader's batch size (0/unset = Hardwood's default); shrinking it below the
     /// cache size is the no-profiler way to test whether the single-core columnar
     /// throughput is bound by re-reading decoded batches that overflow the cache.
-    private ColumnReaders buildColumnReaders(ParquetFileReader reader) {
+    private ColumnReaders buildColumnReaders(ParquetFileReader reader) throws IOException {
         ParquetFileReader.ColumnReadersBuilder builder = reader.buildColumnReaders(ColumnProjection.all());
         int batchSize = Integer.getInteger("perf.batchSize", 0);
         if (batchSize > 0) {
