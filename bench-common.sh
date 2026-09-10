@@ -58,6 +58,13 @@ BENCH_COMMON_USAGE="  --warmup N        JMH warmup iterations (default 3)
   --machine LABEL   hardware label recorded in the meta sidecar for the chart
                     subtitle (default: auto-detected CPU model + core count). The
                     chart derives all-cores vs single-core from the pass itself.
+  --hardwood-version V
+                    hardwood-core version to resolve and measure, overriding
+                    <hardwood.version> in pom.xml (e.g. 1.0.0.CR1). A released
+                    version comes from Maven Central; a -SNAPSHOT must be
+                    installed locally first. The version actually resolved is
+                    recorded in the meta sidecar, so compare-runs.py can check
+                    that two snapshots really do differ.
   --no-pin          all-cores pass only (skip the taskset-pinned single-core pass)
   --pin-only        taskset-pinned single-core pass only (skip the all-cores pass);
                     handy for 1-core profiling. Needs taskset (Linux).
@@ -101,6 +108,18 @@ bench_parse_args() {
         ;;
       --machine=*)
         BENCH_MACHINE="${1#*=}"
+        shift
+        ;;
+      --hardwood-version)
+        if (( $# < 2 )); then
+          echo "Option --hardwood-version needs a value (try --help)" >&2
+          exit 2
+        fi
+        BENCH_HARDWOOD_VERSION="$2"
+        shift 2
+        ;;
+      --hardwood-version=*)
+        BENCH_HARDWOOD_VERSION="${1#*=}"
         shift
         ;;
       --*)
@@ -152,9 +171,38 @@ bench_parse_args() {
 BENCH_RESULTS=""
 
 # Compile and resolve the runtime classpath into $CP. Call once per run.
+#
+# --hardwood-version reaches Maven here and nowhere else: hardwood.version is a
+# pom property, so it has to be set on these two invocations rather than passed
+# through to the JVM like the -Dperf.* flags. A -D on the run script's own command
+# line lands on `java`, where nothing reads it.
 bench_build() {
-  ./mvnw -q -ntp compile
-  ./mvnw -q -ntp dependency:build-classpath -Dmdep.outputFile=target/cp.txt
+  local mvn_args=()
+  [ -n "${BENCH_HARDWOOD_VERSION:-}" ] && mvn_args+=("-Dhardwood.version=$BENCH_HARDWOOD_VERSION")
+
+  # The benchmark sources compile against hardwood-core's API, so classes left
+  # over from a different version can survive an incremental build and then fail
+  # at run time with NoSuchMethodError — or, worse, not fail at all. Drop them
+  # whenever the requested version changes. Only target/classes and the resolved
+  # classpath go; the generated fixtures and downloaded corpora under target/ stay.
+  local stamp="target/.hardwood-version"
+  local want="${BENCH_HARDWOOD_VERSION:-<pom>}"
+  if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$want" ]; then
+    rm -rf target/classes target/cp.txt
+  fi
+
+  if ! ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" compile; then
+    if [ -n "${BENCH_HARDWOOD_VERSION:-}" ]; then
+      echo >&2
+      echo "Build failed against hardwood-core $BENCH_HARDWOOD_VERSION." >&2
+      echo "The benchmark sources track the current API, so a benchmark using something" >&2
+      echo "that version does not have will not compile — see the errors above for which." >&2
+      echo "A version comparison covers the benchmarks that compile against both sides." >&2
+    fi
+    exit 1
+  fi
+  ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" dependency:build-classpath -Dmdep.outputFile=target/cp.txt
+  printf '%s\n' "$want" > "$stamp"
   CP="target/classes:$(cat target/cp.txt)"
 }
 
