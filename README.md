@@ -29,9 +29,10 @@ before a measurement run to prove agreement.
 
 - JDK 21 or newer (`java -version`); tested on 25.
 - Bundled Maven wrapper (`./mvnw`) and run scripts — no separate Maven install.
-- `dev.hardwood:hardwood-core` resolves at `<hardwood.version>` in `pom.xml`.
-  Released versions (e.g. `1.0.0.CR1`) come from Maven Central; a `-SNAPSHOT`
-  must first be installed locally from a Hardwood checkout:
+- `dev.hardwood:hardwood-core` resolves at `<hardwood.version>` in `pom.xml`, or
+  at `--hardwood-version` when a run passes one. Released versions (e.g.
+  `1.0.0.CR1`) come from Maven Central; a `-SNAPSHOT` must first be installed
+  locally from a Hardwood checkout:
   ```sh
   ./mvnw -pl core -am install -Dquick
   ```
@@ -229,11 +230,73 @@ selects DataPageV1 (default V2); both are fast-pathed.
   (baseline ÷ fast) vs. vector length `k`, one line per reader — shows the win holds
   across vector lengths.
 
+## Comparing versions
+
+Beyond backing a post, a run is evidence about one build of Hardwood against
+another — a regression, or an improvement. Two pieces make that comparison:
+
+**Pick the version at run time.** `--hardwood-version` overrides
+`<hardwood.version>` from the command line, so a version switch is not a `pom.xml`
+edit:
+
+```sh
+./run-flat.sh --hardwood-version 1.0.0.Final       # a release, from Maven Central
+./run-flat.sh --hardwood-version 1.1.0-SNAPSHOT    # a local install, see Prerequisites
+```
+
+It reaches Maven, not the JVM — `hardwood.version` is a pom property, so a bare
+`-Dhardwood.version=…` on the command line would land on `java` where nothing
+reads it, and the run would quietly measure the pom's version instead. The
+benchmark classes are recompiled whenever the requested version changes, since
+they track the current API: a benchmark using something a version does not have
+fails the build rather than the run. That bounds a comparison to the benchmarks
+whose sources compile against both sides.
+
+Two builds of the same `-SNAPSHOT` are told apart by the git commit the meta
+sidecar records alongside the version, so the usual shape is: install Hardwood at
+the base commit, run and capture; install at the new commit, run and capture.
+
+**Difference the two snapshots.** `charts/compare-runs.py` takes a base and a new
+snapshot — each a run directory, or a directory of `run-*` repeats — and prints
+what moved:
+
+```sh
+python3 charts/compare-runs.py results/2026-06-25-hardwood-1.0 results/2026-09-10-hardwood-1.1
+```
+
+```
+FlatScanBenchmark
+  base  1.0.0.Final (a1b2c3d)   Java 25 (Eclipse Adoptium)   AWS m7i.2xlarge   3 runs
+  new   1.1.0-SNAPSHOT (7d283f5)   Java 25 (Eclipse Adoptium)   AWS m7i.2xlarge   3 runs
+
+  pass      contender                    base ms      new ms     delta     band  verdict
+  unpinned  hardwoodColumnar            2945.454    2415.272    -18.0%     8.0%  faster
+  unpinned  hardwoodRowReaderIndexed    3255.397    3613.491    +11.0%    10.5%  slower
+
+2 contenders compared, 1 slower
+```
+
+Times are `ms_per_op`, so a negative delta is faster. A delta is only called when
+it clears a noise band: with repeats on both sides the band is each side's own
+observed spread, `(max - min) / median`, halved and added — the data sets the bar.
+With a single run on either side there is nothing in the snapshots that measures
+noise, so the band falls back to `--threshold` (default 5%, the low end of the
+~5–10% run-to-run variance a shared host shows) and the report says which it used.
+This is the reason a comparison worth acting on uses the median-of-three loop under
+[Publication runs](#publication-runs) on both sides.
+
+Contenders and benchmarks present on only one side are listed rather than dropped,
+and the meta sidecars are checked before any number is read: a differing `machine`,
+`java`, or dataset key, or two snapshots recording the same Hardwood build, each
+draw a warning. `--include REGEX` narrows to some contenders, `--format tsv` emits
+the table for a script, and `--fail-on-regression` exits non-zero if anything got
+slower.
+
 ### Common flags
 
 Every script shares a set of flags — `--warmup`/`--meas`/`--forks`, `--prof`,
-`--include`, `--no-pin`, `--gate`, `--help` — each documented by the script's own
-`--help`. Any `-Dperf.*=…` (or other `-D…`) passes straight through to the JVM.
+`--include`, `--no-pin`, `--gate`, `--hardwood-version`, `--help` — each documented
+by the script's own `--help`. Any `-Dperf.*=…` (or other `-D…`) passes straight through to the JVM.
 
 ## Output
 
