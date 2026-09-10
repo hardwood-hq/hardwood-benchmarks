@@ -60,10 +60,11 @@ import dev.hardwood.row.StructAccessor;
 /// ([Checksum]) so the two readers are proven to assemble the same data before
 /// any timing counts.
 ///
-/// The Hardwood reader is run twice: with the default all-cores context and with
-/// a one-thread context, mirroring [FlatScanBenchmark]. parquet-java is
-/// single-threaded by construction. Run with `run-nested.sh` for the all-cores
-/// and taskset-pinned passes.
+/// Each reader is timed through both access styles — by field name, the idiomatic
+/// way to read a nested record, and by position — mirroring [FlatScanBenchmark].
+/// parquet-java is single-threaded by construction; the single-core Hardwood
+/// number comes from the taskset-pinned pass, which `run-nested.sh` runs after the
+/// all-cores one.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -507,10 +508,16 @@ public class NestedScanBenchmark {
         }
         java.util.Collection<org.openjdk.jmh.results.RunResult> results = new Runner(opts.build()).run();
 
-        // Derive M rows/s and MB/s over the single Overture file.
+        // Derive M rows/s and MB/s over the single Overture file, and record the
+        // dataset in the meta sidecar the charts and the archived run read. The
+        // release is part of the provenance: the STAC catalog serves only the most
+        // recent releases, so the file behind a published number is not retrievable
+        // once its release has rotated out.
         List<Path> files = List.of(FILE);
         long rows = BenchReport.totalRows(files);
         long bytes = BenchReport.totalBytes(files);
+        BenchReport.writeRunParams(rows, bytes, "release", OvertureMapsDownloader.releaseOf(FILE),
+                BenchReport.leafComposition(files));
         BenchReport.printFullScanThroughput(results, NestedScanBenchmark.class, rows, bytes);
         BenchReport.appendThroughputTsv(results, NestedScanBenchmark.class, rows, bytes);
     }

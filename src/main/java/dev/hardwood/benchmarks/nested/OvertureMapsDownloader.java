@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,6 +37,9 @@ public final class OvertureMapsDownloader {
 
     private static final String TARGET_FILENAME = "overture_places.zstd.parquet";
 
+    /// Reported by [#releaseOf(Path)] when no `.release` sidecar accompanies the file.
+    public static final String UNKNOWN_RELEASE = "unknown";
+
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
@@ -44,6 +48,12 @@ public final class OvertureMapsDownloader {
     /// current release to it if absent, and returns it. Used by the benchmark's
     /// `@Setup` so the nested benchmark self-seeds its data like the flat and
     /// filtered ones.
+    ///
+    /// A download also writes the resolved release identifier to a `.release`
+    /// sidecar beside `target`, so [#releaseOf(Path)] can report which release a
+    /// measurement ran on. The catalog serves only the most recent releases, so a
+    /// published number cannot be re-derived from the file alone once its release
+    /// has rotated out of the bucket.
     public static Path ensure(Path target) throws IOException {
         if (Files.exists(target) && Files.size(target) > 0) {
             return target;
@@ -53,8 +63,9 @@ public final class OvertureMapsDownloader {
             Files.createDirectories(parent);
         }
         try {
-            String url = resolveLatestPlacesUrl();
-            downloadFile(url, target);
+            String release = resolveLatestRelease();
+            downloadFile(resolvePlacesUrl(release), target);
+            Files.writeString(releaseSidecar(target), release + "\n");
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -63,12 +74,34 @@ public final class OvertureMapsDownloader {
         return target;
     }
 
+    /// The Overture release `target` was downloaded from, read from the `.release`
+    /// sidecar [#ensure(Path)] writes, or [#UNKNOWN_RELEASE] when there is none —
+    /// the file was supplied by hand (`--file`) or predates the sidecar.
+    public static String releaseOf(Path target) {
+        Path sidecar = releaseSidecar(target);
+        if (!Files.isRegularFile(sidecar)) {
+            return UNKNOWN_RELEASE;
+        }
+        try {
+            String release = Files.readString(sidecar).strip();
+            return release.isEmpty() ? UNKNOWN_RELEASE : release;
+        }
+        catch (IOException e) {
+            return UNKNOWN_RELEASE;
+        }
+    }
+
+    private static Path releaseSidecar(Path target) {
+        return target.resolveSibling(target.getFileName() + ".release");
+    }
+
     public static void main(String[] args) throws IOException {
         Path target = getDataDirFromProperty().resolve(TARGET_FILENAME);
         boolean present = Files.exists(target) && Files.size(target) > 0;
         ensure(target);
         System.out.println((present ? "Overture Maps file already exists: " : "Download complete. File at: ")
-                + target.toAbsolutePath() + " (" + Files.size(target) + " bytes)");
+                + target.toAbsolutePath() + " (" + Files.size(target) + " bytes, release "
+                + releaseOf(target) + ")");
     }
 
     private static Path getDataDirFromProperty() {
@@ -79,11 +112,14 @@ public final class OvertureMapsDownloader {
         return Path.of(property);
     }
 
-    private static String resolveLatestPlacesUrl() throws IOException, InterruptedException {
+    private static String resolveLatestRelease() throws IOException, InterruptedException {
         String root = fetchString(STAC_ROOT);
         String release = extract(LATEST_RELEASE_PATTERN, root, STAC_ROOT, "latest");
         System.out.println("Resolved latest Overture release: " + release);
+        return release;
+    }
 
+    private static String resolvePlacesUrl(String release) throws IOException, InterruptedException {
         String itemUrl = String.format(STAC_ITEM_TEMPLATE, release);
         String item = fetchString(itemUrl);
         String href = extract(AWS_HREF_PATTERN, item, itemUrl, "assets.aws.href");
@@ -114,25 +150,29 @@ public final class OvertureMapsDownloader {
         return matcher.group(1);
     }
 
+    /// Download `url` to `target`, via a `.part` file that is moved into place only
+    /// once the transfer completed. `ensure` treats any non-empty file at `target`
+    /// as the dataset, so a process killed mid-transfer must not leave one there:
+    /// the next run would benchmark a truncated file.
     private static void downloadFile(String url, Path target) throws IOException, InterruptedException {
         System.out.println("Downloading: " + url);
+        Path part = target.resolveSibling(target.getFileName() + ".part");
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()
                 .build();
         try {
-            HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(target));
+            HttpResponse<Path> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(part));
             if (response.statusCode() != 200) {
-                Files.deleteIfExists(target);
                 throw new IOException("Download failed with status " + response.statusCode() + " for " + url);
             }
-            if (Files.size(target) == 0) {
-                Files.deleteIfExists(target);
+            if (Files.size(part) == 0) {
                 throw new IOException("Download produced an empty file for " + url);
             }
+            Files.move(part, target, StandardCopyOption.REPLACE_EXISTING);
         }
         catch (IOException | InterruptedException e) {
-            Files.deleteIfExists(target);
+            Files.deleteIfExists(part);
             throw e;
         }
     }

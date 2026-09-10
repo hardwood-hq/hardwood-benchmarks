@@ -23,6 +23,10 @@ import dev.hardwood.reader.ColumnReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.openjdk.jmh.results.RunResult;
 
 /// Derives and prints throughput (M rows/s, MB/s) from JMH average-time results.
@@ -88,18 +92,82 @@ public final class BenchReport {
     /// throughput. Echoes them to stdout and writes the meta sidecar via
     /// [#writeMeta(String...)] (which also records `java` and `hardwood`).
     public static void writeRunParams(long rows, long bytes, String window) {
-        String hardwood = hardwoodVersion();
-        double mb = bytes / 1_000_000.0;
-        System.out.printf("Run params: %,d rows, %,.1f MB, %s, Hardwood %s%s%n",
-                rows, mb, javaVersion(), hardwood,
-                window == null || window.isBlank() ? "" : " (" + window + ")");
-
         if (window == null || window.isBlank()) {
-            writeMeta("rows", Long.toString(rows), "bytes", Long.toString(bytes));
+            printAndWriteRunParams(rows, bytes, null);
         }
         else {
-            writeMeta("rows", Long.toString(rows), "bytes", Long.toString(bytes), "window", window);
+            printAndWriteRunParams(rows, bytes, window, "window", window);
         }
+    }
+
+    /// As [#writeRunParams(long,long,String)], for a dataset described by key/value
+    /// details rather than a date window — for example the Overture release a
+    /// nested run resolved (`release`, `2026-08-19.0`) plus its schema composition.
+    /// All pairs reach the meta sidecar; the first is echoed in the stdout line.
+    public static void writeRunParams(long rows, long bytes, String detailKey, String detailValue,
+            String... morePairs) {
+        if (detailKey == null || detailKey.isBlank() || detailValue == null || detailValue.isBlank()) {
+            printAndWriteRunParams(rows, bytes, null, morePairs);
+            return;
+        }
+        String[] pairs = new String[2 + morePairs.length];
+        pairs[0] = detailKey;
+        pairs[1] = detailValue;
+        System.arraycopy(morePairs, 0, pairs, 2, morePairs.length);
+        printAndWriteRunParams(rows, bytes, detailKey + " " + detailValue, pairs);
+    }
+
+    /// The leaf composition of `files`, as meta pairs: `leaves` (the number of
+    /// leaf columns in the schema) and `stringBytesPct` (the share of compressed
+    /// bytes held by `STRING`-annotated columns, one decimal). A record-reading
+    /// benchmark's time is spent where the bytes are, so a run that records this
+    /// says what its workload actually exercises — a schema that is nested in
+    /// shape can still be dominated by string decode.
+    public static String[] leafComposition(List<Path> files) throws IOException {
+        Configuration conf = new Configuration();
+        long stringBytes = 0;
+        long totalBytes = 0;
+        int leaves = 0;
+        for (Path file : files) {
+            org.apache.hadoop.fs.Path hadoopPath =
+                    new org.apache.hadoop.fs.Path(file.toAbsolutePath().toString());
+            try (ParquetFileReader reader = ParquetFileReader.open(
+                    HadoopInputFile.fromPath(hadoopPath, conf))) {
+                ParquetMetadata footer = reader.getFooter();
+                leaves = Math.max(leaves, footer.getFileMetaData().getSchema().getColumns().size());
+                for (BlockMetaData block : footer.getBlocks()) {
+                    for (ColumnChunkMetaData column : block.getColumns()) {
+                        long size = column.getTotalSize();
+                        totalBytes += size;
+                        if (column.getPrimitiveType().getLogicalTypeAnnotation()
+                                instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
+                            stringBytes += size;
+                        }
+                    }
+                }
+            }
+        }
+        double pct = totalBytes == 0 ? 0.0 : 100.0 * stringBytes / totalBytes;
+        return new String[] {"leaves", Integer.toString(leaves),
+                "stringBytesPct", String.format("%.1f", pct)};
+    }
+
+    /// Echo the run parameters and write them to the meta sidecar. `suffix`, when
+    /// non-null, is appended to the stdout line in parentheses; `extraPairs` are
+    /// appended to the `rows` and `bytes` keys in the sidecar.
+    private static void printAndWriteRunParams(long rows, long bytes, String suffix, String... extraPairs) {
+        double mb = bytes / 1_000_000.0;
+        System.out.printf("Run params: %,d rows, %,.1f MB, %s, Hardwood %s%s%n",
+                rows, mb, javaVersion(), hardwoodVersion(),
+                suffix == null ? "" : " (" + suffix + ")");
+
+        String[] pairs = new String[4 + extraPairs.length];
+        pairs[0] = "rows";
+        pairs[1] = Long.toString(rows);
+        pairs[2] = "bytes";
+        pairs[3] = Long.toString(bytes);
+        System.arraycopy(extraPairs, 0, pairs, 4, extraPairs.length);
+        writeMeta(pairs);
     }
 
     /// Writes the run's meta sidecar next to the `-Dperf.results` file
@@ -120,6 +188,7 @@ public final class BenchReport {
         }
         sb.append("java\t").append(javaVersion()).append('\n');
         sb.append("hardwood\t").append(hardwoodVersion()).append('\n');
+        sb.append("simd\t").append(simdStatus()).append('\n');
         try {
             Files.writeString(Path.of(metaPath), sb.toString());
         }
@@ -138,6 +207,33 @@ public final class BenchReport {
         }
         String metaPath = resultsPath.replace("bench-throughput-", "bench-meta-");
         return metaPath.equals(resultsPath) ? null : metaPath;
+    }
+
+    /// The Vector API status of the JVM the run executed in, recorded so a
+    /// published number says whether Hardwood's vectorized paths were engaged.
+    /// Hardwood engages them only when the incubating module is resolved
+    /// (`--add-modules jdk.incubator.vector`) and the preferred `int` species is
+    /// at least 4 lanes wide; the run scripts do not pass that flag, so a run
+    /// records `scalar` unless the flag came from the environment.
+    ///
+    /// Probed from the JVM rather than read off Hardwood, which keeps this out of
+    /// `dev.hardwood.internal`. The strings match the ones Hardwood logs
+    /// (`scalar`, `simd-512bit`) so the sidecar and the run log read alike.
+    private static String simdStatus() {
+        if (ModuleLayer.boot().findModule("jdk.incubator.vector").isEmpty()) {
+            return "scalar";
+        }
+        try {
+            Class<?> speciesType = Class.forName("jdk.incubator.vector.VectorSpecies");
+            Object preferred = Class.forName("jdk.incubator.vector.IntVector")
+                    .getField("SPECIES_PREFERRED").get(null);
+            int lanes = (int) speciesType.getMethod("length").invoke(preferred);
+            int bits = (int) speciesType.getMethod("vectorBitSize").invoke(preferred);
+            return lanes >= 4 ? "simd-" + bits + "bit" : "scalar";
+        }
+        catch (ReflectiveOperationException | RuntimeException e) {
+            return "scalar";
+        }
     }
 
     private static String javaVersion() {

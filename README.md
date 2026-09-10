@@ -171,14 +171,24 @@ no cross-file asymmetry — the parallel advantage is purely within-file concurr
 decode. (Not part of the 1.0 publication; kept as the like-for-like nested record
 comparison.)
 
-**Run:** `./run-nested.sh --help` — gate, smoke test, measure (numbers only, no
-chart).
+**Run:** `./run-nested.sh --help` — gate, smoke test, measure, chart.
 
 **Data.** Downloads the Overture places file on first run to the default path
 `target/overture-maps-data/overture_places.zstd.parquet`; `--file` points at an
-existing file instead.
+existing file instead. The download resolves the STAC catalog's latest release and
+writes its identifier to a `.release` sidecar beside the file, which the run records
+in its `bench-meta` sidecar as `release`. The catalog serves only the most recent
+releases, so keep the file itself with an archived run — once its release rotates out
+of the bucket the exact bytes a published number was measured on are gone. A file
+supplied with `--file` has no sidecar and is recorded as `release unknown`.
 
-**Charts.** None — the nested record comparison is reported as numbers only.
+**Charts** (`make-nested-chart.py`) — `nested_record.svg`, throughput in M rows/s
+(**higher is better**), the two access groups (named, indexed), each with Hardwood
+all-cores, Hardwood single-core (`taskset -c 0`), and `AvroParquetReader`. The
+single-core bars need the pinned pass, so this requires a full run — not `--no-pin`.
+The footnote carries the schema composition from the run's meta (leaf count, and the
+share of compressed bytes held by `STRING` columns): the schema is deeply nested in
+shape, but most of its bytes are strings, and a reader of the chart is owed that.
 
 ### Fixed-size-list scan — `run-fixedlist.sh`
 
@@ -243,6 +253,13 @@ Each run writes per-benchmark TSVs to `target/` — `bench-throughput-<Benchmark
 (dataset parameters the chart generator reads for its subtitles) — and tees its
 console output to `target/<bench>.log` (`BENCH_LOG=0` to disable). `./capture-run.sh
 <dir>` snapshots that set into a self-contained, chartable archive.
+
+Every meta sidecar carries `java`, `hardwood` (version and commit), `machine`, and
+`simd` alongside the benchmark's own dataset keys. `simd` is `scalar` or
+`simd-<N>bit`: Hardwood engages its vectorized paths only on a JVM launched with
+`--add-modules jdk.incubator.vector`, which the run scripts deliberately do not pass,
+so a run records `scalar` unless that flag reaches the JVM from the environment.
+Quote SIMD-enabled and scalar numbers separately — they are different measurements.
 
 ## Charts
 
