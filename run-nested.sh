@@ -8,11 +8,17 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_FLAGS='--file perf.file'
+BENCH_FLAGS='--file perf.file
+--rows perf.rows'
 BENCH_USAGE="Nested read benchmark (Overture Maps places, full record reconstruction).
 
 Usage: ./run-nested.sh [options]
   --file PATH       nested parquet file
+  --rows N          stop each scan after N rows (default 0 = the whole file). A
+                    capped run reads the leading row groups, so it is a cheaper
+                    stand-in for the corpus rather than a smaller version of it;
+                    every contender and the gate stop at the same count, so a
+                    comparison across runs stays like for like.
                     (default target/overture-maps-data/overture_places.zstd.parquet)
 $BENCH_COMMON_USAGE
 

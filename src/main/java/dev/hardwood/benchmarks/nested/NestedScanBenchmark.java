@@ -76,6 +76,22 @@ public class NestedScanBenchmark {
     private static final Path FILE = Path.of(System.getProperty(
             "perf.file", "target/overture-maps-data/overture_places.zstd.parquet"));
 
+    /// Rows each scan reads before stopping; `0` (the default) reads the whole file.
+    /// A capped run reads a *prefix* — the leading row groups, not a sample across
+    /// them — so it is a cheaper stand-in for the corpus rather than a smaller
+    /// version of it, and absolute figures from one describe that prefix. Every
+    /// contender and the gate stop at the same count, so a capped run compares
+    /// like for like.
+    private static final long MAX_ROWS = resolveMaxRows();
+
+    private static long resolveMaxRows() {
+        long rows = Long.getLong("perf.rows", 0L);
+        if (rows < 0) {
+            throw new IllegalArgumentException("perf.rows must not be negative: " + rows);
+        }
+        return rows == 0 ? Long.MAX_VALUE : rows;
+    }
+
     private InputFile inputFile;
 
     @Setup(Level.Trial)
@@ -164,7 +180,7 @@ public class NestedScanBenchmark {
         Checksum cs = new Checksum();
         try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
              RowReader rows = reader.rowReader()) {
-            while (rows.hasNext()) {
+            while (rows.hasNext() && cs.rowCount < MAX_ROWS) {
                 rows.next();
                 cs.rowCount++;
                 foldStruct(rows, cs);
@@ -217,8 +233,10 @@ public class NestedScanBenchmark {
         long acc = 0;
         try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
              RowReader rows = reader.rowReader()) {
-            while (rows.hasNext()) {
+            long read = 0;
+            while (rows.hasNext() && read < MAX_ROWS) {
                 rows.next();
+                read++;
                 acc += scanStruct(rows, byName);
             }
         }
@@ -278,7 +296,7 @@ public class NestedScanBenchmark {
         try (ParquetReader<GenericRecord> reader = AvroParquetReader
                 .<GenericRecord>builder(HadoopInputFile.fromPath(hPath, conf)).build()) {
             GenericRecord record;
-            while ((record = reader.read()) != null) {
+            while (cs.rowCount < MAX_ROWS && (record = reader.read()) != null) {
                 cs.rowCount++;
                 foldRecord(record, cs);
             }
@@ -329,7 +347,9 @@ public class NestedScanBenchmark {
         try (ParquetReader<GenericRecord> reader = AvroParquetReader
                 .<GenericRecord>builder(HadoopInputFile.fromPath(hPath, conf)).build()) {
             GenericRecord record;
-            while ((record = reader.read()) != null) {
+            long read = 0;
+            while (read < MAX_ROWS && (record = reader.read()) != null) {
+                read++;
                 acc += scanAvro(record, byName);
             }
         }
@@ -514,8 +534,15 @@ public class NestedScanBenchmark {
         // recent releases, so the file behind a published number is not retrievable
         // once its release has rotated out.
         List<Path> files = List.of(FILE);
-        long rows = BenchReport.totalRows(files);
+        long fileRows = BenchReport.totalRows(files);
         long bytes = BenchReport.totalBytes(files);
+        // A capped run reads a prefix, so the throughput denominators are the rows
+        // actually read and the share of the file they stand for — not the whole
+        // corpus, which would inflate every derived figure by the ratio between them.
+        long rows = Math.min(fileRows, MAX_ROWS);
+        if (rows < fileRows) {
+            bytes = Math.round((double) bytes * rows / fileRows);
+        }
         BenchReport.writeRunParams(rows, bytes, "release", OvertureMapsDownloader.releaseOf(FILE),
                 BenchReport.leafComposition(files));
         BenchReport.printFullScanThroughput(results, NestedScanBenchmark.class, rows, bytes);
