@@ -14,7 +14,7 @@ each lives in [The Benchmarks](#the-benchmarks).
 | Script | Workload | Contenders |
 | --- | --- | --- |
 | `run-flat.sh` | Full scan of every column (NYC Yellow Taxi) | Hardwood columnar + record readers ↔ parquet-java / Avro, Arrow reference |
-| `run-filter.sh` | Range predicate over a time-clustered file | Hardwood filtered reader ↔ parquet-java |
+| `run-filter.sh` | Range predicate over a time-clustered file | Hardwood filtered column + row readers ↔ parquet-java |
 | `run-bloom.sh` | Equality point-lookup on a unique, unclustered key (generated) | Hardwood ↔ parquet-java, bloom file vs statistics-only twin |
 | `run-nested.sh` | Full read of deeply nested struct/list/map records (Overture Maps) | Hardwood row reader ↔ `AvroParquetReader` |
 | `run-fixedlist.sh` | Fixed-width vector column (embeddings, points) read with the fast path on vs. off | Hardwood column & row readers, fast path ↔ baseline |
@@ -115,9 +115,10 @@ plotted.
 
 A generated, time-clustered `event_time` file (column index, no bloom filters)
 read with a range predicate: Hardwood's filtered column reader vs parquet-java's
-low-level column API over `readNextFilteredRowGroup()`. Two selectivities —
+low-level column API over `readNextFilteredRowGroup()`, with Hardwood's filtered
+row reader (projecting `amount`) beside them. Two selectivities —
 **selective** (threshold `rows/20`) and **matchAll** (the overhead floor).
-Unfiltered controls read `amount` alone (Hardwood, parquet-java) and both columns
+Unfiltered controls read `amount` alone (both Hardwood readers, parquet-java) and both columns
 (parquet-java), separating decode speed from what filtering costs or saves.
 
 **Run:** `./run-filter.sh --help` — gate, smoke test, measure, chart.
@@ -127,7 +128,7 @@ different `--rows` regenerates rather than reusing a stale file.
 
 **Charts** (`make-filter-chart.py`) — `filtered_chart.svg`, ms/op (**lower is
 better**), the two selectivity groups on a broken axis so the match-all bar stays
-readable next to the selective one. The controls are gated but not plotted.
+readable next to the selective one. The row reader and the controls are gated but not plotted.
 
 ### Bloom-filter point lookup — `run-bloom.sh`
 

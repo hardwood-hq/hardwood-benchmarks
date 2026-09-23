@@ -31,6 +31,8 @@ import dev.hardwood.InputFile;
 import dev.hardwood.reader.ColumnReader;
 import dev.hardwood.reader.FilterPredicate;
 import dev.hardwood.reader.ParquetFileReader;
+import dev.hardwood.reader.RowReader;
+import dev.hardwood.schema.ColumnProjection;
 
 /// The contender read paths, shared by the correctness gate and the JMH
 /// benchmarks. Each sums `amount` over the rows matching `event_time < threshold`
@@ -87,6 +89,44 @@ public final class Scans {
                     sum += values[i];
                 }
                 count += n;
+            }
+        }
+        return new Result(count, sum);
+    }
+
+    /// Hardwood row reader, projecting only `amount` and filtering on `event_time`, a
+    /// column outside the projection. The record-path counterpart of [#hardwoodFiltered].
+    public static Result hardwoodRowReaderFiltered(Path file, long threshold) throws IOException {
+        FilterPredicate filter = FilterPredicate.lt("event_time", threshold);
+        long count = 0;
+        double sum = 0.0;
+        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+             RowReader rows = reader.buildRowReader()
+                     .projection(ColumnProjection.columns("amount"))
+                     .filter(filter)
+                     .build()) {
+            while (rows.hasNext()) {
+                rows.next();
+                sum += rows.getDouble(0);
+                count++;
+            }
+        }
+        return new Result(count, sum);
+    }
+
+    /// Hardwood row reader, same projection, **no predicate**. The control for
+    /// [#hardwoodRowReaderFiltered].
+    public static Result hardwoodRowReaderUnfiltered(Path file) throws IOException {
+        long count = 0;
+        double sum = 0.0;
+        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+             RowReader rows = reader.buildRowReader()
+                     .projection(ColumnProjection.columns("amount"))
+                     .build()) {
+            while (rows.hasNext()) {
+                rows.next();
+                sum += rows.getDouble(0);
+                count++;
             }
         }
         return new Result(count, sum);
