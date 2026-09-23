@@ -117,6 +117,8 @@ A generated, time-clustered `event_time` file (column index, no bloom filters)
 read with a range predicate: Hardwood's filtered column reader vs parquet-java's
 low-level column API over `readNextFilteredRowGroup()`. Two selectivities —
 **selective** (threshold `rows/20`) and **matchAll** (the overhead floor).
+Unfiltered controls read `amount` alone (Hardwood, parquet-java) and both columns
+(parquet-java), separating decode speed from what filtering costs or saves.
 
 **Run:** `./run-filter.sh --help` — gate, smoke test, measure, chart.
 
@@ -125,7 +127,7 @@ different `--rows` regenerates rather than reusing a stale file.
 
 **Charts** (`make-filter-chart.py`) — `filtered_chart.svg`, ms/op (**lower is
 better**), the two selectivity groups on a broken axis so the match-all bar stays
-readable next to the selective one.
+readable next to the selective one. The controls are gated but not plotted.
 
 ### Bloom-filter point lookup — `run-bloom.sh`
 
