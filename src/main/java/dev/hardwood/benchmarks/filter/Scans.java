@@ -73,6 +73,79 @@ public final class Scans {
         return new Result(count, sum);
     }
 
+    /// Hardwood, same single column, **no predicate**. The control for
+    /// [#hardwoodFiltered]: identical decode work, nothing filtered.
+    public static Result hardwoodUnfiltered(Path file) throws IOException {
+        long count = 0;
+        double sum = 0.0;
+        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+             ColumnReader amt = reader.buildColumnReader("amount").build()) {
+            while (amt.nextBatch()) {
+                int n = amt.getRecordCount();
+                double[] values = amt.getDoubles();
+                for (int i = 0; i < n; i++) {
+                    sum += values[i];
+                }
+                count += n;
+            }
+        }
+        return new Result(count, sum);
+    }
+
+    /// parquet-java, **no predicate**, reading only `amount` — the like-for-like
+    /// control against [#hardwoodUnfiltered]: one column, every row, no filtering.
+    public static Result parquetJavaUnfiltered(Path file) throws IOException {
+        return parquetJavaScan(file, false);
+    }
+
+    /// parquet-java, **no predicate**, reading `event_time` *and* `amount`. The
+    /// difference against [#parquetJavaUnfiltered] is what the predicate column
+    /// costs it — work Hardwood's filtered path never does.
+    public static Result parquetJavaUnfilteredBothColumns(Path file) throws IOException {
+        return parquetJavaScan(file, true);
+    }
+
+    private static Result parquetJavaScan(Path file, boolean readEventTime) throws IOException {
+        org.apache.hadoop.fs.Path hPath = new org.apache.hadoop.fs.Path(file.toAbsolutePath().toString());
+        long count = 0;
+        double sum = 0.0;
+        ParquetReadOptions options = HadoopReadOptions.builder(CONF).build();
+        try (org.apache.parquet.hadoop.ParquetFileReader reader =
+                     org.apache.parquet.hadoop.ParquetFileReader.open(
+                             HadoopInputFile.fromPath(hPath, CONF), options)) {
+            MessageType fileSchema = reader.getFileMetaData().getSchema();
+            MessageType projection = readEventTime
+                    ? new MessageType("event", fileSchema.getType("event_time"), fileSchema.getType("amount"))
+                    : new MessageType("event", fileSchema.getType("amount"));
+            reader.setRequestedSchema(projection);
+            ColumnDescriptor amtCol = projection.getColumnDescription(new String[] { "amount" });
+            ColumnDescriptor etCol = readEventTime
+                    ? projection.getColumnDescription(new String[] { "event_time" })
+                    : null;
+            String createdBy = reader.getFileMetaData().getCreatedBy();
+
+            PageReadStore pages;
+            while ((pages = reader.readNextRowGroup()) != null) {
+                long n = pages.getRowCount();
+                ColumnReadStoreImpl store = new ColumnReadStoreImpl(
+                        pages, new NoOpGroupConverter(), projection, createdBy);
+                org.apache.parquet.column.ColumnReader amt = store.getColumnReader(amtCol);
+                org.apache.parquet.column.ColumnReader et =
+                        etCol == null ? null : store.getColumnReader(etCol);
+                for (long i = 0; i < n; i++) {
+                    if (et != null) {
+                        sum += et.getLong() * 0.0;
+                        et.consume();
+                    }
+                    sum += amt.getDouble();
+                    amt.consume();
+                    count++;
+                }
+            }
+        }
+        return new Result(count, sum);
+    }
+
     /// parquet-java's low-level column API over column-index-filtered row groups.
     /// That API is page-granular and has no native exact columnar filter, so we
     /// apply the exact predicate per row to match Hardwood's row-exact result.

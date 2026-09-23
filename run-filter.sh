@@ -2,7 +2,8 @@
 #
 # Filtered scan (predicate push-down) benchmark on a generated, time-clustered
 # event file. Contenders: Hardwood column reader vs parquet-java's low-level
-# column API, pushing down a range predicate. See ./run-filter.sh --help.
+# column API, pushing down a range predicate, plus unfiltered controls that
+# separate decode speed from filtering. See ./run-filter.sh --help.
 #
 set -euo pipefail
 cd "$(dirname "$0")"

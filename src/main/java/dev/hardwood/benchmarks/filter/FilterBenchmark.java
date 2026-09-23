@@ -83,6 +83,21 @@ public class FilterBenchmark {
                 selectivity, hw.count(), hw.sum());
     }
 
+    /// Correctness gate for the unfiltered controls, which are independent of the
+    /// selectivity: each must read every row and agree with parquet-java's scan of
+    /// `amount`.
+    private static void gateControls() throws IOException {
+        Scans.Result pj = Scans.parquetJavaUnfiltered(FILE);
+        if (pj.count() != ROWS) {
+            throw new IllegalStateException(String.format(
+                    "[no filter] parquet-java read %d rows, expected %d", pj.count(), ROWS));
+        }
+        assertMatches("no filter", "Hardwood (unfiltered column reader)", Scans.hardwoodUnfiltered(FILE), pj);
+        assertMatches("no filter", "parquet-java (both columns)", Scans.parquetJavaUnfilteredBothColumns(FILE), pj);
+        System.out.printf("Gate passed [no filter] — the unfiltered controls agree with parquet-java (%d rows, sum %.3f).%n",
+                pj.count(), pj.sum());
+    }
+
     private static void assertMatches(String selectivity, String name, Scans.Result actual, Scans.Result ref) {
         if (actual.count() != ref.count()
                 || Math.abs(actual.sum() - ref.sum()) > 1e-6 * Math.max(1.0, Math.abs(ref.sum()))) {
@@ -100,6 +115,27 @@ public class FilterBenchmark {
     @Benchmark
     public Scans.Result parquetJava() throws IOException {
         return Scans.parquetJavaFiltered(FILE, threshold);
+    }
+
+    /// Control: same single column, no predicate. Against hardwoodDefault this is
+    /// what the filtering itself costs or saves.
+    @Benchmark
+    public Scans.Result hardwoodNoFilter() throws IOException {
+        return Scans.hardwoodUnfiltered(FILE);
+    }
+
+    /// Control: parquet-java reading only `amount`, no predicate. Like-for-like
+    /// against hardwoodNoFilter — pure decode on this file.
+    @Benchmark
+    public Scans.Result parquetJavaNoFilter() throws IOException {
+        return Scans.parquetJavaUnfiltered(FILE);
+    }
+
+    /// Control: parquet-java reading both columns, no predicate. The gap to
+    /// parquetJavaNoFilter is what decoding the predicate column costs it.
+    @Benchmark
+    public Scans.Result parquetJavaNoFilterBothColumns() throws IOException {
+        return Scans.parquetJavaUnfilteredBothColumns(FILE);
     }
 
     /// Ad-hoc reference (not published): parquet-java's record path with its
@@ -121,6 +157,7 @@ public class FilterBenchmark {
                 gate("selective");
                 gate("matchAll");
             }
+            gateControls();
             return;
         }
         // Generate (if needed) and log the dataset params before timing.
