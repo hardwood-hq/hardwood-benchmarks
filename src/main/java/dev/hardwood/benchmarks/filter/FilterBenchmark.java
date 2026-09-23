@@ -76,8 +76,10 @@ public class FilterBenchmark {
         long threshold = "selective".equals(selectivity) ? ROWS / 20 : ROWS;
         Scans.Result pj = Scans.parquetJavaFiltered(FILE, threshold);
         Scans.Result hw = Scans.hardwoodFiltered(FILE, threshold);
+        Scans.Result hwRows = Scans.hardwoodRowReaderFiltered(FILE, threshold);
         Scans.Result avro = Scans.avroParquetFiltered(FILE, threshold);
         assertMatches(selectivity, "Hardwood (filtered column reader)", hw, pj);
+        assertMatches(selectivity, "Hardwood (filtered row reader)", hwRows, pj);
         assertMatches(selectivity, "AvroParquetReader.withFilter", avro, pj);
         System.out.printf("Gate passed [%s] — Hardwood and AvroParquetReader agree with parquet-java (%d rows, sum %.3f).%n",
                 selectivity, hw.count(), hw.sum());
@@ -93,6 +95,7 @@ public class FilterBenchmark {
                     "[no filter] parquet-java read %d rows, expected %d", pj.count(), ROWS));
         }
         assertMatches("no filter", "Hardwood (unfiltered column reader)", Scans.hardwoodUnfiltered(FILE), pj);
+        assertMatches("no filter", "Hardwood (unfiltered row reader)", Scans.hardwoodRowReaderUnfiltered(FILE), pj);
         assertMatches("no filter", "parquet-java (both columns)", Scans.parquetJavaUnfilteredBothColumns(FILE), pj);
         System.out.printf("Gate passed [no filter] — the unfiltered controls agree with parquet-java (%d rows, sum %.3f).%n",
                 pj.count(), pj.sum());
@@ -110,6 +113,18 @@ public class FilterBenchmark {
     @Benchmark
     public Scans.Result hardwoodDefault() throws IOException {
         return Scans.hardwoodFiltered(FILE, threshold);
+    }
+
+    /// Row reader projecting `amount`, filtering on `event_time`.
+    @Benchmark
+    public Scans.Result hardwoodRowReader() throws IOException {
+        return Scans.hardwoodRowReaderFiltered(FILE, threshold);
+    }
+
+    /// Control: row reader, same projection, no predicate.
+    @Benchmark
+    public Scans.Result hardwoodRowReaderNoFilter() throws IOException {
+        return Scans.hardwoodRowReaderUnfiltered(FILE);
     }
 
     @Benchmark
