@@ -182,8 +182,8 @@ public class FilterBenchmark {
                 .include(BenchReport.includePattern(FilterBenchmark.class))
                 .warmupIterations(Integer.getInteger("perf.warmup", 3))
                 .measurementIterations(Integer.getInteger("perf.meas", 5))
-                .warmupTime(TimeValue.seconds(2))
-                .measurementTime(TimeValue.seconds(2))
+                .warmupTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
+                .measurementTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .forks(Integer.getInteger("perf.forks", 1));
         if (param != null && !param.isBlank()) {
             opts.param("selectivity", param);

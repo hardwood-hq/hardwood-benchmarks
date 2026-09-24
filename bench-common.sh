@@ -29,7 +29,8 @@ BENCH_COMMON_FLAGS='--warmup perf.warmup
 --meas perf.meas
 --forks perf.forks
 --prof perf.prof
---include perf.include'
+--include perf.include
+--time perf.time'
 
 # Resolve a long flag (e.g. --start) to its -Dperf.* property, searching the
 # caller's BENCH_FLAGS first, then BENCH_COMMON_FLAGS. Echoes the property and
@@ -55,6 +56,7 @@ BENCH_COMMON_USAGE="  --warmup N        JMH warmup iterations (default 3)
   --forks N         JMH forks (default 1; 0 = in-process, non-forked debug run)
   --prof LIST       JMH profilers, e.g. gc,stack
   --include REGEX   restrict to benchmark methods matching REGEX
+  --time S          seconds per JMH warmup and measurement iteration (default 2)
   --machine LABEL   hardware label recorded in the meta sidecar for the chart
                     subtitle (default: auto-detected CPU model + core count). The
                     chart derives all-cores vs single-core from the pass itself.
@@ -70,6 +72,12 @@ BENCH_COMMON_USAGE="  --warmup N        JMH warmup iterations (default 3)
                     handy for 1-core profiling. Needs taskset (Linux).
   --gate            gate-check mode: verify every contender agrees, then exit
                     (no JMH, no timing, no results file)
+  --regression      quick, fixed regression configuration: the benchmark's
+                    preset sizes and contenders (listed below), 3 warmup and 3
+                    measurement iterations of 1 s, and one pass, on all cores.
+                    Regression runs taken at any time are then alike; passing a
+                    flag the preset sets is an error. The meta sidecar records
+                    the preset.
   --help, -h        show this help
 Any -Dperf.*=… (or other -D…) is also passed straight through to the JVM."
 
@@ -96,6 +104,10 @@ bench_parse_args() {
         ;;
       --gate)
         BENCH_GATE=1
+        shift
+        ;;
+      --regression)
+        BENCH_REGRESSION=1
         shift
         ;;
       --machine)
@@ -148,6 +160,10 @@ bench_parse_args() {
     esac
   done
 
+  if [[ -n "${BENCH_REGRESSION:-}" ]]; then
+    bench_apply_regression_preset
+  fi
+
   # Tee everything printed from here on (build + passes + epilogue) to a
   # per-benchmark log under target/, so a run's full console output is archived
   # next to its TSVs and meta sidecar; capture-run.sh then snapshots the lot. The
@@ -162,6 +178,39 @@ bench_parse_args() {
     exec > >(tee "target/${base}.log") 2>&1
     trap 'exec 1>&- 2>&-; wait 2>/dev/null || true' EXIT
   fi
+}
+
+# Apply the caller's BENCH_REGRESSION_PRESET (its size flags, in the same
+# `--flag value` form a user would pass) to ARGS. A size flag given alongside
+# --regression would make the run read different data from every other
+# regression run, so it is an error rather than an override. A benchmark with one
+# size (a regression-only one) declares an empty preset.
+bench_apply_regression_preset() {
+  local preset=(--warmup 3 --meas 3 --time 1 ${BENCH_REGRESSION_PRESET:-}) i prop a
+  for (( i = 0; i < ${#preset[@]}; i += 2 )); do
+    prop="$(bench_flag_prop "${preset[i]}")" || { echo "Preset flag ${preset[i]} is not a flag of this script" >&2; exit 2; }
+    for a in "${ARGS[@]+"${ARGS[@]}"}"; do
+      if [[ "$a" == "-D$prop="* ]]; then
+        echo "--regression fixes ${preset[i]} (to ${preset[i+1]}); drop ${preset[i]} or --regression" >&2
+        exit 2
+      fi
+    done
+    ARGS+=("-D$prop=${preset[i+1]}")
+  done
+  # The contenders: the script's BENCH_REGRESSION_INCLUDE, its Hardwood paths plus
+  # at most one control (a contender pinned in the pom, whose drift says the machine
+  # moved), so no path is timed twice under different parameters.
+  for a in "${ARGS[@]+"${ARGS[@]}"}"; do
+    if [[ "$a" == -Dperf.include=* ]]; then
+      echo "--regression fixes the contenders (to '${BENCH_REGRESSION_INCLUDE:-hardwood}'); drop --include or --regression" >&2
+      exit 2
+    fi
+  done
+  # One pass, on all cores. Pinned to one core, the JIT, the GC and the reader's
+  # worker threads share that core, and a contender is still ~15% off its steady
+  # state after ten 1 s iterations; on all cores it settles by the third.
+  PERF_PIN=0
+  ARGS+=("-Dperf.include=${BENCH_REGRESSION_INCLUDE:-hardwood}")
 }
 
 # Per-benchmark machine-readable throughput. In benchmark mode bench_run writes
@@ -180,16 +229,36 @@ bench_build() {
   local mvn_args=()
   [ -n "${BENCH_HARDWOOD_VERSION:-}" ] && mvn_args+=("-Dhardwood.version=$BENCH_HARDWOOD_VERSION")
 
-  # The benchmark sources compile against hardwood-core's API, so classes left
-  # over from a different version can survive an incremental build and then fail
-  # at run time with NoSuchMethodError — or, worse, not fail at all. Drop them
-  # whenever the requested version changes. Only target/classes and the resolved
-  # classpath go; the generated fixtures and downloaded corpora under target/ stay.
-  local stamp="target/.hardwood-version"
-  local want="${BENCH_HARDWOOD_VERSION:-<pom>}"
-  if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$want" ]; then
-    rm -rf target/classes target/cp.txt
+  # Compile only the shared classes plus the caller's packages (BENCH_PACKAGES, at
+  # most two), so a benchmark using API the requested version lacks fails its own
+  # build and no other.
+  local packages=(${BENCH_PACKAGES:?"BENCH_PACKAGES must name the script's source packages"})
+  if (( ${#packages[@]} > 2 )); then
+    echo "BENCH_PACKAGES names ${#packages[@]} packages; the pom takes at most two" >&2
+    exit 2
   fi
+  mvn_args+=("-Dbench.include.a=dev/hardwood/benchmarks/${packages[0]}/**/*.java")
+  mvn_args+=("-Dbench.include.b=dev/hardwood/benchmarks/${packages[${#packages[@]}-1]}/**/*.java")
+
+  # Each Hardwood version and package set builds into a directory of its own under
+  # target/build/, so classes compiled against one version never mix with another's,
+  # and a run that switches back to a version reuses its build instead of redoing
+  # it (two Maven invocations, the bulk of a short run's overhead). A build is
+  # reused while no source file or the pom is newer than it, and while the resolved
+  # hardwood-core jar is not either: reinstalling a -SNAPSHOT at another commit
+  # rebuilds. The generated fixtures and downloaded corpora under target/ are
+  # untouched.
+  local version="${BENCH_HARDWOOD_VERSION:-$(sed -n 's:.*<hardwood.version>\(.*\)</hardwood.version>.*:\1:p' pom.xml | head -1)}"
+  local dir="target/build/${version}_$(IFS=+; echo "${packages[*]}")"
+  local jar="$HOME/.m2/repository/dev/hardwood/hardwood-core/$version/hardwood-core-$version.jar"
+  if [ -f "$dir/cp.txt" ] && [ -f "$dir/.built" ] \
+      && [ -z "$(find src pom.xml -newer "$dir/.built" -print -quit)" ] \
+      && ! { [ -f "$jar" ] && [ "$jar" -nt "$dir/.built" ]; }; then
+    CP="$dir/classes:$(cat "$dir/cp.txt")"
+    return
+  fi
+  rm -rf "$dir"
+  mvn_args+=("-Dbench.outputDirectory=$PWD/$dir/classes" "-Dbench.generatedSources=$PWD/$dir/generated-sources")
 
   if ! ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" compile; then
     if [ -n "${BENCH_HARDWOOD_VERSION:-}" ]; then
@@ -197,13 +266,14 @@ bench_build() {
       echo "Build failed against hardwood-core $BENCH_HARDWOOD_VERSION." >&2
       echo "The benchmark sources track the current API, so a benchmark using something" >&2
       echo "that version does not have will not compile — see the errors above for which." >&2
-      echo "A version comparison covers the benchmarks that compile against both sides." >&2
+      echo "Only this benchmark is affected; the others build their own packages." >&2
     fi
+    rm -rf "$dir"
     exit 1
   fi
-  ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" dependency:build-classpath -Dmdep.outputFile=target/cp.txt
-  printf '%s\n' "$want" > "$stamp"
-  CP="target/classes:$(cat target/cp.txt)"
+  ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" dependency:build-classpath -Dmdep.outputFile="$PWD/$dir/cp.txt"
+  touch "$dir/.built"
+  CP="$dir/classes:$(cat "$dir/cp.txt")"
 }
 
 # Run one benchmark main class. Two modes:
@@ -283,6 +353,7 @@ bench_run() {
     local meta="${BENCH_RESULTS/bench-throughput-/bench-meta-}"
     if [[ -f "$meta" ]]; then
       printf 'machine\t%s\n' "$(bench_machine)" >> "$meta"
+      printf 'preset\t%s\n' "$([[ -n "${BENCH_REGRESSION:-}" ]] && echo regression || echo none)" >> "$meta"
     fi
   fi
 

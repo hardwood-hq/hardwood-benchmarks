@@ -10,6 +10,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
+BENCH_PACKAGES='fixedlist'
+BENCH_REGRESSION_PRESET='--total-values 8000000 --k 768'
+BENCH_REGRESSION_INCLUDE='Fast|Baseline'
 BENCH_FLAGS='--data-dir perf.dataDir
 --total-values perf.totalValues
 --k perf.k'
@@ -22,6 +25,7 @@ Usage: ./run-fixedlist.sh [options]
   --k CSV             restrict to specific k (e.g. 768, or 3,768 for the two
                       headline ~512 MB files); default is the full sweep
 $BENCH_COMMON_USAGE
+Regression preset (--regression): --total-values 8000000 --k 768; contenders matching Fast|Baseline
 
 Two modes: --gate generates the corpus, reads each k with the fast path on and
 off, and verifies the fast path decodes bit-identical values to the baseline (both
@@ -67,11 +71,12 @@ own dir (sweep and headline share a TSV filename):
 The auto-detected label (lscpu CPU model + core count) is used when --machine is
 omitted; pass it as above so the published chart names the evaluation instance."
 
-bench_parse_args "$@"
 # All contenders are Hardwood (fast path vs. baseline), so there is no
 # engine-for-engine single-core number to take — this benchmark has no pinned pass
-# (and the harness prints no "skipped single-core" note for it).
+# (and the harness prints no "skipped single-core" note for it). Set before
+# parsing, which --regression consults to pick its one pass.
 BENCH_SINGLE_CORE=0
+bench_parse_args "$@"
 bench_build
 bench_run dev.hardwood.benchmarks.fixedlist.FixedSizeListScanBenchmark
 bench_epilogue
