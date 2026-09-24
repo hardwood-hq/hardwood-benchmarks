@@ -285,6 +285,12 @@ Attach a JMH profiler with `--prof`, narrowing with `--include`:
 `gc`, `stack`, and async-profiler (`itimer`/`alloc`) work anywhere. `perfnorm`
 (cache-misses, IPC) needs Linux `perf` **and** a host-exposed PMU — most cloud
 VMs don't expose it (`<not supported>`); use bare-metal for hardware counters.
+On a bare-metal host, `perfasm` also needs `kernel.perf_event_paranoid` ≤ 1 for
+kernel frames and hsdis in the JDK's `lib/` to disassemble. Comparable timings need
+a fixed clock: governor `performance`, `scaling_max_freq` capped at the clock the
+package sustains with all cores busy, and no background timers firing mid-run.
+[`profiling-setup`](https://github.com/gunnarmorling/cloud-boxes/blob/master/ansible/roles/bench_host/files/profiling-setup)
+applies and reverts these settings for one session.
 
 `--batch-size N` overrides the Hardwood column reader's batch size (e.g. to test
 cache-residency effects on single-core throughput).
