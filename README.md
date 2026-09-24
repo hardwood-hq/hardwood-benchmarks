@@ -2,7 +2,8 @@
 
 Performance benchmarks comparing [Hardwood](https://github.com/hardwood-hq/hardwood)
 and [parquet-java](https://github.com/apache/parquet-java) on Parquet read
-workloads. Depends only on `hardwood-core` and `parquet-*` as Maven artifacts.
+workloads, and comparing Hardwood versions with each other. Depends only on
+`hardwood-core` and `parquet-*` as Maven artifacts.
 
 ## Benchmark overview
 
@@ -251,13 +252,42 @@ It reaches Maven, not the JVM — `hardwood.version` is a pom property, so a bar
 `-Dhardwood.version=…` on the command line would land on `java` where nothing
 reads it, and the run would quietly measure the pom's version instead. The
 benchmark classes are recompiled whenever the requested version changes, since
-they track the current API: a benchmark using something a version does not have
-fails the build rather than the run. That bounds a comparison to the benchmarks
-whose sources compile against both sides.
+they track the current API. Each script compiles only the shared classes and its
+own benchmark's package (`BENCH_PACKAGES`), so a benchmark using something a
+version does not have fails its own build and no other: against 1.0.0.Final,
+`run-fixedlist.sh` does not build, and every other script does. A contender that
+builds but throws on an older version (1.0.0.Final's row reader rejects a filter
+on a column outside the projection) fails in JMH, which carries on with the rest;
+the contender is missing from that version's results, and the version chart shows
+it as not run.
 
-Two builds of the same `-SNAPSHOT` are told apart by the git commit the meta
-sidecar records alongside the version, so the usual shape is: install Hardwood at
-the base commit, run and capture; install at the new commit, run and capture.
+**Run the quick regression configuration.** `--regression` fixes everything a run
+could vary, so regression runs taken at any time are alike and take minutes, not
+hours:
+
+- **Sizes and contenders:** each script's preset, listed at the end of its `--help`:
+  a one-month taxi window, the filter corpus at 5M rows, bloom at 8M, the nested scan
+  at a 20K-row prefix, fixed-size lists at `k` = 768, and one contender per Hardwood
+  read path. The only non-Hardwood
+  contender is `run-filter.sh`'s parquet-java scan, a control whose drift tells a
+  moving machine from a changed Hardwood.
+- **Iterations:** 3 warmup and 3 measurement iterations of 1 s each.
+- **One pass, on all cores.** Pinned to one core, the JIT, the GC and the reader's
+  worker threads share that core, and a contender is still about 15 % off its steady
+  state after ten 1 s iterations. On all cores it settles by the third.
+
+Passing a flag the preset sets is an error. The meta sidecar records `preset`
+(`regression` or `none`), and both `compare-runs.py` and the version chart warn when
+two snapshots differ in it. Regression numbers are not measured to a benchmark's
+published definition and are compared only with each other.
+
+**Check for regressions.** `./run-regression.sh BASE NEW` runs every script under
+`--regression` for each version, in interleaved rounds (`--rounds`, default 3), then
+writes the verdict: per benchmark, a tally and only the contenders that moved beyond
+the noise band, first version against the last, with control drift called out. The
+contenders a version did not run are listed with the reason from the logs, and the
+version charts are rendered beside it. `--fail-on-regression` makes the exit status
+say whether a Hardwood contender got slower.
 
 **Difference the two snapshots.** `charts/compare-runs.py` takes a base and a new
 snapshot — each a run directory, or a directory of `run-*` repeats — and prints
@@ -295,10 +325,29 @@ draw a warning. `--include REGEX` narrows to some contenders, `--format tsv` emi
 the table for a script, and `--fail-on-regression` exits non-zero if anything got
 slower.
 
+**Chart them.** `charts/make-version-chart.py` takes two or more snapshots, oldest
+first, and charts every Hardwood contender across them, one chart per benchmark and
+pass. Two snapshots give a before/after; more give a progression, such as 1.0 → 1.1 →
+1.2:
+
+```sh
+python3 charts/make-version-chart.py <base> <new> [<newer> ...] [--out DIR]
+```
+
+Each snapshot is labelled with the Hardwood build its meta sidecar records (or
+`--label`), drawn at its median with its repeats' spread as a whisker, and a
+contender a snapshot lacks is drawn as not run. Beside each contender is its time in
+the earliest snapshot that ran it over its time in the last. Contenders matching
+`--control` (default `^(parquetJava|avro|arrow)`) are not charted: they are pinned
+in the pom, so they serve as a control: the chart warns when one moves beyond its noise band
+between two consecutive snapshots, as well as on the sidecar mismatches
+`compare-runs.py` warns about. Output goes to `target/version-charts/` unless `--out`
+names a directory.
+
 ### Common flags
 
 Every script shares a set of flags — `--warmup`/`--meas`/`--forks`, `--prof`,
-`--include`, `--no-pin`, `--gate`, `--hardwood-version`, `--help` — each documented
+`--include`, `--time`, `--no-pin`, `--gate`, `--hardwood-version`, `--regression`, `--help` — each documented
 by the script's own `--help`. Any `-Dperf.*=…` (or other `-D…`) passes straight through to the JVM.
 
 ## Output
@@ -310,8 +359,7 @@ exists.
 Some benchmarks run two passes: **all cores** (out of the box) times every contender,
 and **single core** (`taskset -c 0`, Linux only) re-times just the Hardwood
 contenders for a per-core figure — the single-threaded baselines aren't re-timed,
-since pinning doesn't change them. Benchmarks with no engine-for-engine comparison
-run the all-cores pass only. Both passes run only when benchmarking; `--gate` runs
+since pinning doesn't change them. `run-fixedlist.sh` runs the all-cores pass only. Both passes run only when benchmarking; `--gate` runs
 neither.
 
 Each run writes per-benchmark TSVs to `target/` — `bench-throughput-<Benchmark>.tsv`
@@ -329,7 +377,8 @@ Quote SIMD-enabled and scalar numbers separately — they are different measurem
 
 ## Charts
 
-A charted benchmark has one or more `charts/make-<benchmark>-*chart.py` generators
+Every benchmark charts across Hardwood versions with `make-version-chart.py` (see
+[Comparing versions](#comparing-versions)). A published benchmark also has one or more `charts/make-<benchmark>-*chart.py` generators
 (stdlib Python, sharing `charts/chartlib.py`) that read `bench-throughput-*.tsv` and
 its `bench-meta` sidecar from a results dir (`--results-dir`, default `target/`) and
 write SVGs to `<results-dir>/charts/`; point one at a captured run to re-render it.

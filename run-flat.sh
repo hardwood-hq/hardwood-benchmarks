@@ -9,6 +9,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
+BENCH_PACKAGES='flat'
+BENCH_REGRESSION_PRESET='--start 2025-01 --end 2025-01'
+BENCH_REGRESSION_INCLUDE='hardwoodColumnar|hardwoodRowReaderIndexed'
 BENCH_FLAGS='--start perf.start
 --end perf.end
 --data-dir data.dir
@@ -23,6 +26,7 @@ Usage: ./run-flat.sh [options]
   --batch-size N    Hardwood column reader batch size (0/unset = default); shrink
                     it (e.g. 4096) to probe single-core columnar cache behaviour
 $BENCH_COMMON_USAGE
+Regression preset (--regression): --start 2025-01 --end 2025-01; contenders matching hardwoodColumnar|hardwoodRowReaderIndexed
 
 Two modes: --gate verifies every contender folds to the same checksum as
 parquet-java and exits (no JMH, printing a per-contender confirmation; fails fast

@@ -9,6 +9,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
+BENCH_PACKAGES='filter'
+BENCH_REGRESSION_PRESET='--rows 5000000'
+BENCH_REGRESSION_INCLUDE='hardwoodDefault|hardwoodRowReader$|parquetJava$'
 BENCH_FLAGS='--rows perf.rows
 --selectivity perf.param'
 BENCH_USAGE="Filtered scan benchmark (generated time-clustered event log, range push-down).
@@ -18,6 +21,7 @@ Usage: ./run-filter.sh [options]
   --selectivity VALUE   restrict to one selectivity: selective | matchAll
                         (default: run both)
 $BENCH_COMMON_USAGE
+Regression preset (--regression): --rows 5000000; contenders matching hardwoodDefault|hardwoodRowReader$|parquetJava$
 
 Two modes: --gate folds every contender and checks they agree, then exits (no JMH);
 without it, the script benchmarks. Publish flow — gate, smoke-test, measure, chart:

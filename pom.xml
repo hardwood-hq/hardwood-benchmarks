@@ -15,6 +15,12 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
+    <bench.include.a>dev/hardwood/benchmarks/**/*.java</bench.include.a>
+    <bench.include.b>dev/hardwood/benchmarks/**/*.java</bench.include.b>
+    <!-- bench_build points these at a directory per Hardwood version and package
+         set, so switching between them reuses a build instead of redoing it. -->
+    <bench.outputDirectory>${project.build.directory}/classes</bench.outputDirectory>
+    <bench.generatedSources>${project.build.directory}/generated-sources/annotations</bench.generatedSources>
     <hardwood.version>1.1.0-SNAPSHOT</hardwood.version>
     <parquet.version>1.17.1</parquet.version>
     <hadoop.version>3.4.3</hadoop.version>
@@ -131,11 +137,23 @@
   </dependencies>
 
   <build>
+    <outputDirectory>${bench.outputDirectory}</outputDirectory>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
+          <!-- The shared classes plus the packages of the benchmark being run
+               (bench_build sets bench.include.a / .b from the script's
+               BENCH_PACKAGES), so a benchmark whose source does not compile
+               against the requested Hardwood version never blocks another.
+               Without them, everything compiles. -->
+          <generatedSourcesDirectory>${bench.generatedSources}</generatedSourcesDirectory>
+          <includes>
+            <include>dev/hardwood/benchmarks/*.java</include>
+            <include>${bench.include.a}</include>
+            <include>${bench.include.b}</include>
+          </includes>
           <annotationProcessorPaths>
             <path>
               <groupId>org.openjdk.jmh</groupId>
