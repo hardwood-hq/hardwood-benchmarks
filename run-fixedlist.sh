@@ -12,7 +12,7 @@ source ./bench-common.sh
 
 BENCH_PACKAGES='fixedlist'
 BENCH_REGRESSION_PRESET='--total-values 8000000 --k 768'
-BENCH_REGRESSION_INCLUDE='Fast|Baseline'
+BENCH_REGRESSION_INCLUDE='Fast'
 BENCH_FLAGS='--data-dir perf.dataDir
 --total-values perf.totalValues
 --k perf.k'
@@ -25,7 +25,7 @@ Usage: ./run-fixedlist.sh [options]
   --k CSV             restrict to specific k (e.g. 768, or 3,768 for the two
                       headline ~512 MB files); default is the full sweep
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --total-values 8000000 --k 768; contenders matching Fast|Baseline
+Regression preset (--regression): --total-values 8000000 --k 768; contenders matching Fast
 
 Two modes: --gate generates the corpus, reads each k with the fast path on and
 off, and verifies the fast path decodes bit-identical values to the baseline (both

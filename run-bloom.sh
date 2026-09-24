@@ -14,7 +14,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGES='bloom'
-BENCH_REGRESSION_PRESET='--rows 8000000'
+BENCH_REGRESSION_PRESET='--rows 8000000 --probe absent'
 BENCH_REGRESSION_INCLUDE='hardwoodBloom|hardwoodNoBloom'
 BENCH_FLAGS='--rows perf.rows
 --probe perf.param'
@@ -30,7 +30,7 @@ Usage: ./run-bloom.sh [options]
   --probe VALUE    restrict to one probe: present | absent
                    (default: run both)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --rows 8000000; contenders matching hardwoodBloom|hardwoodNoBloom
+Regression preset (--regression): --rows 8000000 --probe absent; contenders matching hardwoodBloom|hardwoodNoBloom
 
 The corpus is generated on first run (no download): keys come from a 64-bit
 bijection of the row index, so they are exactly unique, pseudorandomly ordered, and
