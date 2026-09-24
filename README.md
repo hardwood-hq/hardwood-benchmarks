@@ -29,6 +29,7 @@ generated fixture of one size, and changes or goes with the code it witnesses:
 | Script | Workload | Contenders |
 | --- | --- | --- |
 | `run-window.sh` | Recent time window over a time-sorted event log, filter column not projected | Hardwood column + row readers, filtered and unfiltered |
+| `run-write.sh` | Flat, taxi-shaped records written to memory, SNAPPY and ZSTD | Hardwood column + row writers |
 
 **Two modes.** By default a script **benchmarks** (see [Output](#output) for the
 one or two timed passes). With `--gate` it runs a **gate check** instead: it folds
@@ -266,6 +267,19 @@ compare and chart.
 `latency_ms` and `category` beside it, SNAPPY, 16 MB row groups. The size is fixed, so
 runs of any two versions read the same file.
 
+### Writes — `run-write.sh` (regression-only)
+
+500K flat, taxi-shaped records (six columns, nulls in two) written to memory through
+Hardwood's column writer and its row writer (named setters, `String` and `Instant`
+values), SNAPPY and ZSTD. Writing to memory keeps the filesystem out of the number,
+so it is encode throughput. Before timing, each file is read back and its row count
+and fare sum checked (`--gate` does only that). The compressed column-chunk bytes of
+each codec's file are recorded in the meta sidecar (`bytes`, `bytesZstd`), footer
+excluded, so an encoding change shows up as a dataset difference between two
+versions even where the time does not move.
+
+**Run:** `./run-write.sh --help`.
+
 ## Comparing versions
 
 Beyond backing a post, a run is evidence about one build of Hardwood against
@@ -299,8 +313,9 @@ hours:
 
 - **Sizes and contenders:** each script's preset, listed at the end of its `--help`:
   a one-month taxi window, the filter corpus at 5M rows, bloom at 8M, the nested scan
-  at a 20K-row prefix, fixed-size lists at `k` = 768, the most recent 25 % in
-  `run-window.sh`, and one contender per Hardwood read path. The only non-Hardwood
+  at a 20K-row prefix, fixed-size lists at `k` = 768 on the fast path, bloom's `absent`
+  probe, the most recent 25 % in `run-window.sh`, 500K records in `run-write.sh`, and
+  one contender per Hardwood read and write path. The only non-Hardwood
   contender is `run-filter.sh`'s parquet-java scan, a control whose drift tells a
   moving machine from a changed Hardwood.
 - **Iterations:** 3 warmup and 3 measurement iterations of 1 s each.

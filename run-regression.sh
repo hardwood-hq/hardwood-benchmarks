@@ -8,7 +8,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-SCRIPTS=(filter bloom window nested flat fixedlist)
+SCRIPTS=(filter bloom window nested flat fixedlist write)
 CONTROL='^(parquetJava|avro|arrow)'
 
 usage() {
