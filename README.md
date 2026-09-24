@@ -20,6 +20,16 @@ each lives in [The Benchmarks](#the-benchmarks).
 | `run-nested.sh` | Full read of deeply nested struct/list/map records (Overture Maps) | Hardwood row reader ↔ `AvroParquetReader` |
 | `run-fixedlist.sh` | Fixed-width vector column (embeddings, points) read with the fast path on vs. off | Hardwood column & row readers, fast path ↔ baseline |
 
+These back published results: their definitions are fixed once a post cites them,
+and every run of them also compares Hardwood versions ([Comparing
+versions](#comparing-versions)). **Regression-only** benchmarks back no publication.
+Each witnesses one scenario, usually one optimization, times Hardwood alone over a
+generated fixture of one size, and changes or goes with the code it witnesses:
+
+| Script | Workload | Contenders |
+| --- | --- | --- |
+| `run-window.sh` | Recent time window over a time-sorted event log, filter column not projected | Hardwood column + row readers, filtered and unfiltered |
+
 **Two modes.** By default a script **benchmarks** (see [Output](#output) for the
 one or two timed passes). With `--gate` it runs a **gate check** instead: it folds
 every contender, verifies they all match the reference checksum, prints a
@@ -234,6 +244,28 @@ selects DataPageV1 (default V2); both are fast-pathed.
   (baseline ÷ fast) vs. vector length `k`, one line per reader — shows the win holds
   across vector lengths.
 
+### Time window — `run-window.sh` (regression-only)
+
+`SELECT amount WHERE event_time >= T` over a time-sorted event log of 10M rows in 13
+row groups, for the most recent 5, 25 and 75 % of the time range. Row-group
+statistics prune the row groups before `T`, one row group straddles it, and the
+statistics prove every row group after it fully matching. `event_time` is not
+projected, so in those proven row groups Hardwood does not read it at all
+([hardwood#1274](https://github.com/hardwood-hq/hardwood/issues/1274)). `run-filter.sh`
+reaches only the two ends of this mix: `matchAll` proves every row group, and
+`selective` falls inside one.
+
+Contenders are Hardwood's column and row readers, each filtered and unfiltered; the
+unfiltered reads are the controls. The gate checks every one of them against
+parquet-java's filtered and unfiltered scans.
+
+**Run:** `./run-window.sh --help` — gate, then measure and capture each version, then
+compare and chart.
+
+**Data.** Generated under `target/` on first run: `event_time` ascending, `amount`,
+`latency_ms` and `category` beside it, SNAPPY, 16 MB row groups. The size is fixed, so
+runs of any two versions read the same file.
+
 ## Comparing versions
 
 Beyond backing a post, a run is evidence about one build of Hardwood against
@@ -267,8 +299,8 @@ hours:
 
 - **Sizes and contenders:** each script's preset, listed at the end of its `--help`:
   a one-month taxi window, the filter corpus at 5M rows, bloom at 8M, the nested scan
-  at a 20K-row prefix, fixed-size lists at `k` = 768, and one contender per Hardwood
-  read path. The only non-Hardwood
+  at a 20K-row prefix, fixed-size lists at `k` = 768, the most recent 25 % in
+  `run-window.sh`, and one contender per Hardwood read path. The only non-Hardwood
   contender is `run-filter.sh`'s parquet-java scan, a control whose drift tells a
   moving machine from a changed Hardwood.
 - **Iterations:** 3 warmup and 3 measurement iterations of 1 s each.
