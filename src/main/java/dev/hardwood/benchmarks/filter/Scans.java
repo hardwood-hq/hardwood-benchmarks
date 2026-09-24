@@ -58,7 +58,12 @@ public final class Scans {
     /// fix this is row-exact — the reader yields only matching `amount` values,
     /// with no client-side residual and without reading the predicate column.
     public static Result hardwoodFiltered(Path file, long threshold) throws IOException {
-        FilterPredicate filter = FilterPredicate.lt("event_time", threshold);
+        return hardwoodFiltered(file, FilterPredicate.lt("event_time", threshold));
+    }
+
+    /// As [#hardwoodFiltered(Path, long)], for any predicate: reads only `amount`,
+    /// yielding the values of the rows `filter` matches.
+    public static Result hardwoodFiltered(Path file, FilterPredicate filter) throws IOException {
         long count = 0;
         double sum = 0.0;
         try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
@@ -97,7 +102,12 @@ public final class Scans {
     /// Hardwood row reader, projecting only `amount` and filtering on `event_time`, a
     /// column outside the projection. The record-path counterpart of [#hardwoodFiltered].
     public static Result hardwoodRowReaderFiltered(Path file, long threshold) throws IOException {
-        FilterPredicate filter = FilterPredicate.lt("event_time", threshold);
+        return hardwoodRowReaderFiltered(file, FilterPredicate.lt("event_time", threshold));
+    }
+
+    /// As [#hardwoodRowReaderFiltered(Path, long)], for any predicate: projects only
+    /// `amount`, yielding the rows `filter` matches.
+    public static Result hardwoodRowReaderFiltered(Path file, FilterPredicate filter) throws IOException {
         long count = 0;
         double sum = 0.0;
         try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
@@ -259,7 +269,8 @@ public final class Scans {
     }
 
     /// No-op converter required by [ColumnReadStoreImpl]; we never assemble records.
-    private static final class NoOpGroupConverter extends GroupConverter {
+    /// Public so other benchmarks' low-level parquet-java scans can share it.
+    public static final class NoOpGroupConverter extends GroupConverter {
         @Override
         public Converter getConverter(int fieldIndex) {
             return new PrimitiveConverter() {

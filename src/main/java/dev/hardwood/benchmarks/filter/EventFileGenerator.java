@@ -35,8 +35,19 @@ public final class EventFileGenerator {
     private EventFileGenerator() {
     }
 
-    /// Writes the file if it is not already present. Cached across runs.
+    /// Default row-group size: realistic ~128 MB row groups.
+    private static final long DEFAULT_ROW_GROUP_BYTES = 128L * 1024 * 1024;
+
+    /// Writes the file with ~128 MB row groups if it is not already present.
+    /// Cached across runs.
     public static void ensure(Path file, long rows) throws IOException {
+        ensure(file, rows, DEFAULT_ROW_GROUP_BYTES);
+    }
+
+    /// Writes the file with row groups of `rowGroupBytes` if it is not already
+    /// present. Cached across runs, keyed on the path only, so a caller varying
+    /// the row-group size must encode it in the file name.
+    public static void ensure(Path file, long rows, long rowGroupBytes) throws IOException {
         if (Files.exists(file) && Files.size(file) > 0) {
             return;
         }
@@ -59,7 +70,7 @@ public final class EventFileGenerator {
                 .withSchema(schema)
                 .withConf(conf)
                 .withCompressionCodec(CompressionCodecName.SNAPPY)
-                .withRowGroupSize(128L * 1024 * 1024)       // realistic ~128MB row groups
+                .withRowGroupSize(rowGroupBytes)
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .withPageWriteChecksumEnabled(false)
                 .build()) {
