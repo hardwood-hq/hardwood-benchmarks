@@ -1,489 +1,298 @@
 # hardwood-benchmarks
 
-Performance benchmarks comparing [Hardwood](https://github.com/hardwood-hq/hardwood)
-and [parquet-java](https://github.com/apache/parquet-java) on Parquet read
-workloads, and comparing Hardwood versions with each other. Depends only on
-`hardwood-core` and `parquet-*` as Maven artifacts.
+Benchmarks for [Hardwood](https://github.com/hardwood-hq/hardwood): Hardwood against
+[parquet-java](https://github.com/apache/parquet-java) and other readers for published
+results, and one Hardwood version against another for regressions. Depends only on
+`hardwood-core` and the contenders' libraries as Maven artifacts.
 
-## Benchmark overview
+## Quick start
 
-Each benchmark is a script at the repo root; run it directly (e.g. `./run-flat.sh`),
-with its own flags plus the [common flags](#common-flags) and `--help` for the full
-list. Data is acquired on first run — no manual setup. A detailed description of
-each lives in [The Benchmarks](#the-benchmarks).
+Needs JDK 21 or newer (tested on 25); the Maven wrapper is bundled.
 
-| Script | Workload | Contenders |
-| --- | --- | --- |
-| `run-flat.sh` | Full scan of every column (NYC Yellow Taxi) | Hardwood columnar + record readers ↔ parquet-java / Avro, Arrow reference |
-| `run-filter.sh` | Range predicate over a time-clustered file | Hardwood filtered column + row readers ↔ parquet-java |
-| `run-bloom.sh` | Equality point-lookup on a unique, unclustered key (generated) | Hardwood ↔ parquet-java, bloom file vs statistics-only twin |
-| `run-nested.sh` | Full read of deeply nested struct/list/map records (Overture Maps) | Hardwood row reader ↔ `AvroParquetReader` |
-| `run-fixedlist.sh` | Fixed-width vector column (embeddings, points) read with the fast path on vs. off | Hardwood column & row readers, fast path ↔ baseline |
+```sh
+./run-flat.sh --help     # flags, the benchmark's recipe, its regression preset
+./run-flat.sh --gate     # check every contender produces the same result, no timing
+./run-flat.sh            # benchmark
+```
 
-These back published results: their definitions are fixed once a post cites them,
-and every run of them also compares Hardwood versions ([Comparing
-versions](#comparing-versions)). **Regression-only** benchmarks back no publication.
-Each witnesses one scenario, usually one optimization, times Hardwood alone over a
-generated fixture of one size, and changes or goes with the code it witnesses:
+Each benchmark acquires its data on first run and reuses it after. Data lives under
+`target/`, which `./mvnw clean` wipes; `run-flat.sh --data-dir` and
+`run-nested.sh --file` point at a persistent location instead.
 
-| Script | Workload | Contenders |
-| --- | --- | --- |
-| `run-window.sh` | Recent time window over a time-sorted event log, filter column not projected | Hardwood column + row readers, filtered and unfiltered |
-| `run-write.sh` | Flat, taxi-shaped records written to memory, SNAPPY and ZSTD | Hardwood column + row writers |
-| `run-s3.sh` | Reads from an emulated object store: projected scan, selective filtered scan, multi-file scan | Hardwood column reader |
+`hardwood-core` resolves at `<hardwood.version>` in `pom.xml`, or at
+`--hardwood-version`. Releases come from Maven Central; a `-SNAPSHOT` must be installed
+from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 
-**Two modes.** By default a script **benchmarks** (see [Output](#output) for the
-one or two timed passes). With `--gate` it runs a **gate check** instead: it folds
-every contender, verifies they all match the reference checksum, prints a
-per-contender confirmation, and exits — no timing, no results file. Gate-check
-before a measurement run to prove agreement.
+## Benchmarks
 
-## Prerequisites
+| Script | Kind | Workload | Contenders |
+| --- | --- | --- | --- |
+| [`run-flat.sh`](#flat-full-scan--run-flatsh) | published | Full scan of every column of NYC taxi | Hardwood column and row readers; parquet-java, `AvroParquetReader`, Arrow Dataset |
+| [`run-filter.sh`](#filtered-scan--run-filtersh) | published | Range predicate over a time-clustered file | Hardwood filtered column and row readers; parquet-java |
+| [`run-bloom.sh`](#bloom-filter-point-lookup--run-bloomsh) | published | Equality lookup on a unique key, bloom file against a statistics-only twin | Hardwood; parquet-java |
+| [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Hardwood row reader; `AvroParquetReader` |
+| [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Hardwood column and row readers |
+| [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Hardwood column and row readers |
+| [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Hardwood column and row writers |
+| [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Hardwood column reader |
 
-- JDK 21 or newer (`java -version`); tested on 25.
-- Bundled Maven wrapper (`./mvnw`) and run scripts — no separate Maven install.
-- `dev.hardwood:hardwood-core` resolves at `<hardwood.version>` in `pom.xml`, or
-  at `--hardwood-version` when a run passes one. Released versions (e.g.
-  `1.0.0.CR1`) come from Maven Central; a `-SNAPSHOT` must first be installed
-  locally from a Hardwood checkout:
-  ```sh
-  ./mvnw -pl core -am install -Dquick
-  ```
+A **published** benchmark backs a post: its definition is fixed once a post cites it,
+the cited runs are archived under `results/`, and it has chart generators of its own.
+A **regression-only** benchmark witnesses one scenario, times Hardwood alone over a
+fixture of one size, and changes or goes with the code it witnesses. Both kinds serve
+[version comparison](#comparing-versions). The plan for the suite, including the
+benchmarks still to come, is in
+[`_designs/BENCHMARK_WORKLOAD_COVERAGE.md`](_designs/BENCHMARK_WORKLOAD_COVERAGE.md).
+
+## Running a benchmark
+
+**Gate and benchmark.** `--gate` runs every contender once, checks their results
+against the reference, and exits. Without it, the script benchmarks. Gate-check before
+any long run.
+
+**Passes.** A benchmark runs two passes: all cores, timing every contender, then one
+core (`taskset -c 0`, Linux only), re-timing the Hardwood contenders only, since pinning
+does not change the single-threaded ones. `--no-pin` skips the single-core pass,
+`--pin-only` the all-cores one. `run-fixedlist.sh` and `--regression` run all cores
+only.
+
+**Flags.** Every script takes `--warmup`, `--meas`, `--forks`, `--time`, `--include`,
+`--prof`, `--machine`, `--no-pin`, `--pin-only`, `--gate`, `--hardwood-version` and
+`--regression`, plus its own; its `--help` documents all of them. Any `-D…` passes
+through to the JVM.
+
+**Output.** JMH reports average time per op (`ms/op`, lower is better); some benchmarks
+also print throughput (`M rows/s`, `MB/s`). A run writes to `target/`:
+
+- `bench-throughput-<Benchmark>.tsv`: the numbers.
+- `bench-meta-<Benchmark>.tsv`: the dataset parameters, plus `java`, `hardwood`
+  (version and commit), `machine`, `preset` and `simd`. `simd` is `scalar` unless
+  `--add-modules jdk.incubator.vector` reaches the JVM from the environment, which the
+  scripts do not pass; quote SIMD and scalar numbers separately.
+- `<bench>.log`: the console output (`BENCH_LOG=0` disables it).
+
+`./capture-run.sh <dir>` copies that set into a self-contained snapshot, which the
+comparison and chart tools read.
+
+## Comparing versions
+
+`./run-regression.sh BASE NEW` checks for regressions between two Hardwood versions,
+for example a release against a local build:
+
+```sh
+./run-regression.sh 1.0.0.Final 1.1.0-SNAPSHOT
+```
+
+It runs every benchmark under `--regression` for each version in interleaved rounds
+(`--rounds`, default 3), so machine drift spreads over all versions. One round of all
+eight benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It writes to
+`target/regression/`:
+
+- `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
+  noise band, first version against the last, with control drift reported separately.
+- `not-run.txt`: every benchmark or contender a version could not run, with the reason.
+- `charts/`: one version chart per benchmark.
+
+More than two versions give a progression, such as 1.0 → 1.1 → 1.2; `--only` restricts
+the benchmarks, and `--fail-on-regression` sets the exit status.
+
+**`--hardwood-version`** selects the version for one run. It sets a pom property, so it
+reaches Maven; a bare `-Dhardwood.version=…` would reach the JVM instead and measure the
+pom's version. Each version builds into its own `target/build/` directory, compiling
+the shared classes and the benchmark's own package, so a benchmark using API a version
+lacks fails its own build and no other (against 1.0.0.Final, `run-fixedlist.sh` does not
+build). A contender that builds but throws on an older version fails alone under JMH and
+is reported as not run.
+
+**`--regression`** fixes the run's configuration so that regression runs taken at any
+time are alike:
+
+- The benchmark's preset sizes and contenders, listed at the end of its `--help`. The
+  only non-Hardwood contender is `run-filter.sh`'s parquet-java scan, a control: its
+  version is pinned, so a move in it is the machine drifting, not Hardwood changing.
+- 3 warmup and 3 measurement iterations of 1 s, unless the preset says otherwise
+  (`run-s3.sh` warms up for 5).
+- One pass, on all cores. Pinned to one core, the JIT, the GC and the reader's worker
+  threads share the core, and a contender is still about 15 % off its steady state
+  after ten iterations; on all cores it settles by the third.
+
+Passing a flag the preset sets is an error. Regression numbers are compared only with
+each other.
+
+**The tools underneath.** `charts/compare-runs.py BASE NEW` differences two snapshots,
+each a run directory or a directory of `run-*` repeats, and calls a change only beyond a
+noise band measured from the repeats. `charts/make-version-chart.py` charts every
+Hardwood contender across any number of snapshots. Both warn when snapshots differ in
+machine, Java, dataset or preset. Each documents its options in `--help`.
 
 ## Publication runs
 
-Each benchmark's `--help` carries its exact recipe — gate-check, smoke test,
-measurement command, and chart (`./run-flat.sh --help`, and so on). This section
-covers only what is common to a publication-grade run of any of them: run the
-measurement command from that recipe inside the loop below.
-
-A single timed run isn't publication-grade: on a shared host run-to-run variance is
-~5–10%, so quote the **median of several runs**. Do **three full runs with a
-5-minute break between them** — sampling across a span of time rather than one
-momentary machine state — in a `tmux` session so an SSH drop can't kill them.
-Gate-check first (the gate line in the benchmark's `--help` recipe) so environment
-problems surface before the long run.
-
-Start the session, then **paste** the loop into it (don't cram it into `tmux new -d
-<cmd>` — tmux mangles the embedded quoting) with the benchmark's measurement command
-— the measure line of its `--help` recipe — dropped in. Each run self-logs to
-`target/<bench>.log` and `capture-run.sh` archives it into its own directory; detach
-with `Ctrl-b d` and the loop keeps running:
+A published number is the median of three full runs, taken with 5-minute breaks between
+them on a machine with a fixed clock (see [Profiling](#profiling)). Gate-check first,
+then paste this loop into a `tmux` session, with the measure line from the benchmark's
+`--help` recipe (tmux mangles the quoting if the loop is passed to `tmux new` directly):
 
 ```sh
 tmux new -s bench        # then paste:
 for i in 1 2 3; do
-  <benchmark measurement command>              # e.g. ./run-flat.sh --forks 5 --meas 10 --include "…"
-  ./capture-run.sh results/2026-06-25-hardwood-1.0/run-$i
-  [ $i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
+  <measure line>                     # e.g. ./run-flat.sh --forks 5 --meas 10 --include "…"
+  ./capture-run.sh results/<YYYY-MM-DD>-<slug>/run-$i
+  [ $i -lt 3 ] && sleep 300
 done
 ```
 
-Results are filed one directory per publication, `results/<YYYY-MM-DD>-<slug>/run-N/`
-— use a fresh dated dir for a new post/release. Take the per-contender **median**
-across the three runs and quote the run-to-run spread as the error bar; re-chart a
-captured run by pointing its generator at the dir with `--results-dir` (see
-[Charts](#charts)). Run the pinned single-core pass on a Linux host where `taskset`
-works (see [Output](#output)).
-
-## The Benchmarks
-
-Each benchmark acquires its data on first run and skips it once present; `target/`
-is wiped by `mvn clean`, so point a benchmark's data flag at a persistent directory
-to keep large downloads across cleans.
-
-### Flat full scan — `run-flat.sh`
-
-Reads every column of the monthly taxi files, folding each into a per-file
-checksum. Two API pairs:
-
-- **Columnar** — Hardwood column reader ↔ parquet-java low-level column API, with
-  **Arrow Dataset** (Arrow C++ over JNI, in the same harness) as a cross-engine
-  reference.
-- **Record** — Hardwood row reader ↔ `AvroParquetReader`, each in **both access
-  modes**: named (`getDouble("fare_amount")`) and indexed (positional). A typed
-  `AvroParquetReader` **`SpecificRecord`** contender runs alongside as an internal
-  reference (gated, never plotted), confirming the lead is not a `GenericRecord`
-  artifact.
-
-Field access is materialized to the 2025 TLC schema with monomorphic,
-schema-specific reads, so the timings reflect decode work. Consequently
-`--start`/`--end` must stay within the 2025 layout (20 columns) — another schema
-folds the wrong types and fails the gate.
-
-**Run:** `./run-flat.sh --help` — gate, smoke test, measure (`--include` the
-published contenders), chart.
-
-**Data.** Downloads the NYC Yellow Taxi files on first run. `--data-dir` (or
-`-Ddata.dir=…`, honoured by the benchmark and its fork) relocates the cache; point
-it at a persistent directory (e.g. `~/.cache/tlc-trip-record-data`) to survive
-`mvn clean` and avoid re-downloading.
-
-**Charts** (`make-flat-chart.py`) — `flat_chart1_columnar.svg` (columnar pair) and
-`flat_chart2_record.svg` (record pair), both throughput (M rows/s, **higher is
-better**). The Arrow Dataset and `SpecificRecord` contenders are gated but never
-plotted.
-
-### Filtered scan — `run-filter.sh`
-
-A generated, time-clustered `event_time` file (column index, no bloom filters)
-read with a range predicate: Hardwood's filtered column reader vs parquet-java's
-low-level column API over `readNextFilteredRowGroup()`, with Hardwood's filtered
-row reader (projecting `amount`) beside them. Two selectivities —
-**selective** (threshold `rows/20`) and **matchAll** (the overhead floor).
-Unfiltered controls read `amount` alone (both Hardwood readers, parquet-java) and both columns
-(parquet-java), separating decode speed from what filtering costs or saves.
-
-**Run:** `./run-filter.sh --help` — gate, smoke test, measure, chart.
-
-**Data.** Generated under `target/` on first run, keyed on the row count so a
-different `--rows` regenerates rather than reusing a stale file.
-
-**Charts** (`make-filter-chart.py`) — `filtered_chart.svg`, ms/op (**lower is
-better**), the two selectivity groups on a broken axis so the match-all bar stays
-readable next to the selective one. The row reader and the controls are gated but not plotted.
-
-### Bloom-filter point lookup — `run-bloom.sh`
-
-An equality push-down (`key = k`) on a generated **unique, unclustered 64-bit key**
-— the workload bloom filters exist for — against a bloom-filter-bearing file and a
-statistics-only twin holding identical rows. Because the key is unique and
-pseudorandomly ordered, neither row-group statistics, the column index, nor a
-dictionary can prune it, leaving the bloom filter as the only pruner. Each reader
-(Hardwood, parquet-java) probes both files, isolating what a bloom filter buys
-(`hardwoodBloom` vs `hardwoodNoBloom`) and Hardwood's bloom against parquet-java's on
-the same file. Two probes: `present` (matches one row, so the bloom keeps one row
-group) and `absent` (in range everywhere, so the bloom drops every row group — the
-case statistics cannot catch). Hardwood does not yet *write* bloom filters, so both
-files are written by parquet-java; this is a read-path comparison only.
-
-On the absent probe both readers prune identically and read byte-identical ranges, so
-the gap is filter *materialization*, not pruning: Hardwood probes the mmapped filter
-in place (~19 KB/op) while parquet-java copies each filter onto the heap (~63 MB/op).
-Note that mmap benefits from the warm page cache these runs use.
-
-**Run:** `./run-bloom.sh --help` — gate, smoke test, measure, chart.
-
-**Data.** Generated on first run, no download: keys come from a 64-bit bijection of
-the row index, so they are exactly unique and reproducible from the row count alone.
-The default 84M rows spans ~10 row groups (~8.4M rows each); expect ~2.9 GB for the
-file pair, keyed on row count so a different size generates a fresh pair. The
-benchmark raises `parquet.bloom.filter.max.bytes` to 10 MB — Parquet's 1 MB default
-silently clamps the filter to ~99.7% FPP, which prunes nothing.
-
-**Charts** (`make-bloom-chart.py`) — `bloom_chart.svg`, ms/op (**lower is better**),
-the two probe groups (present, absent), each with the four all-cores read paths
-(Hardwood/parquet-java × bloom/no-bloom) plus a hatched single-core (`taskset -c 0`)
-bar beside each Hardwood bar. The single-core bars need the pinned pass, so this
-requires a full run — not `--no-pin`.
-
-### Nested scan — `run-nested.sh`
-
-A full read of the single-file Overture Maps places dataset — deeply nested
-struct / list / map — comparing the record pair: Hardwood's row reader against
-`AvroParquetReader`. Both reconstruct every record down to the scalar leaves, so
-neither skips work the other performs; a representation-stable checksum proves they
-assemble identical data before any timing counts. The file is single, so there is
-no cross-file asymmetry — the parallel advantage is purely within-file concurrent
-decode. (Not part of the 1.0 publication; kept as the like-for-like nested record
-comparison.)
-
-**Run:** `./run-nested.sh --help` — gate, smoke test, measure, chart.
-
-**Data.** Downloads the Overture places file on first run to the default path
-`target/overture-maps-data/overture_places.zstd.parquet`; `--file` points at an
-existing file instead. The download resolves the STAC catalog's latest release and
-writes its identifier to a `.release` sidecar beside the file, which the run records
-in its `bench-meta` sidecar as `release`. The catalog serves only the most recent
-releases, so keep the file itself with an archived run — once its release rotates out
-of the bucket the exact bytes a published number was measured on are gone. A file
-supplied with `--file` has no sidecar and is recorded as `release unknown`.
-
-**Charts** (`make-nested-chart.py`) — `nested_record.svg`, throughput in M rows/s
-(**higher is better**), the two access groups (named, indexed), each with Hardwood
-all-cores, Hardwood single-core (`taskset -c 0`), and `AvroParquetReader`. The
-single-core bars need the pinned pass, so this requires a full run — not `--no-pin`.
-The footnote carries the schema composition from the run's meta (leaf count, and the
-share of compressed bytes held by `STRING` columns): the schema is deeply nested in
-shape, but most of its bytes are strings, and a reader of the chart is owed that.
-
-### Fixed-size-list scan — `run-fixedlist.sh`
-
-A full scan of a `LIST<float32>` column of fixed-width vectors (embeddings, 3-D
-points) with the fixed-size-list fast path **on and off**, across a sweep of vector
-lengths `k`, through both the column reader and the row reader. Every contender is
-the Hardwood reader — fast path vs. reconstruction baseline, plus a flat-column
-decode floor — so the run is all-cores only. This is the macro, whole-file
-counterpart to core's micro `FixedSizeListDecodeBenchmark`, producing the
-speedup-vs-`k` curve and the headline embedding / 3-D-point numbers for the blog
-post. The `flatFloor` contender is a single columnar read of the same values as a
-plain float column — the fastest these bytes move — and `main` prints each reader's
-time as a multiple of it (`column/floor`, `row/floor`); a row-read of the flat
-column is not a floor (`k`× more rows, so per-row overhead dominates).
-
-Two file sizes feed the two charts: the speedup **ratio** (baseline ÷ fast) is
-size-robust — per-file fixed costs cancel between fast and baseline — so the `k`
-sweep runs on cheap 32 MB files; absolute **throughput** is size-sensitive, so the
-two headline points (`k = 3` 3-D points, `k = 768` embeddings) are measured on
-realistic ~512 MB files, out of cache and past per-file overhead. All-cores only —
-every contender is Hardwood, so there is no pinned single-core pass.
-
-**Run:** `./run-fixedlist.sh --help` — gate, smoke test, the two sweep/headline
-runs (captured separately), and the publication tmux loop.
-
-**Data.** Generated on demand by `FixedSizeListFileGenerator` as a 3-level
-compliant required `LIST<float32>` (the shape the reader accelerates), no dictionary
-and no compression, so a bare run needs no pyarrow venv. `-Dperf.pageVersion=v1`
-selects DataPageV1 (default V2); both are fast-pathed.
-
-**Charts** — two generators, both reading this benchmark's TSV:
-
-- `make-fixedlist-bars-chart.py` → `fixedlist_bars.svg` (the lead visual): absolute
-  read throughput (M float32 values/s) at one `k` (`--k`, default 768) — column and
-  row readers, baseline vs. fast, with the flat-column floor as a dashed reference
-  line. Uses the `values` denominator from the `bench-meta` sidecar.
-- `make-fixedlist-chart.py` → `fixedlist_speedup.svg`: fast-path speedup
-  (baseline ÷ fast) vs. vector length `k`, one line per reader — shows the win holds
-  across vector lengths.
-
-### Time window — `run-window.sh` (regression-only)
-
-`SELECT amount WHERE event_time >= T` over a time-sorted event log of 10M rows in 13
-row groups, for the most recent 5, 25 and 75 % of the time range. Row-group
-statistics prune the row groups before `T`, one row group straddles it, and the
-statistics prove every row group after it fully matching. `event_time` is not
-projected, so in those proven row groups Hardwood does not read it at all
-([hardwood#1274](https://github.com/hardwood-hq/hardwood/issues/1274)). `run-filter.sh`
-reaches only the two ends of this mix: `matchAll` proves every row group, and
-`selective` falls inside one.
-
-Contenders are Hardwood's column and row readers, each filtered and unfiltered; the
-unfiltered reads are the controls. The gate checks every one of them against
-parquet-java's filtered and unfiltered scans.
-
-**Run:** `./run-window.sh --help` — gate, then measure and capture each version, then
-compare and chart.
-
-**Data.** Generated under `target/` on first run: `event_time` ascending, `amount`,
-`latency_ms` and `category` beside it, SNAPPY, 16 MB row groups. The size is fixed, so
-runs of any two versions read the same file.
-
-### Writes — `run-write.sh` (regression-only)
-
-500K flat, taxi-shaped records (six columns, nulls in two) written to memory through
-Hardwood's column writer and its row writer (named setters, `String` and `Instant`
-values), SNAPPY and ZSTD. Writing to memory keeps the filesystem out of the number,
-so it is encode throughput. Before timing, each file is read back and its row count
-and fare sum checked (`--gate` does only that). The compressed column-chunk bytes of
-each codec's file are recorded in the meta sidecar (`bytes`, `bytesZstd`), footer
-excluded, so an encoding change shows up as a dataset difference between two
-versions even where the time does not move.
-
-**Run:** `./run-write.sh --help`.
-
-### S3 reads — `run-s3.sh` (regression-only)
-
-Hardwood's column reader over a local S3 endpoint that emulates object storage:
-S3Proxy (filesystem-backed, the version the Hardwood S3 tests run) behind Toxiproxy,
-which adds 30 ms of first-byte latency and caps each connection at 80 MB/s
-(`S3_LATENCY_MS`, `S3_BANDWIDTH_KBPS`). `./s3-env.sh start | stop | status` runs both
-as plain processes on the loopback interface, downloaded into `target/s3-env/` on
-first use, pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the last
-core); the benchmark runs on the others. `run-s3.sh` starts the endpoint when it is
-not running and stops it again. An endpoint already running with other latency or
-bandwidth settings is an error; the meta sidecar records the settings read back from
-Toxiproxy (`latencyMs`, `bandwidthKBps`).
-
-What it measures is the shape of the requests a read issues, which is what
-coalescing, index and dictionary fetches, and moving between files change:
-
-| Contender | Read |
-|---|---|
-| `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month |
-| `hardwoodFilteredScan` | a selective range predicate over the 5M-row filter corpus, with its page index |
-| `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
-
-Before timing, each read is checked against the same read of the local file, and its
-request and byte counts go into the meta sidecar (`requests.*`, `bytes.*`), so a
-change in the fetch plan shows up there exactly, even where the time does not move.
-
-**Run:** `./run-s3.sh --help`.
-
-## Comparing versions
-
-Beyond backing a post, a run is evidence about one build of Hardwood against
-another — a regression, or an improvement. Two pieces make that comparison:
-
-**Pick the version at run time.** `--hardwood-version` overrides
-`<hardwood.version>` from the command line, so a version switch is not a `pom.xml`
-edit:
-
-```sh
-./run-flat.sh --hardwood-version 1.0.0.Final       # a release, from Maven Central
-./run-flat.sh --hardwood-version 1.1.0-SNAPSHOT    # a local install, see Prerequisites
-```
-
-It reaches Maven, not the JVM — `hardwood.version` is a pom property, so a bare
-`-Dhardwood.version=…` on the command line would land on `java` where nothing
-reads it, and the run would quietly measure the pom's version instead. The
-benchmark classes are recompiled whenever the requested version changes, since
-they track the current API. Each script compiles only the shared classes and its
-own benchmark's package (`BENCH_PACKAGE`), so a benchmark using something a
-version does not have fails its own build and no other: against 1.0.0.Final,
-`run-fixedlist.sh` does not build, and every other script does. A contender that
-builds but throws on an older version (1.0.0.Final's row reader rejects a filter
-on a column outside the projection) fails in JMH, which carries on with the rest;
-the contender is missing from that version's results, and the version chart shows
-it as not run.
-
-**Run the quick regression configuration.** `--regression` fixes everything a run
-could vary, so regression runs taken at any time are alike and take minutes, not
-hours:
-
-- **Sizes and contenders:** each script's preset, listed at the end of its `--help`:
-  a one-month taxi window, the filter corpus at 5M rows, bloom at 8M, the nested scan
-  at a 20K-row prefix, fixed-size lists at `k` = 768 on the fast path, bloom's `absent`
-  probe, the most recent 25 % in `run-window.sh`, 500K records in `run-write.sh`, and
-  one contender per Hardwood read and write path. `run-s3.sh` warms up for 5
-  iterations, since requests over the emulated latency take longer to settle. The only non-Hardwood
-  contender is `run-filter.sh`'s parquet-java scan, a control whose drift tells a
-  moving machine from a changed Hardwood.
-- **Iterations:** 3 warmup and 3 measurement iterations of 1 s each.
-- **One pass, on all cores.** Pinned to one core, the JIT, the GC and the reader's
-  worker threads share that core, and a contender is still about 15 % off its steady
-  state after ten 1 s iterations. On all cores it settles by the third.
-
-Passing a flag the preset sets is an error. The meta sidecar records `preset`
-(`regression` or `none`), and both `compare-runs.py` and the version chart warn when
-two snapshots differ in it. Regression numbers are not measured to a benchmark's
-published definition and are compared only with each other.
-
-**Check for regressions.** `./run-regression.sh BASE NEW` runs every script under
-`--regression` for each version, in interleaved rounds (`--rounds`, default 3), then
-writes the verdict: per benchmark, a tally and only the contenders that moved beyond
-the noise band, first version against the last, with control drift called out. The
-contenders a version did not run are listed with the reason from the logs, and the
-version charts are rendered beside it. When `run-s3.sh` is among the scripts, the
-emulated S3 endpoint is started once for the whole run. `--fail-on-regression` makes
-the exit status say whether a Hardwood contender got slower.
-
-**Difference the two snapshots.** `charts/compare-runs.py` takes a base and a new
-snapshot — each a run directory, or a directory of `run-*` repeats — and prints
-what moved:
-
-```sh
-python3 charts/compare-runs.py results/2026-06-25-hardwood-1.0 results/2026-09-10-hardwood-1.1
-```
-
-```
-FlatScanBenchmark
-  base  1.0.0.Final (a1b2c3d)   Java 25 (Eclipse Adoptium)   AWS m7i.2xlarge   3 runs
-  new   1.1.0-SNAPSHOT (7d283f5)   Java 25 (Eclipse Adoptium)   AWS m7i.2xlarge   3 runs
-
-  pass      contender                    base ms      new ms     delta     band  verdict
-  unpinned  hardwoodColumnar            2945.454    2415.272    -18.0%     8.0%  faster
-  unpinned  hardwoodRowReaderIndexed    3255.397    3613.491    +11.0%    10.5%  slower
-
-2 contenders compared, 1 slower
-```
-
-Times are `ms_per_op`, so a negative delta is faster. A delta is only called when
-it clears a noise band: with repeats on both sides the band is each side's own
-observed spread, `(max - min) / median`, halved and added — the data sets the bar.
-With a single run on either side there is nothing in the snapshots that measures
-noise, so the band falls back to `--threshold` (default 5%, the low end of the
-~5–10% run-to-run variance a shared host shows) and the report says which it used.
-This is the reason a comparison worth acting on uses the median-of-three loop under
-[Publication runs](#publication-runs) on both sides.
-
-Contenders and benchmarks present on only one side are listed rather than dropped,
-and the meta sidecars are checked before any number is read: a differing `machine`,
-`java`, or dataset key, or two snapshots recording the same Hardwood build, each
-draw a warning. `--include REGEX` narrows to some contenders, `--format tsv` emits
-the table for a script, and `--fail-on-regression` exits non-zero if anything got
-slower.
-
-**Chart them.** `charts/make-version-chart.py` takes two or more snapshots, oldest
-first, and charts every Hardwood contender across them, one chart per benchmark and
-pass. Two snapshots give a before/after; more give a progression, such as 1.0 → 1.1 →
-1.2:
-
-```sh
-python3 charts/make-version-chart.py <base> <new> [<newer> ...] [--out DIR]
-```
-
-Each snapshot is labelled with the Hardwood build its meta sidecar records (or
-`--label`), drawn at its median with its repeats' spread as a whisker, and a
-contender a snapshot lacks is drawn as not run. Beside each contender is its time in
-the earliest snapshot that ran it over its time in the last. Contenders matching
-`--control` (default `^(parquetJava|avro|arrow)`) are not charted: they are pinned
-in the pom, so they serve as a control: the chart warns when one moves beyond its noise band
-between two consecutive snapshots, as well as on the sidecar mismatches
-`compare-runs.py` warns about. Output goes to `target/version-charts/` unless `--out`
-names a directory.
-
-### Common flags
-
-Every script shares a set of flags — `--warmup`/`--meas`/`--forks`, `--prof`,
-`--include`, `--time`, `--no-pin`, `--gate`, `--hardwood-version`, `--regression`, `--help` — each documented
-by the script's own `--help`. Any `-Dperf.*=…` (or other `-D…`) passes straight through to the JVM.
-
-## Output
-
-JMH reports **average time per op** (`ms/op`, lower is better); some benchmarks also
-print a derived **throughput** table (`M rows/s`, `MB/s`) where a stable denominator
-exists.
-
-Some benchmarks run two passes: **all cores** (out of the box) times every contender,
-and **single core** (`taskset -c 0`, Linux only) re-times just the Hardwood
-contenders for a per-core figure — the single-threaded baselines aren't re-timed,
-since pinning doesn't change them. `run-fixedlist.sh` runs the all-cores pass only. Both passes run only when benchmarking; `--gate` runs
-neither.
-
-Each run writes per-benchmark TSVs to `target/` — `bench-throughput-<Benchmark>.tsv`
-(the numbers, also echoed as an ASCII bar chart) and `bench-meta-<Benchmark>.tsv`
-(dataset parameters the chart generator reads for its subtitles) — and tees its
-console output to `target/<bench>.log` (`BENCH_LOG=0` to disable). `./capture-run.sh
-<dir>` snapshots that set into a self-contained, chartable archive.
-
-Every meta sidecar carries `java`, `hardwood` (version and commit), `machine`, and
-`simd` alongside the benchmark's own dataset keys. `simd` is `scalar` or
-`simd-<N>bit`: Hardwood engages its vectorized paths only on a JVM launched with
-`--add-modules jdk.incubator.vector`, which the run scripts deliberately do not pass,
-so a run records `scalar` unless that flag reaches the JVM from the environment.
-Quote SIMD-enabled and scalar numbers separately — they are different measurements.
-
-## Charts
-
-Every benchmark charts across Hardwood versions with `make-version-chart.py` (see
-[Comparing versions](#comparing-versions)). A published benchmark also has one or more `charts/make-<benchmark>-*chart.py` generators
-(stdlib Python, sharing `charts/chartlib.py`) that read `bench-throughput-*.tsv` and
-its `bench-meta` sidecar from a results dir (`--results-dir`, default `target/`) and
-write SVGs to `<results-dir>/charts/`; point one at a captured run to re-render it.
-Each `.svg` is also rasterized to `.png` when an SVG→PNG converter (`rsvg-convert`,
-`resvg`, `inkscape`, or `cairosvg`) is on `PATH`. Pass `--machine` for the hardware
-label — the one subtitle detail not captured in `bench-meta`.
+`results/<YYYY-MM-DD>-<slug>/` holds one publication, with a README of its own.
+`charts/median-runs.py` writes a snapshot of the per-contender medians of the three runs.
+
+Each published benchmark has `charts/make-<benchmark>-*chart.py` generators (stdlib
+Python, sharing `charts/chartlib.py`). They read a snapshot (`--results-dir`, default
+`target/`), write SVGs to its `charts/` directory, and rasterize each to PNG when
+`rsvg-convert`, `resvg`, `inkscape` or `cairosvg` is on `PATH`. The hardware label comes
+from the meta sidecar's `machine`; `--machine` overrides it.
 
 ## Profiling
 
-Attach a JMH profiler with `--prof`, narrowing with `--include`:
+Attach a JMH profiler with `--prof`, narrowed with `--include`:
 
 ```sh
 ./run-flat.sh --include "hardwoodColumnar|hardwoodRowReaderIndexed" --prof gc           # allocation per op
 ./run-flat.sh --include hardwoodColumnar --prof stack                                   # sampled stacks
-./run-flat.sh --include hardwoodColumnar --prof perfnorm --forks 3                      # CPU counters (needs perf + PMU)
+./run-flat.sh --include hardwoodColumnar --prof perfnorm --forks 3                      # CPU counters
 ./run-flat.sh --include hardwoodColumnar --prof "async:output=flamegraph;event=itimer"  # async-profiler
 ```
 
-`gc`, `stack`, and async-profiler (`itimer`/`alloc`) work anywhere. `perfnorm`
-(cache-misses, IPC) needs Linux `perf` **and** a host-exposed PMU — most cloud
-VMs don't expose it (`<not supported>`); use bare-metal for hardware counters.
-On a bare-metal host, `perfasm` also needs `kernel.perf_event_paranoid` ≤ 1 for
-kernel frames and hsdis in the JDK's `lib/` to disassemble. Comparable timings need
-a fixed clock: governor `performance`, `scaling_max_freq` capped at the clock the
-package sustains with all cores busy, and no background timers firing mid-run.
+`gc`, `stack` and async-profiler (`itimer`, `alloc`) work anywhere. `perfnorm` and
+`perfasm` need Linux `perf` and a host-exposed PMU, which most cloud VMs lack;
+`perfasm` also needs `kernel.perf_event_paranoid` ≤ 1 and hsdis in the JDK's `lib/`.
+Comparable timings need a fixed clock: governor `performance`, `scaling_max_freq`
+capped at the clock the package sustains with all cores busy, and no background timers
+firing mid-run.
 [`profiling-setup`](https://github.com/gunnarmorling/cloud-boxes/blob/master/ansible/roles/bench_host/files/profiling-setup)
 applies and reverts these settings for one session.
 
-`--batch-size N` overrides the Hardwood column reader's batch size (e.g. to test
-cache-residency effects on single-core throughput).
+## Benchmark reference
+
+### Flat full scan — `run-flat.sh`
+
+Reads every column of the monthly NYC Yellow Taxi files, folding each into a per-file
+checksum, through two API pairs:
+
+- **Columnar:** Hardwood's column reader against parquet-java's low-level column API,
+  with Arrow Dataset (Arrow C++ over JNI) as a cross-engine reference.
+- **Record:** Hardwood's row reader against `AvroParquetReader`, each by name
+  (`getDouble("fare_amount")`) and by index. An `AvroParquetReader` `SpecificRecord`
+  contender confirms the gap is not a `GenericRecord` artifact.
+
+Reads are specific to the 2025 TLC schema (20 columns), so `--start`/`--end` must stay
+within the 2025 layout; another schema fails the gate. `--data-dir` (or `-Ddata.dir`)
+relocates the download cache. `--batch-size` overrides the Hardwood column reader's
+batch size.
+
+**Charts** (`make-flat-chart.py`): `flat_chart1_columnar.svg` and
+`flat_chart2_record.svg`, throughput in M rows/s. Arrow Dataset and `SpecificRecord`
+are gated but not plotted.
+
+### Filtered scan — `run-filter.sh`
+
+A generated, time-clustered event file (column index, no bloom filters) read with
+`event_time < T`, projecting `amount`: Hardwood's filtered column and row readers
+against parquet-java's column API over `readNextFilteredRowGroup()`. Two selectivities:
+`selective` (5 % of rows) and `matchAll` (the overhead floor). Unfiltered controls read
+`amount` alone (both Hardwood readers, parquet-java) and both columns (parquet-java),
+separating decode speed from what filtering costs or saves. The file is keyed on
+`--rows`.
+
+**Charts** (`make-filter-chart.py`): `filtered_chart.svg`, ms/op, the two selectivities
+on a broken axis. The row reader and the controls are gated but not plotted.
+
+### Bloom-filter point lookup — `run-bloom.sh`
+
+`key = k` on a generated unique, pseudorandomly ordered 64-bit key, which neither
+statistics, the column index nor a dictionary can prune, against a bloom-bearing file
+and a statistics-only twin with identical rows. Hardwood and parquet-java each probe
+both files. Two probes: `present` matches one row, so the bloom filter keeps one row
+group; `absent` is in range everywhere, so it drops every row group. Both files are
+written by parquet-java, with `parquet.bloom.filter.max.bytes` raised to 10 MB, since
+the 1 MB default clamps the filter to ~99.7 % false positives. The default 84M rows
+span ~10 row groups, ~2.9 GB for the pair.
+
+Hardwood probes the memory-mapped filter in place, so its numbers depend on the warm
+page cache these runs use.
+
+**Charts** (`make-bloom-chart.py`): `bloom_chart.svg`, ms/op, per probe the four
+reader × file combinations plus a single-core bar beside each Hardwood bar, which needs
+the pinned pass.
+
+### Nested scan — `run-nested.sh`
+
+A full read of the Overture Maps places file (struct / list / map), every record down
+to the scalar leaves: Hardwood's row reader against `AvroParquetReader`, by name and by
+index, with a checksum proving they assemble identical data.
+
+The download resolves the STAC catalog's latest release and records it in the meta
+sidecar as `release`; a file passed with `--file` is recorded as `release unknown`. The
+catalog serves only recent releases, so archive the file with a run whose numbers are
+published.
+
+**Charts** (`make-nested-chart.py`): `nested_record.svg`, throughput in M rows/s, per
+access mode Hardwood all-cores, Hardwood single-core (needs the pinned pass) and
+`AvroParquetReader`. The footnote gives the schema's leaf count and the share of
+compressed bytes in `STRING` columns, which is most of them.
+
+### Fixed-size-list scan — `run-fixedlist.sh`
+
+A full scan of a `LIST<float32>` column of fixed-width vectors (embeddings, 3-D points)
+across a sweep of vector lengths `k`, through the column and row readers, with the
+fixed-size-list fast path on and off. `flatFloor` reads the same values as a plain float
+column, the fastest those bytes move, and the run prints each reader as a multiple of
+it. The speedup (baseline ÷ fast) is size-independent, so the `k` sweep runs on 32 MB
+files; absolute throughput is not, so the headline points (`k` = 3 and 768) run on
+~512 MB files.
+
+The generated file is uncompressed and without dictionary by default;
+`-Dperf.compression` and `-Dperf.pageVersion=v1` change that.
+`run-overnight-fixedlist.sh` captures the complete set behind the published post, and
+`explain-overshoot.sh` attributes the fast path's gap to the flat floor on a machine
+without a usable PMU.
+
+**Charts:** `make-fixedlist-bars-chart.py` → `fixedlist_bars.svg`, throughput at one
+`k` with the flat floor as a reference line; `make-fixedlist-chart.py` →
+`fixedlist_speedup.svg`, speedup against `k`, one line per reader.
+
+### Time window — `run-window.sh`
+
+`event_time >= T` for the most recent 5, 25 and 75 % of a time-sorted event log (10M
+rows, 16 MB row groups, SNAPPY), projecting `amount`. Statistics prune the row groups
+before `T`, one row group straddles it, and the row groups after it are proven fully
+matching, so Hardwood does not read `event_time` in them. `run-filter.sh` reaches only
+the two ends of this mix. Hardwood's column and row readers run filtered and
+unfiltered; the gate checks them against parquet-java.
+
+### Writes — `run-write.sh`
+
+500K flat, taxi-shaped records (six columns, nulls in two) written to memory through
+Hardwood's column writer and row writer, SNAPPY and ZSTD, so the number is encode
+throughput. Each file is read back and checked before timing. The meta sidecar records
+each codec's compressed column-chunk bytes (`bytes`, `bytesZstd`), so an encoding change
+shows between two versions even where the time does not move.
+
+### S3 reads — `run-s3.sh`
+
+Hardwood's column reader against S3Proxy behind Toxiproxy on the loopback interface,
+which adds 30 ms first-byte latency and caps each connection at 80 MB/s
+(`S3_LATENCY_MS`, `S3_BANDWIDTH_KBPS`):
+
+| Contender | Read |
+| --- | --- |
+| `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month |
+| `hardwoodFilteredScan` | a selective range predicate over the filter corpus, with its page index |
+| `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
+
+Each read is checked against the same read of the local file, and its request and byte
+counts go into the meta sidecar (`requests.*`, `bytes.*`), so a change in the fetch
+plan shows exactly where the time is noisy.
+
+`./s3-env.sh start | stop | status` runs the endpoint, downloaded into `target/s3-env/`
+on first use and pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the
+last core). `run-s3.sh` starts the endpoint when it is not running and stops it
+afterwards; an endpoint already running with other settings is an error.
