@@ -8,7 +8,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-SCRIPTS=(filter bloom window nested flat fixedlist write)
+SCRIPTS=(filter bloom window nested flat fixedlist write s3)
 CONTROL='^(parquetJava|avro|arrow)'
 
 usage() {
@@ -29,8 +29,10 @@ Usage: ./run-regression.sh [options] VERSION VERSION [VERSION ...]
                     exit 1 when a Hardwood contender is slower beyond the band
 
 Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a
-script's --help for its preset. Per round and version that takes about 3 min for
-all six scripts on a 1.50 GHz Intel N300.
+script's --help for its preset. Per round and version that takes about 4 min for
+all eight scripts on a 1.50 GHz Intel N300 (the sum of the scripts' own times; not
+measured as a whole run). When run-s3.sh is among them, the
+emulated S3 endpoint (./s3-env.sh) is started once for the whole run.
 
 Output, under --out:
   <version>/run-<n>/   the snapshot compare-runs.py and the version chart read
@@ -61,6 +63,13 @@ fi
 for s in "${SCRIPTS[@]}"; do
   [ -x "./run-$s.sh" ] || { echo "No script run-$s.sh" >&2; exit 2; }
 done
+
+# run-s3.sh starts the emulated S3 endpoint when it is not running and stops it again. Started
+# here instead, it serves every round of the run, and its startup is paid once.
+if [[ " ${SCRIPTS[*]} " == *" s3 "* && "$(./s3-env.sh status)" != running ]]; then
+  ./s3-env.sh start
+  trap './s3-env.sh stop' EXIT
+fi
 
 mkdir -p "$OUT"
 progress="$OUT/progress.log"
