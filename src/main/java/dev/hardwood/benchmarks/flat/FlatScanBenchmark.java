@@ -7,6 +7,7 @@
  */
 package dev.hardwood.benchmarks.flat;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.TaxiDataDownloader;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

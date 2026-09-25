@@ -37,6 +37,11 @@
       <artifactId>hardwood-core</artifactId>
       <version>${hardwood.version}</version>
     </dependency>
+    <dependency>
+      <groupId>dev.hardwood</groupId>
+      <artifactId>hardwood-s3</artifactId>
+      <version>${hardwood.version}</version>
+    </dependency>
 
     <!-- Microbenchmark harness. -->
     <dependency>

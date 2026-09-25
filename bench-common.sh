@@ -74,7 +74,8 @@ BENCH_COMMON_USAGE="  --warmup N        JMH warmup iterations (default 3)
                     (no JMH, no timing, no results file)
   --regression      quick, fixed regression configuration: the benchmark's
                     preset sizes and contenders (listed below), 3 warmup and 3
-                    measurement iterations of 1 s, and one pass, on all cores.
+                    measurement iterations of 1 s unless its preset says
+                    otherwise, and one pass, on all cores.
                     Regression runs taken at any time are then alike; passing a
                     flag the preset sets is an error. The meta sidecar records
                     the preset.
@@ -168,15 +169,37 @@ bench_parse_args() {
   # per-benchmark log under target/, so a run's full console output is archived
   # next to its TSVs and meta sidecar; capture-run.sh then snapshots the lot. The
   # log name comes from the run script (run-flat.sh -> target/flat.log). Set
-  # BENCH_LOG=0 to skip. The EXIT trap closes the fds and waits for the tee child
-  # so the tail is never lost to the copy. A bare `wait` (rather than `wait $!`)
-  # keeps this correct on bash 3.2, where $! does not reflect a process
-  # substitution.
+  # BENCH_LOG=0 to skip. On exit, bench_exit closes the fds and waits for the tee
+  # child so the tail is never lost to the copy.
   if [[ "${BENCH_LOG:-1}" != 0 ]]; then
     local base="${0##*/}"; base="${base#run-}"; base="${base%.sh}"
     mkdir -p target
     exec > >(tee "target/${base}.log") 2>&1
-    trap 'exec 1>&- 2>&-; wait 2>/dev/null || true' EXIT
+    BENCH_LOG_OPEN=1
+    trap bench_exit EXIT
+  fi
+}
+
+# Registers a command for the script to run when it exits. Commands run in the
+# order registered, before the log is closed, so their output reaches the log. A
+# script uses this instead of its own EXIT trap, which would replace the log's.
+BENCH_ON_EXIT=()
+bench_on_exit() {
+  BENCH_ON_EXIT+=("$1")
+  trap bench_exit EXIT
+}
+
+# The EXIT trap: the registered commands, then the log's fds closed and the tee
+# child waited for. A bare `wait` (rather than `wait $!`) keeps this correct on
+# bash 3.2, where $! does not reflect a process substitution.
+bench_exit() {
+  local c
+  for c in "${BENCH_ON_EXIT[@]+"${BENCH_ON_EXIT[@]}"}"; do
+    eval "$c"
+  done
+  if [[ -n "${BENCH_LOG_OPEN:-}" ]]; then
+    exec 1>&- 2>&-
+    wait 2>/dev/null || true
   fi
 }
 
@@ -186,7 +209,21 @@ bench_parse_args() {
 # regression run, so it is an error rather than an override. A benchmark with one
 # size (a regression-only one) declares an empty preset.
 bench_apply_regression_preset() {
-  local preset=(--warmup 3 --meas 3 --time 1 ${BENCH_REGRESSION_PRESET:-}) i prop a
+  # The iteration counts every benchmark shares, unless the script's own preset sets one: a
+  # benchmark whose operations need longer to settle (run-s3.sh) raises its warmup there.
+  local common=(--warmup 3 --meas 3 --time 1) own=(${BENCH_REGRESSION_PRESET:-}) preset=() i j prop a overridden
+  for (( i = 0; i < ${#common[@]}; i += 2 )); do
+    overridden=""
+    for (( j = 0; j < ${#own[@]}; j += 2 )); do
+      if [[ "${own[j]}" == "${common[i]}" ]]; then
+        overridden=1
+      fi
+    done
+    if [[ -z "$overridden" ]]; then
+      preset+=("${common[i]}" "${common[i+1]}")
+    fi
+  done
+  preset+=("${own[@]+"${own[@]}"}")
   for (( i = 0; i < ${#preset[@]}; i += 2 )); do
     prop="$(bench_flag_prop "${preset[i]}")" || { echo "Preset flag ${preset[i]} is not a flag of this script" >&2; exit 2; }
     for a in "${ARGS[@]+"${ARGS[@]}"}"; do

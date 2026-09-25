@@ -30,6 +30,7 @@ generated fixture of one size, and changes or goes with the code it witnesses:
 | --- | --- | --- |
 | `run-window.sh` | Recent time window over a time-sorted event log, filter column not projected | Hardwood column + row readers, filtered and unfiltered |
 | `run-write.sh` | Flat, taxi-shaped records written to memory, SNAPPY and ZSTD | Hardwood column + row writers |
+| `run-s3.sh` | Reads from an emulated object store: projected scan, selective filtered scan, multi-file scan | Hardwood column reader |
 
 **Two modes.** By default a script **benchmarks** (see [Output](#output) for the
 one or two timed passes). With `--gate` it runs a **gate check** instead: it folds
@@ -280,6 +281,34 @@ versions even where the time does not move.
 
 **Run:** `./run-write.sh --help`.
 
+### S3 reads — `run-s3.sh` (regression-only)
+
+Hardwood's column reader over a local S3 endpoint that emulates object storage:
+S3Proxy (filesystem-backed, the version the Hardwood S3 tests run) behind Toxiproxy,
+which adds 30 ms of first-byte latency and caps each connection at 80 MB/s
+(`S3_LATENCY_MS`, `S3_BANDWIDTH_KBPS`). `./s3-env.sh start | stop | status` runs both
+as plain processes on the loopback interface, downloaded into `target/s3-env/` on
+first use, pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the last
+core); the benchmark runs on the others. `run-s3.sh` starts the endpoint when it is
+not running and stops it again. An endpoint already running with other latency or
+bandwidth settings is an error; the meta sidecar records the settings read back from
+Toxiproxy (`latencyMs`, `bandwidthKBps`).
+
+What it measures is the shape of the requests a read issues, which is what
+coalescing, index and dictionary fetches, and moving between files change:
+
+| Contender | Read |
+|---|---|
+| `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month |
+| `hardwoodFilteredScan` | a selective range predicate over the 5M-row filter corpus, with its page index |
+| `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
+
+Before timing, each read is checked against the same read of the local file, and its
+request and byte counts go into the meta sidecar (`requests.*`, `bytes.*`), so a
+change in the fetch plan shows up there exactly, even where the time does not move.
+
+**Run:** `./run-s3.sh --help`.
+
 ## Comparing versions
 
 Beyond backing a post, a run is evidence about one build of Hardwood against
@@ -315,7 +344,8 @@ hours:
   a one-month taxi window, the filter corpus at 5M rows, bloom at 8M, the nested scan
   at a 20K-row prefix, fixed-size lists at `k` = 768 on the fast path, bloom's `absent`
   probe, the most recent 25 % in `run-window.sh`, 500K records in `run-write.sh`, and
-  one contender per Hardwood read and write path. The only non-Hardwood
+  one contender per Hardwood read and write path. `run-s3.sh` warms up for 5
+  iterations, since requests over the emulated latency take longer to settle. The only non-Hardwood
   contender is `run-filter.sh`'s parquet-java scan, a control whose drift tells a
   moving machine from a changed Hardwood.
 - **Iterations:** 3 warmup and 3 measurement iterations of 1 s each.
@@ -333,8 +363,9 @@ published definition and are compared only with each other.
 writes the verdict: per benchmark, a tally and only the contenders that moved beyond
 the noise band, first version against the last, with control drift called out. The
 contenders a version did not run are listed with the reason from the logs, and the
-version charts are rendered beside it. `--fail-on-regression` makes the exit status
-say whether a Hardwood contender got slower.
+version charts are rendered beside it. When `run-s3.sh` is among the scripts, the
+emulated S3 endpoint is started once for the whole run. `--fail-on-regression` makes
+the exit status say whether a Hardwood contender got slower.
 
 **Difference the two snapshots.** `charts/compare-runs.py` takes a base and a new
 snapshot — each a run directory, or a directory of `run-*` repeats — and prints

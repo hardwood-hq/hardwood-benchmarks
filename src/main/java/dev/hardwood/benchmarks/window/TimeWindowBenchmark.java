@@ -32,7 +32,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.benchmarks.BenchReport;
-import dev.hardwood.benchmarks.filter.EventFileGenerator;
+import dev.hardwood.benchmarks.EventFileGenerator;
 import dev.hardwood.benchmarks.filter.Scans;
 import dev.hardwood.reader.FilterPredicate;
 

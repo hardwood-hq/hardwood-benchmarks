@@ -7,6 +7,7 @@
  */
 package dev.hardwood.benchmarks.filter;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.EventFileGenerator;
 
 import java.io.IOException;
 import java.nio.file.Files;
