@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='flat'
+BENCH_PACKAGE='flat'
 BENCH_REGRESSION_PRESET='--start 2025-01 --end 2025-01'
 BENCH_REGRESSION_INCLUDE='hardwoodColumnar|hardwoodRowReaderIndexed'
 BENCH_FLAGS='--start perf.start

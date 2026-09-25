@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='filter'
+BENCH_PACKAGE='filter'
 BENCH_REGRESSION_PRESET='--rows 5000000'
 BENCH_REGRESSION_INCLUDE='hardwoodDefault|hardwoodRowReader$|parquetJava$'
 BENCH_FLAGS='--rows perf.rows

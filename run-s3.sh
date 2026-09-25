@@ -28,7 +28,7 @@ fi
 
 source ./bench-common.sh
 
-BENCH_PACKAGES='s3'
+BENCH_PACKAGE='s3'
 BENCH_REGRESSION_PRESET='--warmup 5'
 BENCH_REGRESSION_INCLUDE='hardwood'
 # Every contender is Hardwood, and the benchmark already runs on all but the endpoint's core.

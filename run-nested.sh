@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='nested'
+BENCH_PACKAGE='nested'
 BENCH_REGRESSION_PRESET='--rows 20000'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--file perf.file

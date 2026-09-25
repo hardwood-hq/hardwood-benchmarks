@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='window filter'
+BENCH_PACKAGE='filter'
 BENCH_REGRESSION_PRESET='--window last25pct'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--window perf.param'
@@ -39,5 +39,5 @@ meta sidecar records the commit, and the chart labels each build with it."
 
 bench_parse_args "$@"
 bench_build
-bench_run dev.hardwood.benchmarks.window.TimeWindowBenchmark
+bench_run dev.hardwood.benchmarks.filter.TimeWindowBenchmark
 bench_epilogue

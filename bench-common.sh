@@ -266,18 +266,13 @@ bench_build() {
   local mvn_args=()
   [ -n "${BENCH_HARDWOOD_VERSION:-}" ] && mvn_args+=("-Dhardwood.version=$BENCH_HARDWOOD_VERSION")
 
-  # Compile only the shared classes plus the caller's packages (BENCH_PACKAGES, at
-  # most two), so a benchmark using API the requested version lacks fails its own
-  # build and no other.
-  local packages=(${BENCH_PACKAGES:?"BENCH_PACKAGES must name the script's source packages"})
-  if (( ${#packages[@]} > 2 )); then
-    echo "BENCH_PACKAGES names ${#packages[@]} packages; the pom takes at most two" >&2
-    exit 2
-  fi
-  mvn_args+=("-Dbench.include.a=dev/hardwood/benchmarks/${packages[0]}/**/*.java")
-  mvn_args+=("-Dbench.include.b=dev/hardwood/benchmarks/${packages[${#packages[@]}-1]}/**/*.java")
+  # Compile only the shared classes plus the caller's package (BENCH_PACKAGE), so
+  # a benchmark using API the requested version lacks fails its own build and no
+  # other.
+  local package=${BENCH_PACKAGE:?"BENCH_PACKAGE must name the script's source package"}
+  mvn_args+=("-Dbench.include=dev/hardwood/benchmarks/$package/**/*.java")
 
-  # Each Hardwood version and package set builds into a directory of its own under
+  # Each Hardwood version and package builds into a directory of its own under
   # target/build/, so classes compiled against one version never mix with another's,
   # and a run that switches back to a version reuses its build instead of redoing
   # it (two Maven invocations, the bulk of a short run's overhead). A build is
@@ -286,7 +281,7 @@ bench_build() {
   # rebuilds. The generated fixtures and downloaded corpora under target/ are
   # untouched.
   local version="${BENCH_HARDWOOD_VERSION:-$(sed -n 's:.*<hardwood.version>\(.*\)</hardwood.version>.*:\1:p' pom.xml | head -1)}"
-  local dir="target/build/${version}_$(IFS=+; echo "${packages[*]}")"
+  local dir="target/build/${version}_$package"
   local jar="$HOME/.m2/repository/dev/hardwood/hardwood-core/$version/hardwood-core-$version.jar"
   if [ -f "$dir/cp.txt" ] && [ -f "$dir/.built" ] \
       && [ -z "$(find src pom.xml -newer "$dir/.built" -print -quit)" ] \

@@ -328,7 +328,7 @@ It reaches Maven, not the JVM — `hardwood.version` is a pom property, so a bar
 reads it, and the run would quietly measure the pom's version instead. The
 benchmark classes are recompiled whenever the requested version changes, since
 they track the current API. Each script compiles only the shared classes and its
-own benchmark's package (`BENCH_PACKAGES`), so a benchmark using something a
+own benchmark's package (`BENCH_PACKAGE`), so a benchmark using something a
 version does not have fails its own build and no other: against 1.0.0.Final,
 `run-fixedlist.sh` does not build, and every other script does. A contender that
 builds but throws on an older version (1.0.0.Final's row reader rejects a filter
