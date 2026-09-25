@@ -13,7 +13,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='bloom'
+BENCH_PACKAGE='bloom'
 BENCH_REGRESSION_PRESET='--rows 8000000 --probe absent'
 BENCH_REGRESSION_INCLUDE='hardwoodBloom|hardwoodNoBloom'
 BENCH_FLAGS='--rows perf.rows

@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='write'
+BENCH_PACKAGE='write'
 BENCH_REGRESSION_PRESET='--rows 500000'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--rows perf.rows

@@ -5,7 +5,7 @@
  *
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package dev.hardwood.benchmarks.window;
+package dev.hardwood.benchmarks.filter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,7 +33,6 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.EventFileGenerator;
-import dev.hardwood.benchmarks.filter.Scans;
 import dev.hardwood.reader.FilterPredicate;
 
 /// Recent-time-window benchmark: `SELECT amount WHERE event_time >= T` over a

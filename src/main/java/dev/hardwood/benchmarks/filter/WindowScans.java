@@ -5,7 +5,7 @@
  *
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package dev.hardwood.benchmarks.window;
+package dev.hardwood.benchmarks.filter;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -24,7 +24,6 @@ import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
 
-import dev.hardwood.benchmarks.filter.Scans;
 import dev.hardwood.reader.FilterPredicate;
 
 /// The time-window query shared by [TimeWindowBenchmark] and its gate: the

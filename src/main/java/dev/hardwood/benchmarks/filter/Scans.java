@@ -269,8 +269,7 @@ public final class Scans {
     }
 
     /// No-op converter required by [ColumnReadStoreImpl]; we never assemble records.
-    /// Public so other benchmarks' low-level parquet-java scans can share it.
-    public static final class NoOpGroupConverter extends GroupConverter {
+    static final class NoOpGroupConverter extends GroupConverter {
         @Override
         public Converter getConverter(int fieldIndex) {
             return new PrimitiveConverter() {

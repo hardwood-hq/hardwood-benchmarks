@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source ./bench-common.sh
 
-BENCH_PACKAGES='fixedlist'
+BENCH_PACKAGE='fixedlist'
 BENCH_REGRESSION_PRESET='--total-values 8000000 --k 768'
 BENCH_REGRESSION_INCLUDE='Fast'
 BENCH_FLAGS='--data-dir perf.dataDir
