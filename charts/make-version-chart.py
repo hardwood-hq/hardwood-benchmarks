@@ -50,6 +50,13 @@ _spec.loader.exec_module(compare_runs)
 PASSES = [("unpinned", "allcores", "all cores"), ("pinned", "1core", "1 core")]
 # Keys that describe the machine, the JVM or the build rather than the data read.
 NON_DATASET_KEYS = {"hardwood", "java", "machine", "simd"}
+# Prefixes of keys that measure what a read fetched (run-s3.sh), which a version is expected to
+# change, rather than describe the data read.
+MEASURED_KEY_PREFIXES = ("requests.", "bytes.", "indexRequests.", "indexBytes.")
+
+
+def is_dataset_key(key):
+    return key not in NON_DATASET_KEYS and not key.startswith(MEASURED_KEY_PREFIXES)
 
 # Sequential ramp, oldest snapshot lightest.
 RAMP_LIGHT = (0x9b, 0xcd, 0xf5)
@@ -93,7 +100,7 @@ def warnings_for(snaps, labels, benchmark, control, threshold):
         if len(values) > 1:
             out.append((None, "{} differs across snapshots ({}); deltas are not attributable to Hardwood"
                         .format(key, " / ".join(sorted(values)))))
-    keys = sorted({k for m in metas for k in m} - NON_DATASET_KEYS)
+    keys = sorted(k for k in {k for m in metas for k in m} if is_dataset_key(k))
     for key in keys:
         values = {m.get(key) for m in metas}
         if len(values) > 1:
@@ -205,7 +212,7 @@ def chart(benchmark, pass_, slug, pass_label, snaps, labels, control, warnings, 
     height = int(foot_y + 17 * len(warnings) + 24)
 
     meta = next((s["meta"][benchmark] for s in reversed(snaps) if s["meta"].get(benchmark)), {})
-    dataset = " · ".join("{} {}".format(k, v) for k, v in sorted(meta.items()) if k not in NON_DATASET_KEYS)
+    dataset = " · ".join("{} {}".format(k, v) for k, v in sorted(meta.items()) if is_dataset_key(k))
     subst = {
         "width": WIDTH, "height": height,
         "title": esc("{} · {}".format(benchmark, pass_label)),

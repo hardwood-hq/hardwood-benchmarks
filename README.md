@@ -287,10 +287,14 @@ which adds 30 ms first-byte latency and caps each connection at 80 MB/s
 | `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month |
 | `hardwoodFilteredScan` | a selective range predicate over the filter corpus, with its page index |
 | `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
+| `hardwoodWideFilteredScan` | a range predicate keeping the first page of every row group, projecting 3 of 200 columns, over a generated file of 40 row groups with 20 pages per column chunk (a 5.3 MB page index) |
 
 Each read is checked against the same read of the local file, and its request and byte
 counts go into the meta sidecar (`requests.*`, `bytes.*`), so a change in the fetch
-plan shows exactly where the time is noisy.
+plan shows exactly where the time is noisy. For the single-file reads, the requests
+overlapping the page-index region and their bytes are also recorded apart
+(`indexRequests.*`, `indexBytes.*`), beside the wide file's page-index size and the
+index bytes its read needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`).
 
 `./s3-env.sh start | stop | status` runs the endpoint, downloaded into `target/s3-env/`
 on first use and pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the

@@ -14,6 +14,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -57,10 +58,14 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month | cross-column coalescing against parallel GETs, chunk sizing |
 /// | `hardwoodFilteredScan` | selective range predicate with a page index | index slices, surviving pages only, dictionary reads |
 /// | `hardwoodMultiFileScan` | one column across 12 files, one multi-file reader | planning each file as the read reaches it, footers, moving between files |
+/// | `hardwoodWideFilteredScan` | selective range predicate projecting 3 of 200 columns, 40 row groups with a large page index | page-index reads across many row groups, fetching only the index slices a read needs |
 ///
 /// Before timing, each read is checked against the same read of the local file, and its request
 /// and byte counts go into the meta sidecar (`requests.*`, `bytes.*`): a change in the fetch
-/// plan shows up there exactly, even where the time does not move. Run with `run-s3.sh`.
+/// plan shows up there exactly, even where the time does not move. For the single-file reads,
+/// the requests overlapping the file's page-index region and their bytes are recorded apart
+/// (`indexRequests.*`, `indexBytes.*`), beside the region's size and the index bytes the wide read
+/// needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`). Run with `run-s3.sh`.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -74,6 +79,13 @@ public class S3ScanBenchmark {
     private static final long FILTER_ROWS = 5_000_000L;
     private static final Path FILTER_FILE = Path.of("target/filter_benchmark_" + FILTER_ROWS + ".parquet");
     private static final FilterPredicate SELECTIVE = FilterPredicate.lt("event_time", FILTER_ROWS / 20);
+    private static final Path WIDE_FILE = Path.of(String.format("target/wide_filter_%dc_%drg_%dp.parquet",
+            WideTableGenerator.COLUMNS, WideTableGenerator.ROW_GROUPS,
+            WideTableGenerator.ROWS_PER_GROUP / WideTableGenerator.PAGE_ROWS));
+    private static final String[] WIDE_PROJECTED = { WideTableGenerator.FILTER_COLUMN, "c101", "c199" };
+    /// The first page of each row group's `seq` chunk: 5 % of the rows, spread over every row group.
+    private static final FilterPredicate WIDE_SELECTIVE =
+            FilterPredicate.lt(WideTableGenerator.FILTER_COLUMN, (long) WideTableGenerator.PAGE_ROWS);
     private static final YearMonth FIRST_MONTH = YearMonth.of(2025, 1);
     private static final YearMonth LAST_MONTH = YearMonth.of(2025, 12);
 
@@ -99,6 +111,11 @@ public class S3ScanBenchmark {
     @Benchmark
     public double hardwoodFilteredScan() throws IOException {
         return filteredScan(source.inputFile(BUCKET, FILTER_FILE.getFileName().toString()));
+    }
+
+    @Benchmark
+    public double hardwoodWideFilteredScan() throws IOException {
+        return wideFilteredScan(source.inputFile(BUCKET, WIDE_FILE.getFileName().toString()));
     }
 
     @Benchmark
@@ -133,6 +150,27 @@ public class S3ScanBenchmark {
                 double[] values = amount.getDoubles();
                 for (int i = 0; i < amount.getRecordCount(); i++) {
                     sum += values[i];
+                }
+            }
+        }
+        return sum;
+    }
+
+    static double wideFilteredScan(InputFile file) throws IOException {
+        double sum = 0;
+        try (ParquetFileReader reader = ParquetFileReader.open(file);
+             ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(WIDE_PROJECTED))
+                     .filter(WIDE_SELECTIVE)
+                     .build()) {
+            ColumnReader seq = cols.getColumnReader(0);
+            ColumnReader first = cols.getColumnReader(1);
+            ColumnReader second = cols.getColumnReader(2);
+            while (cols.nextBatch()) {
+                long[] seqs = seq.getLongs();
+                double[] firsts = first.getDoubles();
+                double[] seconds = second.getDoubles();
+                for (int i = 0; i < cols.getRecordCount(); i++) {
+                    sum += seqs[i] + firsts[i] + seconds[i];
                 }
             }
         }
@@ -185,26 +223,30 @@ public class S3ScanBenchmark {
         }
     }
 
-    /// Runs `read` over S3 and over the local file, checks they agree, and returns the S3 read's
-    /// request and byte counts.
-    private static long[] gate(String name, S3Source source, List<String> keys, Function<InputFile, Double> s3Read,
-            Function<Path, Double> localRead) {
-        double s3 = 0;
-        double local = 0;
-        long requests = 0;
-        long bytes = 0;
-        for (String key : keys) {
-            S3InputFile in = source.inputFile(BUCKET, key);
-            s3 += s3Read.apply(in);
-            requests += in.networkRequestCount();
-            bytes += in.networkBytesFetched();
-            local += localRead.apply(Path.of(System.getProperty("perf.s3.dataDir"), BUCKET, key));
-        }
+    /// Runs `read` over S3 and over the local file of `key`, checks they agree, and returns the S3
+    /// read's request and byte counts, with those falling on the page index (given by `layout`)
+    /// attributed apart.
+    private static Fetches gate(String name, S3Source source, String key, PageIndexLayout layout,
+            Function<InputFile, Double> read) {
+        AttributingInputFile in = new AttributingInputFile(source.inputFile(BUCKET, key), layout);
+        double s3 = read.apply(in);
+        double local = read.apply(InputFile.of(localPath(key)));
+        check(name, s3, local);
+        Fetches fetches = new Fetches(in.requests(), in.bytes(), in.indexRequests(), in.indexBytes());
+        System.out.printf("Gate passed [%s] — S3 and local reads agree (%,d requests, %,d bytes; page index %,d"
+                + " requests, %,d bytes).%n", name, fetches.requests(), fetches.bytes(), fetches.indexRequests(),
+                fetches.indexBytes());
+        return fetches;
+    }
+
+    private static void check(String name, double s3, double local) {
         if (Math.abs(s3 - local) > 1e-6 * Math.max(1.0, Math.abs(local))) {
             throw new IllegalStateException(String.format("[%s] S3 read %.3f, local read %.3f", name, s3, local));
         }
-        System.out.printf("Gate passed [%s] — S3 and local reads agree (%,d requests, %,d bytes).%n", name, requests, bytes);
-        return new long[] { requests, bytes };
+    }
+
+    private static Path localPath(String key) {
+        return Path.of(System.getProperty("perf.s3.dataDir"), BUCKET, key);
     }
 
     /// As [#gate], for a read over all of `keys` at once.
@@ -213,7 +255,7 @@ public class S3ScanBenchmark {
         List<InputFile> localFiles = new ArrayList<>();
         for (String key : keys) {
             s3Files.add(source.inputFile(BUCKET, key));
-            localFiles.add(InputFile.of(Path.of(System.getProperty("perf.s3.dataDir"), BUCKET, key)));
+            localFiles.add(InputFile.of(localPath(key)));
         }
         double s3 = multiFileScan(new ArrayList<>(s3Files));
         double local = multiFileScan(localFiles);
@@ -223,9 +265,7 @@ public class S3ScanBenchmark {
             requests += in.networkRequestCount();
             bytes += in.networkBytesFetched();
         }
-        if (Math.abs(s3 - local) > 1e-6 * Math.max(1.0, Math.abs(local))) {
-            throw new IllegalStateException(String.format("[%s] S3 read %.3f, local read %.3f", name, s3, local));
-        }
+        check(name, s3, local);
         System.out.printf("Gate passed [%s] — S3 and local reads agree (%,d requests, %,d bytes).%n", name, requests, bytes);
         return new long[] { requests, bytes };
     }
@@ -241,6 +281,18 @@ public class S3ScanBenchmark {
         };
     }
 
+    /// A gate read's network requests and bytes, and the share of each that fell on the page index.
+    private record Fetches(long requests, long bytes, long indexRequests, long indexBytes) {
+
+        /// The meta sidecar pairs for the contender `name`.
+        String[] metaPairs(String name) {
+            return new String[] {
+                    "requests." + name, Long.toString(requests), "bytes." + name, Long.toString(bytes),
+                    "indexRequests." + name, Long.toString(indexRequests),
+                    "indexBytes." + name, Long.toString(indexBytes) };
+        }
+    }
+
     @FunctionalInterface
     private interface IoRead {
         double apply(InputFile in) throws IOException;
@@ -251,32 +303,48 @@ public class S3ScanBenchmark {
         Files.createDirectories(bucketDir);
         List<Path> months = TaxiDataDownloader.ensure(FIRST_MONTH, LAST_MONTH);
         EventFileGenerator.ensure(FILTER_FILE, FILTER_ROWS);
+        WideTableGenerator.ensure(WIDE_FILE);
         for (Path month : months) {
             publish(month, bucketDir);
         }
         publish(FILTER_FILE, bucketDir);
+        publish(WIDE_FILE, bucketDir);
 
         List<String> keys = monthKeys();
         String filterKey = FILTER_FILE.getFileName().toString();
-        long[] projected;
-        long[] filtered;
+        String wideKey = WIDE_FILE.getFileName().toString();
+        PageIndexLayout wideLayout = PageIndexLayout.of(localPath(wideKey), Set.of(WideTableGenerator.FILTER_COLUMN),
+                Set.of(WIDE_PROJECTED));
+        System.out.printf("Wide table: page-index region %,d bytes, of which the filtered read needs %,d.%n",
+                wideLayout.regionBytes(), wideLayout.neededBytes());
+        Fetches projected;
+        Fetches filtered;
+        Fetches wideFiltered;
         long[] multiFile;
         try (S3Source source = source()) {
-            projected = gate("projected scan", source, keys.subList(0, 1), unchecked(S3ScanBenchmark::projectedScan),
-                    p -> unchecked(S3ScanBenchmark::projectedScan).apply(InputFile.of(p)));
-            filtered = gate("filtered scan", source, List.of(filterKey), unchecked(S3ScanBenchmark::filteredScan),
-                    p -> unchecked(S3ScanBenchmark::filteredScan).apply(InputFile.of(p)));
+            projected = gate("projected scan", source, keys.get(0), PageIndexLayout.of(localPath(keys.get(0)),
+                    Set.of(), Set.of(PROJECTED)), unchecked(S3ScanBenchmark::projectedScan));
+            filtered = gate("filtered scan", source, filterKey, PageIndexLayout.of(localPath(filterKey),
+                    Set.of("event_time"), Set.of("amount")), unchecked(S3ScanBenchmark::filteredScan));
+            wideFiltered = gate("wide filtered scan", source, wideKey, wideLayout,
+                    unchecked(S3ScanBenchmark::wideFilteredScan));
             multiFile = gateAll("multi-file scan", source, keys);
         }
         if (Boolean.getBoolean("perf.gate")) {
             return;
         }
-        BenchReport.writeRunParams(BenchReport.totalRows(months.subList(0, 1)), Files.size(months.get(0)),
-                "requests.projectedScan", Long.toString(projected[0]), "bytes.projectedScan", Long.toString(projected[1]),
-                "requests.filteredScan", Long.toString(filtered[0]), "bytes.filteredScan", Long.toString(filtered[1]),
-                "requests.multiFileScan", Long.toString(multiFile[0]), "bytes.multiFileScan", Long.toString(multiFile[1]),
+        List<String> meta = new ArrayList<>();
+        meta.addAll(List.of(projected.metaPairs("projectedScan")));
+        meta.addAll(List.of(filtered.metaPairs("filteredScan")));
+        meta.addAll(List.of(wideFiltered.metaPairs("wideFilteredScan")));
+        meta.addAll(List.of("requests.multiFileScan", Long.toString(multiFile[0]),
+                "bytes.multiFileScan", Long.toString(multiFile[1]),
+                "wide.indexRegionBytes", Long.toString(wideLayout.regionBytes()),
+                "wide.neededIndexBytes", Long.toString(wideLayout.neededBytes()),
                 "latencyMs", System.getProperty("perf.s3.latencyMs", "?"),
-                "bandwidthKBps", System.getProperty("perf.s3.bandwidthKBps", "?"));
+                "bandwidthKBps", System.getProperty("perf.s3.bandwidthKBps", "?")));
+        BenchReport.writeRunParams(BenchReport.totalRows(months.subList(0, 1)), Files.size(months.get(0)),
+                null, null, meta.toArray(String[]::new));
 
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(S3ScanBenchmark.class))

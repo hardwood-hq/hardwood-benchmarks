@@ -1,7 +1,7 @@
 # Benchmark workload coverage
 
 **Status: in progress.** Tracking issue: hardwood-hq/hardwood#1173. Related issues in
-hardwood-hq/hardwood: #25, #30, #631, #763, #827, #837, #1015, #1045.
+hardwood-hq/hardwood: #25, #30, #631, #708, #763, #827, #837, #1015, #1045.
 
 The standalone `hardwood-benchmarks` repository holds Hardwood's benchmark suite. The
 suite has two jobs: backing published results with cross-engine numbers, and comparing
@@ -35,7 +35,7 @@ Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of tw
 | `run-fixedlist.sh` | mixed-use | `LIST<float32>` fast path on and off across vector lengths | generated; UNCOMPRESSED by default, `-Dperf.compression` | Hardwood column and row, fast path and baseline; flat floor | built |
 | `run-window.sh` | regression-only | `event_time >= T` for the most recent 5 / 25 / 75 % of the time range: pruned row groups, one straddling the boundary, and row groups proven fully matching, whose `event_time` is not read (#1274) | generated event file, time-sorted, 16 MB row groups; SNAPPY | Hardwood columnar and row, each filtered and unfiltered | built |
 | `run-write.sh` | regression-only | Flat records written to memory; records compressed column-chunk bytes beside time | generated taxi-shaped records; SNAPPY and ZSTD | Hardwood column writer and row writer | built |
-| `run-s3.sh` | regression-only | Column-reader reads from S3Proxy behind Toxiproxy (30 ms first-byte latency, 80 MB/s per connection): a projected scan, a selective filtered scan, and one multi-file reader over twelve files; records requests and bytes per read | NYC taxi 2025 in a local bucket; ZSTD | Hardwood column reader | built |
+| `run-s3.sh` | regression-only | Column-reader reads from S3Proxy behind Toxiproxy (30 ms first-byte latency, 80 MB/s per connection): a projected scan, a selective filtered scan, one multi-file reader over twelve files, and a selective filtered scan projecting 3 of 200 columns across 40 row groups, whose page index is large against its data (#708); records requests and bytes per read, page-index requests and bytes apart | NYC taxi 2025 and the generated event file in a local bucket, ZSTD and SNAPPY; a generated wide table (200 numeric columns, 40 row groups of 20 pages per chunk), SNAPPY | Hardwood column reader | built |
 | `run-projection.sh` | mixed-use | Projection width 1 / 3 / 10 / 20 of 20 columns, each with and without a range predicate, crossed with null density 0 / 10 / 50 / 90 % on one numeric column | generated | Hardwood columnar and row; parquet-java columnar | planned, 1st |
 | codec axis on `run-flat.sh` | mixed-use | `-Dperf.codec` over the taxi corpus re-encoded once per codec, reporting each codec's time beside the file size it produced | taxi, re-encoded | Hardwood; parquet-java | planned, 2nd |
 | `run-write.sh` | mixed-use | Flat and nested writes, row API against columnar API, across codecs and encoding policies, reporting produced bytes beside time | generated records | Hardwood; parquet-java; `AvroParquetWriter` | planned, 3rd |
