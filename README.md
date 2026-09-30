@@ -288,6 +288,8 @@ which adds 30 ms first-byte latency and caps each connection at 80 MB/s
 | `hardwoodFilteredScan` | a selective range predicate over the filter corpus, with its page index |
 | `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
 | `hardwoodWideFilteredScan` | a range predicate keeping the first page of every row group, projecting 3 of 200 columns, over a generated file of 40 row groups with 20 pages per column chunk (a 5.3 MB page index); each row group's data is under the coalescing gap, so the read fetches it whole |
+| `hardwoodBloomLookup` | an equality probe for a key no row holds and every bloom filter rejects (chosen when the file is generated, and checked on every run), over a generated file of 200 row groups with a unique, unclustered `INT64` key and a bloom filter of tens of KB per row group; statistics keep every row group and its bloom filter drops it |
+| `hardwoodLargeBloomLookup` | the same kind of probe over 6 row groups whose bloom filters are 16 MB each |
 
 Each read is checked against the same read of the local file, and its request and byte
 counts go into the meta sidecar (`requests.*`, `bytes.*`), so a change in the fetch
@@ -295,6 +297,8 @@ plan shows exactly where the time is noisy. For the wide read, the requests
 overlapping the page-index region and their bytes are also recorded apart
 (`indexRequests.*`, `indexBytes.*`), beside the file's page-index size and the
 index bytes the read needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`).
+The two bloom lookups read nothing but the footer and the bloom filters, so their
+request counts are the footer reads plus the bloom-filter reads.
 
 `./s3-env.sh start | stop | status` runs the endpoint, downloaded into `target/s3-env/`
 on first use and pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the
