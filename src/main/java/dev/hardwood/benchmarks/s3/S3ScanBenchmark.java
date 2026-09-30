@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -59,6 +60,8 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodFilteredScan` | selective range predicate with a page index | index slices, surviving pages only, dictionary reads |
 /// | `hardwoodMultiFileScan` | one column across 12 files, one multi-file reader | planning each file as the read reaches it, footers, moving between files |
 /// | `hardwoodWideFilteredScan` | selective range predicate projecting 3 of 200 columns, 40 row groups with a large page index | page-index reads across many row groups; each row group's data is under the coalescing gap, so it is fetched whole |
+/// | `hardwoodBloomLookup` | equality probe for an absent unique key that every bloom filter rejects, 200 row groups with small bloom filters | bloom-filter reads across many row groups, each of which its filter drops |
+/// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups with 16 MB bloom filters | bloom-filter reads each larger than one page-index window |
 ///
 /// Before timing, each read is checked against the same read of the local file, and its request
 /// and byte counts go into the meta sidecar (`requests.*`, `bytes.*`): a change in the fetch
@@ -91,11 +94,15 @@ public class S3ScanBenchmark {
 
     private S3Source source;
     private List<String> monthKeys;
+    private long smallBloomProbe;
+    private long largeBloomProbe;
 
     @Setup(Level.Trial)
-    public void setup() {
+    public void setup() throws IOException {
         source = source();
         monthKeys = monthKeys();
+        smallBloomProbe = BloomLookupGenerator.probes(BloomLookupGenerator.SMALL).absent();
+        largeBloomProbe = BloomLookupGenerator.probes(BloomLookupGenerator.LARGE).absent();
     }
 
     @TearDown(Level.Trial)
@@ -116,6 +123,18 @@ public class S3ScanBenchmark {
     @Benchmark
     public double hardwoodWideFilteredScan() throws IOException {
         return wideFilteredScan(source.inputFile(BUCKET, WIDE_FILE.getFileName().toString()));
+    }
+
+    @Benchmark
+    public double hardwoodBloomLookup() throws IOException {
+        return bloomLookup(source.inputFile(BUCKET, BloomLookupGenerator.SMALL.file().getFileName().toString()),
+                smallBloomProbe).sum();
+    }
+
+    @Benchmark
+    public double hardwoodLargeBloomLookup() throws IOException {
+        return bloomLookup(source.inputFile(BUCKET, BloomLookupGenerator.LARGE.file().getFileName().toString()),
+                largeBloomProbe).sum();
     }
 
     @Benchmark
@@ -177,6 +196,28 @@ public class S3ScanBenchmark {
         return sum;
     }
 
+    /// The rows an equality lookup matched and the sum of their values.
+    record Lookup(long rows, double sum) {
+    }
+
+    static Lookup bloomLookup(InputFile file, long probe) throws IOException {
+        long rows = 0;
+        double sum = 0;
+        try (ParquetFileReader reader = ParquetFileReader.open(file);
+             ColumnReader value = reader.buildColumnReader(BloomLookupGenerator.VALUE_COLUMN)
+                     .filter(FilterPredicate.eq(BloomLookupGenerator.KEY_COLUMN, probe))
+                     .build()) {
+            while (value.nextBatch()) {
+                double[] values = value.getDoubles();
+                for (int i = 0; i < value.getRecordCount(); i++) {
+                    sum += values[i];
+                }
+                rows += value.getRecordCount();
+            }
+        }
+        return new Lookup(rows, sum);
+    }
+
     static double multiFileScan(List<InputFile> files) throws IOException {
         double sum = 0;
         try (ParquetFileReader reader = ParquetFileReader.openAll(files);
@@ -213,7 +254,12 @@ public class S3ScanBenchmark {
     private static void publish(Path file, Path bucketDir) throws IOException {
         Path target = bucketDir.resolve(file.getFileName().toString());
         if (Files.exists(target)) {
-            return;
+            // A link to the file, or a copy at least as new: anything else is a stale fixture.
+            if (Files.isSameFile(target, file) || (Files.size(target) == Files.size(file)
+                    && Files.getLastModifiedTime(target).compareTo(Files.getLastModifiedTime(file)) >= 0)) {
+                return;
+            }
+            Files.delete(target);
         }
         try {
             Files.createLink(target, file.toAbsolutePath());
@@ -238,6 +284,27 @@ public class S3ScanBenchmark {
         System.out.printf("Gate passed [%s] — S3 and local reads agree (%,d requests, %,d bytes%s).%n", name,
                 fetches.requests(), fetches.bytes(), index);
         return fetches;
+    }
+
+    /// As [#gate] for the absent probe of `shape`, which must match no row over S3 and locally,
+    /// and checks that its present probe matches its one row over S3 and locally, so a filter read
+    /// wrongly shows as a missing row.
+    private static Fetches gateLookup(String name, S3Source source, BloomLookupGenerator.Shape shape)
+            throws IOException {
+        String key = shape.file().getFileName().toString();
+        BloomLookupGenerator.Probes probes = BloomLookupGenerator.probes(shape);
+        List<Supplier<InputFile>> files = List.of(() -> source.inputFile(BUCKET, key),
+                () -> InputFile.of(localPath(key)));
+        for (Supplier<InputFile> file : files) {
+            Lookup absent = bloomLookup(file.get(), probes.absent());
+            Lookup present = bloomLookup(file.get(), probes.present());
+            if (absent.rows() != 0 || present.rows() != 1 || present.sum() != probes.presentValue()) {
+                throw new IllegalStateException(String.format(
+                        "[%s] absent probe matched %d rows, present probe %d rows with value %f (expected %f)",
+                        name, absent.rows(), present.rows(), present.sum(), probes.presentValue()));
+            }
+        }
+        return gate(name, source, key, PageIndexLayout.NONE, unchecked(in -> bloomLookup(in, probes.absent()).sum()));
     }
 
     private static void check(String name, double s3, double local) {
@@ -310,11 +377,15 @@ public class S3ScanBenchmark {
         List<Path> months = TaxiDataDownloader.ensure(FIRST_MONTH, LAST_MONTH);
         EventFileGenerator.ensure(FILTER_FILE, FILTER_ROWS);
         WideTableGenerator.ensure(WIDE_FILE);
+        BloomLookupGenerator.ensure(BloomLookupGenerator.SMALL);
+        BloomLookupGenerator.ensure(BloomLookupGenerator.LARGE);
         for (Path month : months) {
             publish(month, bucketDir);
         }
         publish(FILTER_FILE, bucketDir);
         publish(WIDE_FILE, bucketDir);
+        publish(BloomLookupGenerator.SMALL.file(), bucketDir);
+        publish(BloomLookupGenerator.LARGE.file(), bucketDir);
 
         List<String> keys = monthKeys();
         String filterKey = FILTER_FILE.getFileName().toString();
@@ -326,6 +397,8 @@ public class S3ScanBenchmark {
         Fetches projected;
         Fetches filtered;
         Fetches wideFiltered;
+        Fetches bloomLookup;
+        Fetches largeBloomLookup;
         long[] multiFile;
         try (S3Source source = source()) {
             // The taxi files carry no page index, and the event file's lies in the footer tail
@@ -336,6 +409,8 @@ public class S3ScanBenchmark {
                     unchecked(S3ScanBenchmark::filteredScan));
             wideFiltered = gate("wide filtered scan", source, wideKey, wideLayout,
                     unchecked(S3ScanBenchmark::wideFilteredScan));
+            bloomLookup = gateLookup("bloom lookup", source, BloomLookupGenerator.SMALL);
+            largeBloomLookup = gateLookup("large bloom lookup", source, BloomLookupGenerator.LARGE);
             multiFile = gateAll("multi-file scan", source, keys);
         }
         if (Boolean.getBoolean("perf.gate")) {
@@ -346,6 +421,8 @@ public class S3ScanBenchmark {
         meta.addAll(List.of(filtered.metaPairs("filteredScan")));
         meta.addAll(List.of(wideFiltered.metaPairs("wideFilteredScan")));
         meta.addAll(List.of(wideFiltered.indexMetaPairs("wideFilteredScan")));
+        meta.addAll(List.of(bloomLookup.metaPairs("bloomLookup")));
+        meta.addAll(List.of(largeBloomLookup.metaPairs("largeBloomLookup")));
         meta.addAll(List.of("requests.multiFileScan", Long.toString(multiFile[0]),
                 "bytes.multiFileScan", Long.toString(multiFile[1]),
                 "wide.indexRegionBytes", Long.toString(wideLayout.regionBytes()),
