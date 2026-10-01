@@ -25,16 +25,16 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 
 ## Benchmarks
 
-| Script | Kind | Workload | Contenders |
-| --- | --- | --- | --- |
-| [`run-flat.sh`](#flat-full-scan--run-flatsh) | published | Full scan of every column of NYC taxi | Hardwood column and row readers; parquet-java, `AvroParquetReader`, Arrow Dataset |
-| [`run-filter.sh`](#filtered-scan--run-filtersh) | published | Range predicate over a time-clustered file | Hardwood filtered column and row readers; parquet-java |
-| [`run-bloom.sh`](#bloom-filter-point-lookup--run-bloomsh) | published | Equality lookup on a unique key, bloom file against a statistics-only twin | Hardwood; parquet-java |
-| [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Hardwood row reader; `AvroParquetReader` |
-| [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Hardwood column and row readers |
-| [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Hardwood column and row readers |
-| [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Hardwood column and row writers |
-| [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Hardwood column reader |
+| Script | Kind | Workload | Purpose | Contenders |
+| --- | --- | --- | --- | --- |
+| [`run-flat.sh`](#flat-full-scan--run-flatsh) | published | Full scan of every column of NYC taxi | Measures full-scan decode throughput against parquet-java, Avro and Arrow | Hardwood column and row readers; parquet-java, `AvroParquetReader`, Arrow Dataset |
+| [`run-filter.sh`](#filtered-scan--run-filtersh) | published | Range predicate over a time-clustered file | Measures what page-level filtering saves on a selective predicate, and what it costs when every row matches | Hardwood filtered column and row readers; parquet-java |
+| [`run-bloom.sh`](#bloom-filter-point-lookup--run-bloomsh) | published | Equality lookup on a unique key, bloom file against a statistics-only twin | Measures what a bloom filter saves where only it can rule out row groups | Hardwood; parquet-java |
+| [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Measures record assembly throughput for structs, lists and maps | Hardwood row reader; `AvroParquetReader` |
+| [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
+| [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
+| [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
+| [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
 
 A **published** benchmark backs a post: its definition is fixed once a post cites it,
 the cited runs are archived under `results/`, and it has chart generators of its own.
