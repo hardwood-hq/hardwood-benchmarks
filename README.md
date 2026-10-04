@@ -33,6 +33,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Measures record assembly throughput for structs, lists and maps | Hardwood row reader; `AvroParquetReader` |
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
+| [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | `IN` over a dictionary-encoded string column | Shows that a string predicate is decided once per dictionary entry, and that reading the matches as strings builds no byte views | Hardwood row reader |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
 
@@ -85,7 +86,7 @@ for example a release against a local build:
 
 It runs every benchmark under `--regression` for each version in interleaved rounds
 (`--rounds`, default 3), so machine drift spreads over all versions. One round of all
-eight benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It writes to
+nine benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It writes to
 `target/regression/`:
 
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
@@ -267,6 +268,16 @@ before `T`, one row group straddles it, and the row groups after it are proven f
 matching, so Hardwood does not read `event_time` in them. `run-filter.sh` reaches only
 the two ends of this mix. Hardwood's column and row readers run filtered and
 unfiltered; the gate checks them against parquet-java.
+
+### Dictionary filter — `run-dictfilter.sh`
+
+`url IN (5 values)` over a generated file of 5M rows whose one column, `url`, holds
+1,000 distinct URLs of about 40 bytes, every page dictionary-encoded (SNAPPY). The
+predicate selects about 0.5 % of the rows. Hardwood's row reader projects `url` and
+reads each match with `getString`. A version that decides the predicate per entry and
+reads matches through the entry ids takes a fraction of the time of one that compares
+every row's bytes, or that builds each value's byte view. The gate checks that every
+page is dictionary-encoded and that the read agrees with parquet-java.
 
 ### Writes — `run-write.sh`
 

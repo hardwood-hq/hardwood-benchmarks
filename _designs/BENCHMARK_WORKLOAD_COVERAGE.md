@@ -34,6 +34,7 @@ Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of tw
 | `run-nested.sh` | mixed-use | Full record read of deeply nested struct / list / map | Overture Maps places; ZSTD | Hardwood row; `AvroParquetReader` | built |
 | `run-fixedlist.sh` | mixed-use | `LIST<float32>` fast path on and off across vector lengths | generated; UNCOMPRESSED by default, `-Dperf.compression` | Hardwood column and row, fast path and baseline; flat floor | built |
 | `run-window.sh` | regression-only | `event_time >= T` for the most recent 5 / 25 / 75 % of the time range: pruned row groups, one straddling the boundary, and row groups proven fully matching, whose `event_time` is not read (#1274) | generated event file, time-sorted, 16 MB row groups; SNAPPY | Hardwood columnar and row, each filtered and unfiltered | built |
+| `run-dictfilter.sh` | regression-only | `url IN (5 values)` over a dictionary-encoded column of 1,000 distinct URLs of about 40 bytes, reading each match with `getString`: the predicate is decided once per dictionary entry, and the matches resolve through the entry ids without byte views (#859) | generated, 5M rows; SNAPPY | Hardwood row reader | built |
 | `run-write.sh` | regression-only | Flat records written to memory; records compressed column-chunk bytes beside time | generated taxi-shaped records; SNAPPY and ZSTD | Hardwood column writer and row writer | built |
 | `run-s3.sh` | regression-only | Column-reader reads from S3Proxy behind Toxiproxy (30 ms first-byte latency, 80 MB/s per connection): a projected scan, a selective filtered scan, one multi-file reader over twelve files, a selective filtered scan projecting 3 of 200 columns across 40 row groups, whose page index is large against its data (#708), and two equality lookups for a key every bloom filter rejects, over 200 row groups with small filters and 6 with 16 MB filters (#735); records requests and bytes per read, and the wide read's page-index requests and bytes apart | NYC taxi 2025 and the generated event file in a local bucket, ZSTD and SNAPPY; a generated wide table (200 numeric columns, 40 row groups of 20 pages per chunk), SNAPPY; two generated bloom-lookup files (a unique `INT64` key with a bloom filter, no dictionary), SNAPPY | Hardwood column reader | built |
 | `run-projection.sh` | mixed-use | Projection width 1 / 3 / 10 / 20 of 20 columns, each with and without a range predicate, crossed with null density 0 / 10 / 50 / 90 % on one numeric column | generated | Hardwood columnar and row; parquet-java columnar | planned, 1st |
@@ -107,6 +108,7 @@ compared with one measured to a published definition.
 | `run-nested.sh` | 20,000 rows | Hardwood |
 | `run-fixedlist.sh` | 8M values, `k` = 768 | the fast-path arms |
 | `run-window.sh` | `last25pct` | Hardwood |
+| `run-dictfilter.sh` | fixed | Hardwood |
 | `run-write.sh` | 500,000 rows | Hardwood |
 | `run-s3.sh` | fixed | Hardwood |
 
@@ -116,7 +118,7 @@ so a move in it is machine drift, not a Hardwood change.
 **The regression run.** `run-regression.sh V1 V2 [V3 ...]` runs every script under
 `--regression` for each version in interleaved rounds (`--rounds`, default 3), so drift
 on the machine spreads over all versions, and starts the emulated S3 endpoint once for
-the whole run. A round of all eight scripts takes about 4 min per version on a 1.50 GHz
+the whole run. A round of all nine scripts takes about 4 min per version on a 1.50 GHz
 Intel N300. It ends in `verdict.txt`, which compares the first version with the last and
 lists per benchmark a tally plus only the contenders that moved beyond the noise band,
 with control drift reported separately; `not-run.txt`, which gives the reason for every
@@ -171,7 +173,7 @@ measured in either place.
 | Null density | — | — | `run-projection.sh` |
 | Compression codec on read | ZSTD, SNAPPY and UNCOMPRESSED as fixed choices | — | codec axis on `run-flat.sh` |
 | Encodings beyond PLAIN and dictionary | — | `DeltaEncodedScanBenchmark` | `BYTE_STREAM_SPLIT` unmeasured |
-| Strings and dictionaries, flat | — | `DictionaryStringReadBenchmark`, one method | `run-strings.sh` |
+| Strings and dictionaries, flat | `run-dictfilter.sh`, a filtered read only | `DictionaryStringReadBenchmark`, one method; `RecordFilterBenchmarkTest` | `run-strings.sh` |
 | Flat and nested columns in one file | — | `MixedSchemaReadBenchmark` | `run-mixed.sh` |
 | Writes | `run-write.sh`, flat, Hardwood only | `FlatWriteBenchmark`, `WriteEncodingBenchmark` | nested writes, cross-engine: `run-write.sh` mixed-use |
 | Remote object storage | `run-s3.sh`, emulated latency | `FlatS3PerformanceTest`, S3Proxy on localhost | a real bucket: `run-s3.sh` mixed-use |

@@ -8,7 +8,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-SCRIPTS=(filter bloom window nested flat fixedlist write s3)
+SCRIPTS=(filter bloom window dictfilter nested flat fixedlist write s3)
 CONTROL='^(parquetJava|avro|arrow)'
 
 usage() {
@@ -30,7 +30,7 @@ Usage: ./run-regression.sh [options] VERSION VERSION [VERSION ...]
 
 Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a
 script's --help for its preset. Per round and version that takes about 4 min for
-all eight scripts on a 1.50 GHz Intel N300 (the sum of the scripts' own times; not
+all nine scripts on a 1.50 GHz Intel N300 (the sum of the scripts' own times; not
 measured as a whole run). When run-s3.sh is among them, the
 emulated S3 endpoint (./s3-env.sh) is started once for the whole run.
 
