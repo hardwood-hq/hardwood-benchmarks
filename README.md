@@ -92,7 +92,9 @@ nine benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It write
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
   noise band, first version against the last, with control drift reported separately.
 - `not-run.txt`: every benchmark or contender a version could not run, with the reason.
-- `charts/`: one version chart per benchmark.
+- `charts/`: one version chart per benchmark, and `regression-overview.svg`: every Hardwood
+  contender of the first version and the last on one page, relative to the first, with
+  `verdict.txt`'s verdicts (`charts/make-regression-chart.py <out>` redraws it).
 
 More than two versions give a progression, such as 1.0 → 1.1 → 1.2; `--only` restricts
 the benchmarks, and `--fail-on-regression` sets the exit status.
