@@ -18,6 +18,11 @@ A single run is not evidence of a change: run-to-run variance on a shared host i
 Times are `ms_per_op`, so a negative delta is faster. Contenders present on only
 one side are listed separately rather than silently dropped, as are benchmarks.
 
+A benchmark that writes files records each file's size in its meta sidecar
+(`bytes.<file>`), and a version that writes larger files regressed even where its
+time did not move. Sizes do not vary between runs, so a change is called when it
+exceeds --size-tolerance (default 1%) rather than a noise band.
+
 Usage:
     # two publication directories, each holding run-1/ run-2/ run-3/
     python charts/compare-runs.py results/2026-06-25-hardwood-1.0 results/2026-09-10-hardwood-1.1
@@ -179,6 +184,30 @@ def compare_benchmark(base, new, benchmark, threshold, min_band, pattern=None, c
 
 # --- reporting -------------------------------------------------------------
 
+# Benchmarks whose meta sidecar records the bytes of each file they wrote, as `bytes.<file>`.
+# Other benchmarks use the `bytes.` prefix for what they fetched, which a version is free to
+# trade against requests.
+WRITES_FILES = {"WriteBenchmark"}
+
+
+def compare_sizes(base, new, benchmark, tolerance):
+    """The written sizes both snapshots recorded for `benchmark`, each with its change in
+    percent and a verdict against `tolerance`: `larger`, `smaller` or `~same`. Empty for a
+    benchmark that writes no files."""
+    if benchmark not in WRITES_FILES:
+        return []
+    b = base["meta"].get(benchmark, {})
+    n = new["meta"].get(benchmark, {})
+    rows = []
+    for key in sorted(k for k in b if k.startswith("bytes.") and k in n):
+        base_bytes, new_bytes = int(b[key]), int(n[key])
+        delta = (new_bytes - base_bytes) / base_bytes * 100.0
+        verdict = "larger" if delta > tolerance else "smaller" if delta < -tolerance else "~same"
+        rows.append({"file": key[len("bytes."):], "base_bytes": base_bytes, "new_bytes": new_bytes,
+                     "delta": delta, "verdict": verdict})
+    return rows
+
+
 def meta_line(label, snap, benchmark):
     fields = snap["meta"].get(benchmark, {})
     parts = [
@@ -209,7 +238,8 @@ def warnings_for(base, new, benchmark):
     return out
 
 
-def report_text(rows, base, new, benchmark, only_base, only_new, out, changes_only=False, drift=()):
+def report_text(rows, base, new, benchmark, only_base, only_new, out, changes_only=False, drift=(),
+                sizes=(), tolerance=1.0):
     print("\n{}".format(benchmark), file=out)
     print(meta_line("base", base, benchmark), file=out)
     print(meta_line("new", new, benchmark), file=out)
@@ -251,10 +281,32 @@ def report_text(rows, base, new, benchmark, only_base, only_new, out, changes_on
             print("  band is the --threshold default, not a measured spread: "
                   "at least one side is a single run", file=out)
 
+    report_sizes(sizes, tolerance, changes_only, out)
+
     for pass_, contender in only_base:
         print("  only in base:  {} [{}]".format(contender, pass_), file=out)
     for pass_, contender in only_new:
         print("  only in new:   {} [{}]".format(contender, pass_), file=out)
+
+
+def report_sizes(sizes, tolerance, changes_only, out):
+    if not sizes:
+        return
+    if changes_only:
+        print("  {} written size{} compared: {} larger, {} smaller, {} within ±{:g}%".format(
+            len(sizes), "" if len(sizes) == 1 else "s", sum(s["verdict"] == "larger" for s in sizes),
+            sum(s["verdict"] == "smaller" for s in sizes), sum(s["verdict"] == "~same" for s in sizes),
+            tolerance), file=out)
+        sizes = [s for s in sizes if s["verdict"] != "~same"]
+        if not sizes:
+            return
+    width = max(len("written"), max(len(s["file"]) for s in sizes))
+    print("", file=out)
+    print("  {:<{w}}  {:>12}  {:>12}  {:>8}  {}".format(
+        "written", "base bytes", "new bytes", "delta", "verdict", w=width), file=out)
+    for s in sizes:
+        print("  {:<{w}}  {:>12,}  {:>12,}  {:>+7.2f}%  {}".format(
+            s["file"], s["base_bytes"], s["new_bytes"], s["delta"], s["verdict"], w=width), file=out)
 
 
 def report_tsv(rows, benchmark, out):
@@ -281,7 +333,9 @@ def main():
     parser.add_argument("--format", choices=("text", "tsv"), default="text",
                         help="text report (default) or machine-readable TSV")
     parser.add_argument("--fail-on-regression", action="store_true",
-                        help="exit 1 if any reported contender is slower")
+                        help="exit 1 if any reported contender is slower, or a written file larger")
+    parser.add_argument("--size-tolerance", type=float, default=1.0,
+                        help="change in percent beyond which a written file is larger or smaller (default 1)")
     parser.add_argument("--min-band", type=float, default=3.0,
                         help="floor in percent for a band measured from repeats (default 3)")
     parser.add_argument("--changes-only", action="store_true",
@@ -302,6 +356,8 @@ def main():
     benchmarks = sorted(set(base["samples"]) | set(new["samples"]))
     regressed = 0
     compared = 0
+    sizes_compared = 0
+    grown = 0
 
     for benchmark in benchmarks:
         base_bench = base["samples"].get(benchmark, {})
@@ -314,20 +370,27 @@ def main():
 
         rows, only_base, only_new, drift = compare_benchmark(
             base, new, benchmark, args.threshold, args.min_band, pattern, control)
+        sizes = compare_sizes(base, new, benchmark, args.size_tolerance)
         compared += len(rows)
         regressed += sum(r["verdict"] == "slower" for r in rows)
+        sizes_compared += len(sizes)
+        grown += sum(s["verdict"] == "larger" for s in sizes)
 
         if args.format == "tsv":
             report_tsv(rows, benchmark, sys.stdout)
         else:
             report_text(rows, base, new, benchmark, only_base, only_new, sys.stdout,
-                        args.changes_only, drift)
+                        args.changes_only, drift, sizes, args.size_tolerance)
 
     if args.format == "text":
-        print("\n{} contender{} compared, {} slower".format(
-            compared, "" if compared == 1 else "s", regressed))
+        summary = "\n{} contender{} compared, {} slower".format(
+            compared, "" if compared == 1 else "s", regressed)
+        if sizes_compared:
+            summary += "; {} written size{} compared, {} larger".format(
+                sizes_compared, "" if sizes_compared == 1 else "s", grown)
+        print(summary)
 
-    if args.fail_on_regression and regressed:
+    if args.fail_on_regression and (regressed or grown):
         return 1
     return 0
 
