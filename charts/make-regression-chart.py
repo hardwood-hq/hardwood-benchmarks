@@ -13,7 +13,9 @@ its base median (base = 100%); the labels carry both medians in ms.
 
 Each contender's verdict (faster, slower or within noise) comes from
 `compare-runs.py`'s `compare_benchmark`, with the same noise band and defaults, so
-the chart and `verdict.txt` agree. A contender only one version ran is listed as
+the chart and `verdict.txt` agree. Below a benchmark that writes files, each file's
+size is drawn the same way, with `compare_sizes`' verdict (larger, smaller or within
+--size-tolerance). A contender only one version ran is listed as
 such, without bars. Contenders matching --control are not charted; a control
 that moved beyond its band is a warning, as are the comparability problems
 `compare-runs.py` reports.
@@ -62,12 +64,23 @@ def esc(text):
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def fmt_ms(value):
+def fmt_sig(value):
     """Three significant digits, so a 0.075 ms contender does not read as 0.1."""
     for limit, spec in ((100, "{:.0f}"), (10, "{:.1f}"), (1, "{:.2f}")):
         if value >= limit:
             return spec.format(value)
     return "{:.3f}".format(value)
+
+
+def fmt_ms(value):
+    return "{} ms".format(fmt_sig(value))
+
+
+def fmt_bytes(value):
+    for limit, unit in ((1e9, "GB"), (1e6, "MB"), (1e3, "KB")):
+        if value >= limit:
+            return "{} {}".format(fmt_sig(value / limit), unit)
+    return "{} B".format(value)
 
 
 def fmt_pct(value):
@@ -107,9 +120,9 @@ def runs_label(base, new):
     return "{} run{} per version".format(n, "" if counts == [1] else "s")
 
 
-def collect(base, new, control, threshold, min_band):
-    """Per benchmark both snapshots hold: its compared rows and one-sided contenders;
-    plus every warning, as text."""
+def collect(base, new, control, threshold, min_band, size_tolerance):
+    """Per benchmark both snapshots hold: its compared rows, one-sided contenders and
+    written sizes; plus every warning, as text."""
     groups, warnings = [], []
     for benchmark in sorted(set(base["samples"]) | set(new["samples"])):
         if not base["samples"].get(benchmark) or not new["samples"].get(benchmark):
@@ -120,8 +133,9 @@ def collect(base, new, control, threshold, min_band):
             base, new, benchmark, threshold, min_band, control=control)
         one_sided = [(key, "base", base) for key in only_base if not control.search(key[1])]
         one_sided += [(key, "new", new) for key in only_new if not control.search(key[1])]
-        if rows or one_sided:
-            groups.append((benchmark, rows, one_sided))
+        sizes = compare_runs.compare_sizes(base, new, benchmark, size_tolerance)
+        if rows or one_sided or sizes:
+            groups.append((benchmark, rows, one_sided, sizes))
         for warning in compare_runs.warnings_for(base, new, benchmark):
             warnings.append("{}: {}".format(benchmark, warning))
         for r in drift:
@@ -142,9 +156,29 @@ def label_backing(x, mid, font_size, chars, fill):
 
 
 def compared_row(y, r, label, scale):
-    """SVG for one compared contender: label, base and new bar, value labels, verdict."""
-    slower = r["verdict"] == "slower"
-    pct = r["new_ms"] / r["base_ms"] * 100.0
+    """SVG for one compared contender."""
+    word, color, weight = {
+        "slower": ("slower", SLOWER_COLOR, "700"),
+        "faster": ("faster", NEW_COLOR, "700"),
+    }.get(r["verdict"], ("within noise", "#868e96", "400"))
+    band = "band ±{:.1f}%{}".format(r["band"], "" if r["measured"] else " (threshold)")
+    return bar_row(y, label, r["new_ms"] / r["base_ms"] * 100.0, fmt_ms(r["base_ms"]), fmt_ms(r["new_ms"]),
+                   (word, color, weight), r["delta"], band, r["verdict"] == "slower", scale)
+
+
+def size_row(y, s, label, tolerance, scale):
+    """SVG for one written file's size."""
+    word, color, weight = {
+        "larger": ("larger", SLOWER_COLOR, "700"),
+        "smaller": ("smaller", NEW_COLOR, "700"),
+    }.get(s["verdict"], ("within tolerance", "#868e96", "400"))
+    return bar_row(y, label, s["new_bytes"] / s["base_bytes"] * 100.0, fmt_bytes(s["base_bytes"]),
+                   fmt_bytes(s["new_bytes"]), (word, color, weight), s["delta"],
+                   "tolerance ±{:g}%".format(tolerance), s["verdict"] == "larger", scale)
+
+
+def bar_row(y, label, pct, base_text, new_text, verdict, delta, band, slower, scale):
+    """SVG for one compared row: label, base and new bar, value labels, verdict and its band."""
     mid = y + ROW_H / 2.0
     base_mid, new_top = y + BAR_H / 2.0, y + BAR_H + BAR_GAP
     new_mid = new_top + BAR_H / 2.0
@@ -165,30 +199,27 @@ def compared_row(y, r, label, scale):
     # between glyphs.
     background = SLOWER_BACKGROUND if slower else "#ffffff"
     halo = 'stroke="{}" stroke-width="3" paint-order="stroke"'.format(background)
-    base_text = "{} ms".format(fmt_ms(r["base_ms"]))
-    new_pct, new_ms = fmt_pct(pct), "{} ms".format(fmt_ms(r["new_ms"]))
+    new_pct = fmt_pct(pct)
     base_x, new_x = PLOT_X0 + base_w + 5, PLOT_X0 + new_w + 5
     out.append(label_backing(base_x, base_mid, 10.5, len(base_text), background))
-    out.append(label_backing(new_x, new_mid, 11, len(new_pct) * 1.1 + 3 + len(new_ms), background))
+    out.append(label_backing(new_x, new_mid, 11, len(new_pct) * 1.1 + 3 + len(new_text), background))
     out.append('<text x="{:.1f}" y="{:.1f}" font-size="10.5" fill="#868e96" {}>{}</text>'
                .format(base_x, base_mid + 3.5, halo, base_text))
     out.append('<text x="{:.1f}" y="{:.1f}" font-size="11" fill="#495057" {}>'
                '<tspan font-weight="700" fill="{}">{}</tspan> · {}</text>'
-               .format(new_x, new_mid + 4, halo, SLOWER_COLOR if slower else "#1a1a1a", new_pct, new_ms))
-    word, color, weight = {
-        "slower": ("slower", SLOWER_COLOR, "700"),
-        "faster": ("faster", NEW_COLOR, "700"),
-    }.get(r["verdict"], ("within noise", "#868e96", "400"))
+               .format(new_x, new_mid + 4, halo, SLOWER_COLOR if slower else "#1a1a1a", new_pct, new_text))
+    word, color, weight = verdict
     out.append('<text x="{}" y="{:.1f}" font-size="12" font-weight="{}" fill="{}" text-anchor="end">'
-               '{} {:+.1f}%</text>'.format(VERDICT_X, base_mid + 4, weight, color, word, r["delta"]))
-    out.append('<text x="{}" y="{:.1f}" font-size="10.5" fill="#adb5bd" text-anchor="end">band ±{:.1f}%{}</text>'
-               .format(VERDICT_X, new_mid + 4, r["band"], "" if r["measured"] else " (threshold)"))
+               '{} {:+.{}f}%</text>'.format(VERDICT_X, base_mid + 4, weight, color, word, delta,
+                                           1 if abs(delta) >= 1 else 2))
+    out.append('<text x="{}" y="{:.1f}" font-size="10.5" fill="#adb5bd" text-anchor="end">{}</text>'
+               .format(VERDICT_X, new_mid + 4, band))
     return out
 
 
 def one_sided_row(y, label, side, values):
     mid = y + ROW_H / 2.0
-    text = "only in {} ({} ms), not compared".format(side, fmt_ms(statistics.median(values)))
+    text = "only in {} ({}), not compared".format(side, fmt_ms(statistics.median(values)))
     return [label_backing(PLOT_X0 + 4, mid, 11, len(text), "#ffffff"),
             '<text x="{}" y="{:.1f}" font-size="12" fill="#868e96" text-anchor="end">{}</text>'
             .format(LABEL_X, mid + 4, esc(label)),
@@ -197,16 +228,18 @@ def one_sided_row(y, label, side, values):
             .format(PLOT_X0 + 4, mid + 4, text)]
 
 
-def chart(base, new, base_label, new_label, groups, warnings, min_band, out_dir):
-    rows = [r for _, compared, _ in groups for r in compared]
-    passes = {r["pass"] for r in rows} | {key[0] for _, _, one_sided in groups for key, _, _ in one_sided}
+def chart(base, new, base_label, new_label, groups, warnings, min_band, size_tolerance, out_dir):
+    rows = [r for _, compared, _, _ in groups for r in compared]
+    sizes = [s for _, _, _, written in groups for s in written]
+    passes = {r["pass"] for r in rows} | {key[0] for _, _, one_sided, _ in groups for key, _, _ in one_sided}
     # The axis leaves room for the longest bar's value label left of the verdict column.
-    longest = max([r["new_ms"] / r["base_ms"] * 100.0 for r in rows] + [100.0])
+    longest = max([r["new_ms"] / r["base_ms"] * 100.0 for r in rows]
+                  + [s["new_bytes"] / s["base_bytes"] * 100.0 for s in sizes] + [100.0])
     top = nice_max(longest * (PLOT_X1 - PLOT_X0) / (LABEL_END - LABEL_ROOM - PLOT_X0))
     scale = (PLOT_X1 - PLOT_X0) / top
 
     body, y = [], TOP
-    for benchmark, compared, one_sided in groups:
+    for benchmark, compared, one_sided, written in groups:
         body.append('<text x="40" y="{:.1f}" font-size="13" font-weight="700" fill="#1a1a1a">{}</text>'
                     .format(y + 15, esc(benchmark)))
         y += HEADING_H
@@ -216,6 +249,9 @@ def chart(base, new, base_label, new_label, groups, warnings, min_band, out_dir)
         for key, side, snap in one_sided:
             body += one_sided_row(y, contender_label(key[0], key[1], passes), side,
                                   snap["samples"][benchmark][key])
+            y += ROW_H + ROW_GAP
+        for s in written:
+            body += size_row(y, s, "bytes written · {}".format(s["file"]), size_tolerance, scale)
             y += ROW_H + ROW_GAP
         y += BENCHMARK_GAP
     plot_bottom = y - BENCHMARK_GAP - ROW_GAP
@@ -238,12 +274,12 @@ def chart(base, new, base_label, new_label, groups, warnings, min_band, out_dir)
     grid.append('<line x1="{}" y1="{}" x2="{}" y2="{:.1f}" stroke="#bbb" stroke-width="1.5"/>'
                 .format(PLOT_X0, TOP - 6, PLOT_X0, plot_bottom + 6))
     grid.append('<text x="{:.1f}" y="{:.1f}" font-size="12" fill="#495057" text-anchor="middle">'
-                'time per operation relative to base (base = 100% · lower is better)</text>'
+                'time per operation, or bytes written, relative to base (base = 100% · lower is better)</text>'
                 .format((PLOT_X0 + PLOT_X1) / 2.0, plot_bottom + 40))
 
     legend, x = [], 40
     for label, color in ((base_label + " · base", BASE_COLOR), (new_label + " · new", NEW_COLOR),
-                         ("new, slower beyond the noise band", SLOWER_COLOR)):
+                         ("new, slower or larger beyond its band", SLOWER_COLOR)):
         legend.append('<rect x="{}" y="92" width="12" height="12" rx="2" fill="{}"/>'.format(x, color))
         legend.append('<text x="{}" y="102" font-size="11.5" fill="#495057">{}</text>'.format(x + 17, esc(label)))
         x += 17 + 7 * len(label) + 28
@@ -252,6 +288,8 @@ def chart(base, new, base_label, new_label, groups, warnings, min_band, out_dir)
     notes = ["% = new median ÷ base median. The verdict is verdict.txt's: a change beyond the noise band,",
              "half of each version's spread across runs added together, at least {:g}%. Non-Hardwood contenders "
              "are a control and are not charted.".format(min_band)]
+    if sizes:
+        notes.append("Written sizes do not vary between runs: a change beyond ±{:g}% is called.".format(size_tolerance))
     foot = ['<text x="40" y="{:.1f}" font-size="11.5" fill="#868e96">{}</text>'.format(foot_y + 17 * i, esc(n))
             for i, n in enumerate(notes)]
     for i, warning in enumerate(warnings):
@@ -262,6 +300,9 @@ def chart(base, new, base_label, new_label, groups, warnings, min_band, out_dir)
     tally = "{} compared: {} slower, {} faster, {} within noise".format(
         len(rows), sum(r["verdict"] == "slower" for r in rows),
         sum(r["verdict"] == "faster" for r in rows), sum(r["verdict"] == "~same" for r in rows))
+    if sizes:
+        tally += " · {} written size{}: {} larger".format(
+            len(sizes), "" if len(sizes) == 1 else "s", sum(s["verdict"] == "larger" for s in sizes))
     subst = {
         "width": WIDTH, "height": height,
         "title": esc("Regression check · {}".format(" / ".join(PASS_LABELS.get(p, p) for p in sorted(passes, reverse=True)))),
@@ -288,6 +329,9 @@ def main():
                     help="noise band in percent when a side has no repeats (default 5, as compare-runs.py)")
     ap.add_argument("--min-band", type=float, default=3.0,
                     help="floor in percent for a band measured from repeats (default 3, as compare-runs.py)")
+    ap.add_argument("--size-tolerance", type=float, default=1.0,
+                    help="change in percent beyond which a written file is larger or smaller "
+                         "(default 1, as compare-runs.py)")
     args = ap.parse_args()
 
     if len(args.snapshots) == 1:
@@ -302,14 +346,15 @@ def main():
         sys.exit("regression chart: name a run-regression.sh directory, or a BASE and a NEW snapshot")
 
     base, new = (compare_runs.load(p) for p in paths)
-    groups, warnings = collect(base, new, re.compile(args.control), args.threshold, args.min_band)
-    if not any(compared for _, compared, _ in groups):
+    groups, warnings = collect(base, new, re.compile(args.control), args.threshold, args.min_band,
+                               args.size_tolerance)
+    if not any(compared for _, compared, _, _ in groups):
         sys.exit("regression chart: no Hardwood contender ran in both {} and {}".format(*paths))
     for warning in warnings:
         print("warning: {}".format(warning), file=sys.stderr)
     out.mkdir(parents=True, exist_ok=True)
     render_pngs([chart(base, new, snapshot_label(base, paths[0]), snapshot_label(new, paths[1]),
-                       groups, warnings, args.min_band, out)])
+                       groups, warnings, args.min_band, args.size_tolerance, out)])
     return 0
 
 

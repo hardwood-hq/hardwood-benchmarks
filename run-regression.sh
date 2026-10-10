@@ -27,7 +27,8 @@ Usage: ./run-regression.sh [options] VERSION VERSION [VERSION ...]
   --out DIR         where the snapshots, logs, verdict and charts go
                     (default target/regression)
   --fail-on-regression
-                    exit 1 when a Hardwood contender is slower beyond the band
+                    exit 1 when a Hardwood contender is slower beyond the band, or a
+                    file the write benchmark wrote is larger beyond 1%
 
 Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a
 script's --help for its preset. Per round and version that takes about 4 min for

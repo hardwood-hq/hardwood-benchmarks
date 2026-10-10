@@ -91,13 +91,17 @@ nine benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It write
 
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
   noise band, first version against the last, with control drift reported separately.
+  The write benchmark adds the size of each file it wrote, called larger or smaller
+  beyond 1%; sizes do not vary between runs, so they have no noise band.
 - `not-run.txt`: every benchmark or contender a version could not run, with the reason.
 - `charts/`: one version chart per benchmark, and `regression-overview.svg`: every Hardwood
-  contender of the first version and the last on one page, relative to the first, with
-  `verdict.txt`'s verdicts (`charts/make-regression-chart.py <out>` redraws it).
+  contender of the first version and the last on one page, relative to the first, and
+  the write benchmark's written sizes, with `verdict.txt`'s verdicts
+  (`charts/make-regression-chart.py <out>` redraws it).
 
 More than two versions give a progression, such as 1.0 → 1.1 → 1.2; `--only` restricts
-the benchmarks, and `--fail-on-regression` sets the exit status.
+the benchmarks, and `--fail-on-regression` sets the exit status: 1 when a Hardwood contender
+is slower beyond its band or a written file larger beyond 1%.
 
 **`--hardwood-version`** selects the version for one run. It sets a pom property, so it
 reaches Maven; a bare `-Dhardwood.version=…` would reach the JVM instead and measure the
