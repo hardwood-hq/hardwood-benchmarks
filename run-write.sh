@@ -22,8 +22,8 @@ Regression preset (--regression): --rows 500000; contenders matching hardwood
 
 Every contender is Hardwood. Before timing, each API's file is read back and its row count
 and fare sum checked; --gate does only that. The produced compressed column-chunk bytes of
-each codec's file are recorded in the meta sidecar (bytes, bytesZstd), so an encoding change shows up as a
-dataset difference between two versions."
+each codec's file are recorded in the meta sidecar (bytes.SNAPPY, bytes.ZSTD), so a version that
+writes larger files shows there even where the time does not move."
 
 bench_parse_args "$@"
 bench_build

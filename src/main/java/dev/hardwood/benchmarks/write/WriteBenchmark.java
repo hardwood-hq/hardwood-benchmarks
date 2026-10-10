@@ -51,9 +51,9 @@ import dev.hardwood.writer.WriterConfig;
 ///
 /// Writing to memory keeps the filesystem and page cache out of the number, so it is encode
 /// throughput. The compressed column-chunk bytes of each codec's file are recorded in the meta
-/// sidecar (`bytes` for SNAPPY, `bytesZstd` for ZSTD): an encoding change that moves them
-/// shows up there as a dataset difference between two versions, even where the time does not
-/// move. Run with `run-write.sh`.
+/// sidecar (`bytes.SNAPPY`, `bytes.ZSTD`) as measurements, like the S3 benchmark's fetched
+/// bytes, so a version that writes larger files shows there even where the time does not move.
+/// Run with `run-write.sh`.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -275,7 +275,10 @@ public class WriteBenchmark {
         if (Boolean.getBoolean("perf.gate")) {
             return;
         }
-        BenchReport.writeRunParams(ROWS, snappyBytes, "bytesZstd", Long.toString(zstdBytes));
+        System.out.printf("Run params: %,d rows; writes %,d bytes with SNAPPY, %,d with ZSTD%n",
+                ROWS, snappyBytes, zstdBytes);
+        BenchReport.writeMeta("rows", Long.toString(ROWS),
+                "bytes.SNAPPY", Long.toString(snappyBytes), "bytes.ZSTD", Long.toString(zstdBytes));
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(WriteBenchmark.class))
                 .warmupIterations(Integer.getInteger("perf.warmup", 3))
