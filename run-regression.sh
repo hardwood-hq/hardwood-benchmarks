@@ -2,7 +2,8 @@
 #
 # Regression check: every benchmark under --regression, for two or more Hardwood
 # versions, in interleaved rounds; then the verdict (compare-runs.py, first version
-# against the last, only what moved beyond the noise band) and the version charts.
+# against the last, only what moved beyond the noise band), the version charts and
+# the overview chart.
 # See ./run-regression.sh --help.
 #
 set -uo pipefail
@@ -37,7 +38,8 @@ emulated S3 endpoint (./s3-env.sh) is started once for the whole run.
 Output, under --out:
   <version>/run-<n>/   the snapshot compare-runs.py and the version chart read
   verdict.txt          per benchmark: a tally, and only the contenders that moved
-  charts/              one version chart per benchmark
+  charts/              one version chart per benchmark, and regression-overview.svg:
+                       every Hardwood contender, the last version relative to the first
 EOF
 }
 
@@ -102,6 +104,8 @@ python3 charts/compare-runs.py "$first" "$last" --changes-only --control "$CONTR
 status=$?
 python3 charts/make-version-chart.py "${VERSIONS[@]/#/$OUT/}" --control "$CONTROL" --out "$OUT/charts" \
   > /dev/null 2> "$OUT/charts.log" || cat "$OUT/charts.log" >&2
+python3 charts/make-regression-chart.py "$first" "$last" --control "$CONTROL" --out "$OUT/charts" \
+  > /dev/null 2>> "$OUT/charts.log" || cat "$OUT/charts.log" >&2
 
 # Contenders a version did not run (its build failed, or the contender threw) are
 # listed from the logs, so a "not run" in a chart has its reason next to it.

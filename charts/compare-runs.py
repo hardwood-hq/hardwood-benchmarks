@@ -139,6 +139,44 @@ def compare(base_values, new_values, threshold, min_band=0.0):
     return base_median, new_median, delta, band, verdict, measured
 
 
+def compare_benchmark(base, new, benchmark, threshold, min_band, pattern=None, control=None):
+    """Compare one benchmark both snapshots hold: (rows, only_base, only_new, drift).
+
+    rows holds one dict per (pass, contender) both sides ran, in the base's order, with
+    the medians, delta, band and verdict; a contender matching `control` is left out of
+    rows and, when it moved beyond its band, listed in drift instead. only_base and
+    only_new list the (pass, contender) keys one side lacks. Contenders not matching
+    `pattern` are skipped altogether. make-regression-chart.py charts these rows, so it
+    and the text report cannot disagree.
+    """
+    base_bench = base["samples"].get(benchmark, {})
+    new_bench = new["samples"].get(benchmark, {})
+    rows, only_base, only_new, drift = [], [], [], []
+    for key in base["order"].get(benchmark, []):
+        pass_, contender = key
+        if pattern and not pattern.search(contender):
+            continue
+        if key not in new_bench:
+            only_base.append(key)
+            continue
+        base_ms, new_ms, delta, band, verdict, measured = compare(
+            base_bench[key], new_bench[key], threshold, min_band)
+        row = {"pass": pass_, "contender": contender, "base_ms": base_ms,
+               "new_ms": new_ms, "delta": delta, "band": band,
+               "verdict": verdict, "measured": measured}
+        if control and control.search(contender):
+            if verdict != "~same":
+                drift.append(row)
+            continue
+        rows.append(row)
+    for key in new["order"].get(benchmark, []):
+        if pattern and not pattern.search(key[1]):
+            continue
+        if key not in base_bench:
+            only_new.append(key)
+    return rows, only_base, only_new, drift
+
+
 # --- reporting -------------------------------------------------------------
 
 def meta_line(label, snap, benchmark):
@@ -274,32 +312,10 @@ def main():
                   file=sys.stderr)
             continue
 
-        rows, only_base, only_new, drift = [], [], [], []
-        for key in base["order"].get(benchmark, []):
-            pass_, contender = key
-            if pattern and not pattern.search(contender):
-                continue
-            if key not in new_bench:
-                only_base.append(key)
-                continue
-            base_ms, new_ms, delta, band, verdict, measured = compare(
-                base_bench[key], new_bench[key], args.threshold, args.min_band)
-            row = {"pass": pass_, "contender": contender, "base_ms": base_ms,
-                   "new_ms": new_ms, "delta": delta, "band": band,
-                   "verdict": verdict, "measured": measured}
-            if control and control.search(contender):
-                if verdict != "~same":
-                    drift.append(row)
-                continue
-            rows.append(row)
-            compared += 1
-            if verdict == "slower":
-                regressed += 1
-        for key in new["order"].get(benchmark, []):
-            if pattern and not pattern.search(key[1]):
-                continue
-            if key not in base_bench:
-                only_new.append(key)
+        rows, only_base, only_new, drift = compare_benchmark(
+            base, new, benchmark, args.threshold, args.min_band, pattern, control)
+        compared += len(rows)
+        regressed += sum(r["verdict"] == "slower" for r in rows)
 
         if args.format == "tsv":
             report_tsv(rows, benchmark, sys.stdout)
