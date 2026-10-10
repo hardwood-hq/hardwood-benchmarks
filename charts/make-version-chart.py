@@ -50,8 +50,8 @@ _spec.loader.exec_module(compare_runs)
 PASSES = [("unpinned", "allcores", "all cores"), ("pinned", "1core", "1 core")]
 # Keys that describe the machine, the JVM or the build rather than the data read.
 NON_DATASET_KEYS = {"hardwood", "java", "machine", "simd"}
-# Prefixes of keys that measure what a read fetched (run-s3.sh), which a version is expected to
-# change, rather than describe the data read.
+# Prefixes of keys that measure what a run fetched (run-s3.sh) or wrote (run-write.sh), which a
+# version is expected to change, rather than describe the data read.
 MEASURED_KEY_PREFIXES = ("requests.", "bytes.", "indexRequests.", "indexBytes.")
 
 

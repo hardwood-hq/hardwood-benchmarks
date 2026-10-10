@@ -284,8 +284,8 @@ page is dictionary-encoded and that the read agrees with parquet-java.
 500K flat, taxi-shaped records (six columns, nulls in two) written to memory through
 Hardwood's column writer and row writer, SNAPPY and ZSTD, so the number is encode
 throughput. Each file is read back and checked before timing. The meta sidecar records
-each codec's compressed column-chunk bytes (`bytes`, `bytesZstd`), so an encoding change
-shows between two versions even where the time does not move.
+each codec's compressed column-chunk bytes (`bytes.SNAPPY`, `bytes.ZSTD`), so a version that
+writes larger files shows there even where the time does not move.
 
 ### S3 reads — `run-s3.sh`
 
