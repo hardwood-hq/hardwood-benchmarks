@@ -42,7 +42,7 @@ import org.apache.parquet.schema.Types;
 /// alone, both columns dictionary-encoded, ZSTD. The generator also writes the aggregate it
 /// expects next to the file ([#expected(Path)]), computed from the values as they are drawn,
 /// so the gate checks every contender against a result no Parquet reader produced.
-final class MeasurementsGenerator {
+public final class MeasurementsGenerator {
 
     private static final long SEED = 1_000_000_007L;
     private static final int ROW_GROUP_ROWS = 1 << 20;
@@ -56,6 +56,15 @@ final class MeasurementsGenerator {
     }
 
     private MeasurementsGenerator() {
+    }
+
+    /// Writes the file named by the first argument with the row count the second gives, as
+    /// [#ensure(Path, long)] does.
+    public static void main(String[] args) throws IOException {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("Usage: MeasurementsGenerator <measurements.parquet> <rows>");
+        }
+        ensure(Path.of(args[0]), Long.parseLong(args[1]));
     }
 
     /// The file holding the aggregate expected from `file`.

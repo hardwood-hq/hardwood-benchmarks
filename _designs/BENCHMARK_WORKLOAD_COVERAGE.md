@@ -12,7 +12,8 @@ hardwood-hq/hardwood, and issue numbers in this document refer to that repositor
 
 ## Benchmarks
 
-Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of two kinds:
+Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of two kinds
+(the engine comparison below is the one script that is neither):
 
 - **Mixed-use:** a published result rests on it. Its definition (fixture, parameters,
   plotted contenders) is fixed once published, and a change to it is a deliberate break
@@ -45,6 +46,12 @@ Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of tw
 | `run-open.sh` | mixed-use | Open, footer parse and page-index load as latency, over wide schemas and many small files | generated | Hardwood; parquet-java | planned, 4th |
 | `run-s3.sh` | mixed-use | Reads against a real bucket: footer prefetch, tail cache, range coalescing, the `RangeBacking` modes | taxi in a bucket | Hardwood; parquet-java over `s3a` | planned, 5th |
 | `run-mixed.sh` | mixed-use | Flat columns beside nested ones in one file, projected to each and to both | generated | Hardwood row and columnar; `AvroParquetReader` | planned, 6th |
+
+`run-1brc-engines.sh` is an engine comparison: it times `run-1brc.sh`'s workload as one
+process per engine (Hardwood on the JVM, the DuckDB CLI, Polars, PyArrow) with hyperfine,
+start to printed result, because engines outside the JVM cannot run under JMH. Its
+contenders' versions are pinned in the script and in `engines/requirements.txt`, and it
+is never part of a regression run (#1476).
 
 `run-write.sh` and `run-s3.sh` appear twice: the regression-only form is built first,
 and the mixed-use form extends it with cross-engine contenders and a publication chart.
