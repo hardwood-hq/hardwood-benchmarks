@@ -1,0 +1,3 @@
+# The engines run-1brc-engines.sh compares Hardwood with, pinned; the results record them.
+polars==2.0.0
+pyarrow==26.0.0

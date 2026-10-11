@@ -34,9 +34,13 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
 | [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | `IN` over a dictionary-encoded string column | Shows that a string predicate is decided once per dictionary entry, and that reading the matches as strings builds no byte views | Hardwood row reader |
+| [`run-1brc.sh`](#1brc-over-parquet--run-1brcsh) | regression-only | 1BRC: min, mean and max per station | Measures a scan whose consumer does work per row, on one consumer thread and on one per row-group split | Hardwood column and row readers |
+| [`run-1brc-engines.sh`](#1brc-across-engines--run-1brc-enginessh) | engine comparison | `run-1brc.sh`'s workload, one process per run | Compares Hardwood's fastest 1BRC configuration with other engines, start to printed result | Hardwood; DuckDB CLI; Polars; PyArrow |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
 
+An **engine comparison** times whole programs with hyperfine rather than methods with
+JMH, so engines outside the JVM take part. It is never part of a regression run.
 A **published** benchmark backs a post: its definition is fixed once a post cites it,
 the cited runs are archived under `results/`, and it has chart generators of its own.
 A **regression-only** benchmark witnesses one scenario, times Hardwood alone over a
@@ -86,7 +90,7 @@ for example a release against a local build:
 
 It runs every benchmark under `--regression` for each version in interleaved rounds
 (`--rounds`, default 3), so machine drift spreads over all versions. One round of all
-nine benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It writes to
+ten benchmarks takes about 4.5 min per version on a 1.50 GHz Intel N300. It writes to
 `target/regression/`:
 
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
@@ -284,6 +288,36 @@ reads each match with `getString`. A version that decides the predicate per entr
 reads matches through the entry ids takes a fraction of the time of one that compares
 every row's bytes, or that builds each value's byte view. The gate checks that every
 page is dictionary-encoded and that the read agrees with parquet-java.
+
+### 1BRC over Parquet — `run-1brc.sh`
+
+The [One Billion Row Challenge](https://github.com/gunnarmorling/1brc) over Parquet:
+min, mean and max of `measurement` per `station`, over a generated file of 100M rows
+(`--rows 1000000000` for the full challenge). parquet-java writes it from a seeded
+generator with the original challenge's 413 stations, in row groups of 2^20 rows with
+both columns dictionary-encoded (ZSTD). `hardwoodColumnIds` aggregates by dictionary
+entry id on one consumer thread; `hardwoodColumnSplits` does the same over contiguous
+row-group byte ranges, one reader and consumer per available processor, and merges the
+tables; `hardwoodRowReader` reads each row with `getString` and `getDouble` into a
+`HashMap`; the regression preset leaves it out, since the per-row lookup takes most of its
+time. The column contenders need `hardwood-core` 1.1.0.Beta2 or later. The
+generator records the aggregate of the values it draws next to the file, and the gate
+checks that every page is dictionary-encoded and that every contender prints that
+aggregate.
+
+### 1BRC across engines — `run-1brc-engines.sh`
+
+`run-1brc.sh`'s file and aggregate, computed by one program per engine and timed by
+[hyperfine](https://github.com/sharkdp/hyperfine) from process start to printed result,
+with the OS page cache warm (10 runs after 2 warmup runs; `--runs`, `--warmup`). Hardwood
+runs `OneBrc` on the JVM with a class path of `hardwood-core` and `zstd-jni` only, and an
+AOT cache the script writes from one training run over the file: the column reader by
+dictionary id, one row-group byte-range split per processor. DuckDB runs its CLI, downloaded at the version the script pins; Polars and
+PyArrow run a script each from `engines/`, in a venv with the versions
+`engines/requirements.txt` pins. Every engine uses all cores. Before timing, the script
+checks every output against the aggregate the generator recorded. Results go to
+`target/engines/`, with the engine, JVM and machine versions beside them. Needs
+hyperfine and `python3`.
 
 ### Writes — `run-write.sh`
 
