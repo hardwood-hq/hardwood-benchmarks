@@ -9,7 +9,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-SCRIPTS=(filter bloom window dictfilter binary nested flat narrow fixedlist write encodings s3)
+SCRIPTS=(filter bloom window dictfilter 1brc binary nested flat narrow fixedlist write encodings s3)
 CONTROL='^(parquetJava|avro|arrow)'
 
 usage() {
@@ -34,6 +34,9 @@ Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a
 script's --help for its preset. Per round and version that takes about 5 min for
 every script but run-binary.sh, which is not timed there, on a 1.50 GHz Intel N300
 (the sum of the scripts' own times; not measured as a whole run). When run-s3.sh is among them, the
+script's --help for its preset. Per round and version that takes about 4.5 min for
+all ten scripts on a 1.50 GHz Intel N300 (the sum of the scripts' own times; not
+measured as a whole run). When run-s3.sh is among them, the
 emulated S3 endpoint (./s3-env.sh) is started once for the whole run.
 
 Output, under --out:

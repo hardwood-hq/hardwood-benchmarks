@@ -37,6 +37,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | `IN` over a dictionary-encoded string column | Shows that a string predicate is decided once per dictionary entry, and that reading the matches as strings builds no byte views | Hardwood row reader |
 | [`run-binary.sh`](#plain-binary-scan--run-binarysh) | regression-only | Full read of two `PLAIN` string columns, no dictionary | Times a variable-length value's bytes on their way from the page into the batch | Hardwood column and row readers |
 | [`run-encodings.sh`](#floating-point-encodings--run-encodingssh) | regression-only | Taxi's `DOUBLE` columns under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD | Measures each encoding's read and write time beside the bytes it produces | Hardwood column reader and column writer |
+| [`run-1brc.sh`](#1brc-over-parquet--run-1brcsh) | regression-only | 1BRC: min, mean and max per station | Measures a scan whose consumer does work per row, on one consumer thread and on one per row-group split | Hardwood column and row readers |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
 | [`run-s3-write.sh`](#s3-writes--run-s3-writesh) | mixed-use | Flat records written to an emulated object store | Measures what writing to S3 costs beside the encode alone | Hardwood `S3Source.outputFile`; parquet-java over S3A; PyArrow and DuckDB (`run-s3-write-python.sh`) |
@@ -326,6 +327,21 @@ reads the same bytes. The gate writes every pair, reads it back bit for bit agai
 source values, and checks that its column chunks declare the encoding named. Each pair's
 compressed column-chunk bytes go into the meta sidecar (`bytes.<ENCODING>_<CODEC>`). A
 Hardwood version without `ALP` fails to build this benchmark and runs nothing of it.
+### 1BRC over Parquet — `run-1brc.sh`
+
+The [One Billion Row Challenge](https://github.com/gunnarmorling/1brc) over Parquet:
+min, mean and max of `measurement` per `station`, over a generated file of 100M rows
+(`--rows 1000000000` for the full challenge). parquet-java writes it from a seeded
+generator with the original challenge's 413 stations, in row groups of 2^20 rows with
+both columns dictionary-encoded (ZSTD). `hardwoodColumnIds` aggregates by dictionary
+entry id on one consumer thread; `hardwoodColumnSplits` does the same over contiguous
+row-group byte ranges, one reader and consumer per available processor, and merges the
+tables; `hardwoodRowReader` reads each row with `getString` and `getDouble` into a
+`HashMap`; the regression preset leaves it out, since the per-row lookup takes most of its
+time. The column contenders need `hardwood-core` 1.1.0.Beta2 or later. The
+generator records the aggregate of the values it draws next to the file, and the gate
+checks that every page is dictionary-encoded and that every contender prints that
+aggregate.
 
 ### Writes — `run-write.sh`
 
