@@ -8,17 +8,11 @@
 package dev.hardwood.benchmarks.onebrc;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
@@ -43,17 +37,7 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
-import dev.hardwood.InputFile;
 import dev.hardwood.benchmarks.BenchReport;
-import dev.hardwood.metadata.ColumnMetaData;
-import dev.hardwood.metadata.RowGroup;
-import dev.hardwood.reader.BinaryDictionary;
-import dev.hardwood.reader.ColumnReader;
-import dev.hardwood.reader.ColumnReaders;
-import dev.hardwood.reader.ParquetFileReader;
-import dev.hardwood.reader.RowGroupPredicate;
-import dev.hardwood.reader.RowReader;
-import dev.hardwood.schema.ColumnProjection;
 
 /// The One Billion Row Challenge over Parquet: min, mean and max `measurement` per `station`.
 ///
@@ -83,7 +67,6 @@ public class OneBrcBenchmark {
 
     private static final long ROWS = Long.getLong("perf.rows", 100_000_000L);
     private static final Path FILE = Path.of("target/onebrc_benchmark_" + ROWS + ".parquet");
-    private static final ColumnProjection COLUMNS = ColumnProjection.columns("station", "measurement");
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
@@ -92,107 +75,17 @@ public class OneBrcBenchmark {
 
     @Benchmark
     public StationTable hardwoodColumnIds() throws IOException {
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE))) {
-            return aggregate(reader, null);
-        }
+        return OneBrcScans.columnIds(FILE);
     }
 
     @Benchmark
     public StationTable hardwoodColumnSplits() throws IOException, InterruptedException, ExecutionException {
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE))) {
-            List<RowGroup> rowGroups = reader.getFileMetaData().rowGroups();
-            int splits = Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), rowGroups.size()));
-            long[] bounds = new long[splits + 1];
-            bounds[splits] = Long.MAX_VALUE;
-            for (int s = 1; s < splits; s++) {
-                bounds[s] = chunkStart(rowGroups.get(Math.toIntExact((long) s * rowGroups.size() / splits)));
-            }
-            try (ExecutorService executor = Executors.newFixedThreadPool(splits)) {
-                @SuppressWarnings("unchecked")
-                Future<StationTable>[] futures = new Future[splits];
-                for (int s = 0; s < splits; s++) {
-                    RowGroupPredicate range = RowGroupPredicate.byteRange(bounds[s], bounds[s + 1]);
-                    futures[s] = executor.submit(() -> aggregate(reader, range));
-                }
-                StationTable merged = futures[0].get();
-                for (int s = 1; s < splits; s++) {
-                    merged.mergeFrom(futures[s].get());
-                }
-                return merged;
-            }
-        }
+        return OneBrcScans.columnSplits(FILE, Runtime.getRuntime().availableProcessors());
     }
 
     @Benchmark
     public StationTable hardwoodRowReader() throws IOException {
-        Map<String, long[]> stations = new HashMap<>(1024);
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE));
-                RowReader rows = reader.rowReader()) {
-            while (rows.hasNext()) {
-                rows.next();
-                long tenths = Math.round(rows.getDouble(1) * 10.0);
-                long[] stats = stations.get(rows.getString(0));
-                if (stats == null) {
-                    stats = new long[]{ Long.MAX_VALUE, Long.MIN_VALUE, 0, 0 };
-                    stations.put(rows.getString(0), stats);
-                }
-                stats[0] = Math.min(stats[0], tenths);
-                stats[1] = Math.max(stats[1], tenths);
-                stats[2] += tenths;
-                stats[3]++;
-            }
-        }
-        StationTable table = new StationTable();
-        for (Map.Entry<String, long[]> entry : stations.entrySet()) {
-            long[] stats = entry.getValue();
-            table.add(table.slot(entry.getKey().getBytes(StandardCharsets.UTF_8)), stats[0], stats[1], stats[2], stats[3]);
-        }
-        return table;
-    }
-
-    /// Aggregates the rows `range` selects, or all rows when it is `null`, by dictionary entry
-    /// id. Fails on a batch without ids: every page of the file is dictionary-encoded, which
-    /// the gate checks.
-    private static StationTable aggregate(ParquetFileReader reader, RowGroupPredicate range) throws IOException {
-        StationTable table = new StationTable();
-        ParquetFileReader.ColumnReadersBuilder builder = reader.buildColumnReaders(COLUMNS);
-        if (range != null) {
-            builder.filter(range);
-        }
-        try (ColumnReaders columns = builder.build()) {
-            ColumnReader station = columns.getColumnReader("station");
-            ColumnReader measurement = columns.getColumnReader("measurement");
-            BinaryDictionary dictionary = null;
-            int[] slotOfEntry = null;
-            while (columns.nextBatch()) {
-                int n = columns.getRecordCount();
-                int[] ids = station.getDictionaryIds();
-                if (ids == null) {
-                    throw new IllegalStateException("station batch is not dictionary-encoded");
-                }
-                BinaryDictionary current = station.getBinaryDictionary();
-                if (current != dictionary) {
-                    dictionary = current;
-                    slotOfEntry = new int[current.size()];
-                    for (int e = 0; e < slotOfEntry.length; e++) {
-                        slotOfEntry[e] = table.slot(current.getBinary(e));
-                    }
-                }
-                double[] measurements = measurement.getDoubles();
-                for (int i = 0; i < n; i++) {
-                    table.add(slotOfEntry[ids[i]], Math.round(measurements[i] * 10.0));
-                }
-            }
-        }
-        return table;
-    }
-
-    /// The first byte of the row group's first column chunk: its dictionary page if it has
-    /// one, else its first data page.
-    private static long chunkStart(RowGroup rowGroup) {
-        ColumnMetaData first = rowGroup.columns().get(0).metaData();
-        Long dictionary = first.dictionaryPageOffset();
-        return dictionary != null && dictionary > 0 ? Math.min(dictionary, first.dataPageOffset()) : first.dataPageOffset();
+        return OneBrcScans.rowReader(FILE);
     }
 
     /// Correctness gate, outside JMH: every data page of the file must be dictionary-encoded,
