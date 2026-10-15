@@ -187,7 +187,7 @@ def compare_benchmark(base, new, benchmark, threshold, min_band, pattern=None, c
 # Benchmarks whose meta sidecar records the bytes of each file they wrote, as `bytes.<file>`.
 # Other benchmarks use the `bytes.` prefix for what they fetched, which a version is free to
 # trade against requests.
-WRITES_FILES = {"WriteBenchmark"}
+WRITES_FILES = {"WriteBenchmark", "FloatEncodingBenchmark"}
 
 
 def compare_sizes(base, new, benchmark, tolerance):

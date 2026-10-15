@@ -34,6 +34,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
 | [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | `IN` over a dictionary-encoded string column | Shows that a string predicate is decided once per dictionary entry, and that reading the matches as strings builds no byte views | Hardwood row reader |
+| [`run-encodings.sh`](#floating-point-encodings--run-encodingssh) | regression-only | Taxi's `DOUBLE` columns under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD | Measures each encoding's read and write time beside the bytes it produces | Hardwood column reader and column writer |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
 
@@ -86,7 +87,7 @@ for example a release against a local build:
 
 It runs every benchmark under `--regression` for each version in interleaved rounds
 (`--rounds`, default 3), so machine drift spreads over all versions. One round of all
-nine benchmarks takes about 4 min per version on a 1.50 GHz Intel N300. It writes to
+ten benchmarks takes about 5 min per version on a 1.50 GHz Intel N300. It writes to
 `target/regression/`:
 
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
@@ -284,6 +285,20 @@ reads each match with `getString`. A version that decides the predicate per entr
 reads matches through the entry ids takes a fraction of the time of one that compares
 every row's bytes, or that builds each value's byte view. The gate checks that every
 page is dictionary-encoded and that the read agrees with parquet-java.
+
+### Floating-point encodings — `run-encodings.sh`
+
+The 11 `DOUBLE` columns of NYC taxi 2025-01 (fares, distances, tips, tolls and
+surcharges, two-digit decimals, some nullable), the first 1M rows in row groups of 16 MB, under each encoding a
+`DOUBLE` column can take: `AUTO` (dictionary or `PLAIN` per chunk, the default),
+`PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, each uncompressed and with ZSTD. Per pair,
+`hardwoodRead` scans every column of a file written under it with the column reader, and
+`hardwoodWrite` writes the columns to memory with the column writer. The read files are
+written by the first Hardwood version that runs, so every version of a regression run
+reads the same bytes. The gate writes every pair, reads it back bit for bit against the
+source values, and checks that its column chunks declare the encoding named. Each pair's
+compressed column-chunk bytes go into the meta sidecar (`bytes.<ENCODING>_<CODEC>`). A
+Hardwood version without `ALP` fails to build this benchmark and runs nothing of it.
 
 ### Writes — `run-write.sh`
 
