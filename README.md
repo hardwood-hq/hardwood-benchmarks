@@ -34,6 +34,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
 | [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | `IN` over a dictionary-encoded string column | Shows that a string predicate is decided once per dictionary entry, and that reading the matches as strings builds no byte views | Hardwood row reader |
+| [`run-binary.sh`](#plain-binary-scan--run-binarysh) | regression-only | Full read of two `PLAIN` string columns, no dictionary | Times a variable-length value's bytes on their way from the page into the batch | Hardwood column and row readers |
 | [`run-encodings.sh`](#floating-point-encodings--run-encodingssh) | regression-only | Taxi's `DOUBLE` columns under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD | Measures each encoding's read and write time beside the bytes it produces | Hardwood column reader and column writer |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
@@ -287,6 +288,16 @@ reads each match with `getString`. A version that decides the predicate per entr
 reads matches through the entry ids takes a fraction of the time of one that compares
 every row's bytes, or that builds each value's byte view. The gate checks that every
 page is dictionary-encoded and that the read agrees with parquet-java.
+
+### Plain binary scan — `run-binary.sh`
+
+A full read of a generated file of 5M rows with two string columns stored `PLAIN`,
+without a dictionary (SNAPPY): `text`, required, of 4 to 60 ASCII letters, and `note`,
+optional, null in one row of ten, of 8 to 24 letters. `hardwoodColumnViews` reads every
+value through the column readers' byte views, `hardwoodRowStrings` every value as a
+`String` through the row reader. The gate checks that every page of both columns is
+`PLAIN` and that both contenders agree with parquet-java. Needs hardwood-core
+1.1.0.Beta2 or later.
 
 ### Floating-point encodings — `run-encodings.sh`
 
