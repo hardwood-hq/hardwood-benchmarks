@@ -9,7 +9,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-SCRIPTS=(filter bloom window dictfilter nested flat fixedlist write encodings s3)
+SCRIPTS=(filter bloom window dictfilter nested flat narrow fixedlist write encodings s3)
 CONTROL='^(parquetJava|avro|arrow)'
 
 usage() {
