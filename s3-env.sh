@@ -9,7 +9,9 @@
 #   ./s3-env.sh start | stop | status | settings | cpu
 #
 # S3_LATENCY_MS (default 30) and S3_BANDWIDTH_KBPS (default 81920, i.e. 80 MB/s per connection)
-# set the emulated storage; S3_ENV_CPU (default: the machine's last core) the core both
+# set the emulated storage. Reads go through port 18081, which shapes responses only; writes
+# (run-s3-write.sh) go through port 18082, which adds the same latency to each response and caps
+# the bandwidth of request bodies instead, the direction an upload's bytes travel; S3_ENV_CPU (default: the machine's last core) the core both
 # processes run on. `settings` prints the latency and bandwidth the running endpoint applies,
 # `cpu` the core it runs on.
 set -euo pipefail
@@ -22,6 +24,7 @@ DATA="$DIR/data"
 S3PROXY_PORT=18080
 TOXI_API_PORT=18474
 S3_PORT=18081
+S3_WRITE_PORT=18082
 LATENCY_MS="${S3_LATENCY_MS:-30}"
 BANDWIDTH_KBPS="${S3_BANDWIDTH_KBPS:-81920}"
 
@@ -106,7 +109,14 @@ CONF
     -d "{\"name\":\"latency\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$LATENCY_MS,\"jitter\":0}}"
   curl -fsS -X POST "$api/proxies/s3/toxics" -o /dev/null \
     -d "{\"name\":\"bandwidth\",\"type\":\"bandwidth\",\"stream\":\"downstream\",\"attributes\":{\"rate\":$BANDWIDTH_KBPS}}"
+  curl -fsS -X POST "$api/proxies" -o /dev/null \
+    -d "{\"name\":\"s3-write\",\"listen\":\"127.0.0.1:$S3_WRITE_PORT\",\"upstream\":\"127.0.0.1:$S3PROXY_PORT\"}"
+  curl -fsS -X POST "$api/proxies/s3-write/toxics" -o /dev/null \
+    -d "{\"name\":\"latency\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$LATENCY_MS,\"jitter\":0}}"
+  curl -fsS -X POST "$api/proxies/s3-write/toxics" -o /dev/null \
+    -d "{\"name\":\"bandwidth\",\"type\":\"bandwidth\",\"stream\":\"upstream\",\"attributes\":{\"rate\":$BANDWIDTH_KBPS}}"
   echo "s3-env: http://127.0.0.1:$S3_PORT (latency ${LATENCY_MS} ms, ${BANDWIDTH_KBPS} KB/s per connection, core ${CPU:-unpinned})"
+  echo "s3-env: writes through http://127.0.0.1:$S3_WRITE_PORT (latency ${LATENCY_MS} ms, ${BANDWIDTH_KBPS} KB/s upload per connection)"
 }
 
 # The latency (ms) and bandwidth (KB/s) the running endpoint's toxics apply, read back from

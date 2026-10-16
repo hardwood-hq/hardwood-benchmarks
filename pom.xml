@@ -138,6 +138,13 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <!-- S3A, parquet-java's route to S3, for the S3 write benchmark's parquet-java contender.
+         It brings the AWS SDK v2 bundle. -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-aws</artifactId>
+      <version>${hadoop.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

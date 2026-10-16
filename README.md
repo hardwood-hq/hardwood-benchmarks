@@ -37,6 +37,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-encodings.sh`](#floating-point-encodings--run-encodingssh) | regression-only | Taxi's `DOUBLE` columns under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD | Measures each encoding's read and write time beside the bytes it produces | Hardwood column reader and column writer |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
+| [`run-s3-write.sh`](#s3-writes--run-s3-writesh) | comparison | Flat records written to an emulated object store | Measures what writing to S3 costs beside the encode alone | Hardwood `S3Source.outputFile`; parquet-java over S3A |
 
 A **published** benchmark backs a post: its definition is fixed once a post cites it,
 the cited runs are archived under `results/`, and it has chart generators of its own.
@@ -336,3 +337,20 @@ request counts are the footer reads plus the bloom-filter reads.
 on first use and pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the
 last core). `run-s3.sh` starts the endpoint when it is not running and stops it
 afterwards; an endpoint already running with other settings is an error.
+
+### S3 writes — `run-s3-write.sh`
+
+4M flat, taxi-shaped records (the fixture of `run-write.sh`, about 52 MB under ZSTD) written
+through the same endpoint's write port, 18082, which adds the 30 ms latency to each response
+and caps the bandwidth of each connection's uploads at 80 MB/s:
+
+| Contender | Sink |
+| --- | --- |
+| `hardwoodS3` | Hardwood's column writer into `S3Source.outputFile`, 8 MiB parts uploaded on the writing thread |
+| `parquetJavaS3` | parquet-java's `ExampleParquetWriter` into S3A, 8 MiB parts (`fs.s3a.multipart.size`, lowered from 64 MiB) on S3A's upload pool, heap-buffered |
+| `hardwoodMemory`, `parquetJavaMemory` | the same writes to memory |
+
+An S3 contender's time less its writer's memory time is what the upload adds. Both objects are
+read back through Hardwood and checked before timing; the meta sidecar records each object's
+compressed column-chunk bytes (`bytes.hardwood`, `bytes.parquetJava`). The benchmark needs a
+Hardwood version with `S3Source.outputFile`.
