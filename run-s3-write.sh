@@ -27,7 +27,10 @@ fi
 
 source ./bench-common.sh
 
-BENCH_PACKAGE='write'
+BENCH_PACKAGE='s3write'
+# It reuses the write benchmark's fixture and read-back check; the write package never depends
+# on it, so run-write.sh still builds against Hardwood versions without S3 output.
+BENCH_EXTRA_PACKAGE='write'
 BENCH_REGRESSION_PRESET=''
 BENCH_REGRESSION_INCLUDE='hardwood'
 # The S3 contenders' upload pools want more than one core, and the benchmark already runs on all
@@ -42,6 +45,9 @@ Usage: ./run-s3-write.sh [options]
   --codec VALUE         SNAPPY | ZSTD (default ZSTD)
 $BENCH_COMMON_USAGE
 
+Regression preset (--regression): contenders matching hardwood; needs a Hardwood version with
+S3Source.outputFile on both sides
+
 Contenders: hardwoodS3 (S3Source.outputFile) and parquetJavaS3 (ExampleParquetWriter over S3A),
 each beside the same write to memory (hardwoodMemory, parquetJavaMemory). Both S3 contenders use
 8 MiB parts. The endpoint is S3Proxy behind Toxiproxy, started by ./s3-env.sh unless already
@@ -53,9 +59,15 @@ if [[ "$(./s3-env.sh status)" != running ]]; then
   ./s3-env.sh start
   bench_on_exit './s3-env.sh stop'
 fi
-settings="$(./s3-env.sh settings)"
+# As in run-s3.sh: a running endpoint with other settings than requested is an error.
+settings="$(./s3-env.sh settings s3-write)"
 read -r latency bandwidth <<< "$settings"
+if [[ "$latency" != "${S3_LATENCY_MS:-30}" || "$bandwidth" != "${S3_BANDWIDTH_KBPS:-81920}" ]]; then
+  echo "The running S3 endpoint applies ${latency} ms and ${bandwidth} KB/s, not the requested" \
+    "${S3_LATENCY_MS:-30} ms and ${S3_BANDWIDTH_KBPS:-81920} KB/s; run ./s3-env.sh stop first" >&2
+  exit 2
+fi
 ARGS+=("-Dperf.s3.endpoint=http://127.0.0.1:18082" "-Dperf.s3.latencyMs=$latency" "-Dperf.s3.bandwidthKBps=$bandwidth")
 bench_build
-bench_run dev.hardwood.benchmarks.write.S3WriteBenchmark
+bench_run dev.hardwood.benchmarks.s3write.S3WriteBenchmark
 bench_epilogue

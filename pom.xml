@@ -16,6 +16,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
     <bench.include>dev/hardwood/benchmarks/**/*.java</bench.include>
+    <!-- A second package a benchmark builds on (bench_build sets it from BENCH_EXTRA_PACKAGE);
+         the default matches nothing. -->
+    <bench.include.extra>dev/hardwood/benchmarks/none/**/*.java</bench.include.extra>
     <!-- bench_build points these at a directory per Hardwood version and package
          set, so switching between them reuses a build instead of redoing it. -->
     <bench.outputDirectory>${project.build.directory}/classes</bench.outputDirectory>
@@ -163,6 +166,7 @@
           <includes>
             <include>dev/hardwood/benchmarks/*.java</include>
             <include>${bench.include}</include>
+            <include>${bench.include.extra}</include>
           </includes>
           <annotationProcessorPaths>
             <path>

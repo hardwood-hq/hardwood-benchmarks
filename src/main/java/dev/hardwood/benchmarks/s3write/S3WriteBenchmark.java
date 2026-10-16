@@ -5,7 +5,7 @@
  *
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package dev.hardwood.benchmarks.write;
+package dev.hardwood.benchmarks.s3write;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,9 +47,10 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.write.MemoryOutputFile;
+import dev.hardwood.benchmarks.write.WriteBenchmark;
+import dev.hardwood.benchmarks.write.WriteFixture;
 import dev.hardwood.metadata.CompressionCodec;
-import dev.hardwood.reader.ParquetFileReader;
-import dev.hardwood.reader.RowReader;
 import dev.hardwood.s3.S3Credentials;
 import dev.hardwood.s3.S3Source;
 import dev.hardwood.schema.FileSchema;
@@ -62,15 +63,17 @@ import dev.hardwood.writer.WriterConfig;
 ///
 /// | Contender | Sink |
 /// |---|---|
-/// | `hardwoodS3` | `S3Source.outputFile`: one buffered part, uploaded on the writing thread |
-/// | `parquetJavaS3` | S3A with its default block upload (`fs.s3a.fast.upload.active.blocks` 4, parts upload on a pool while writing continues), buffered on the heap |
+/// | `hardwoodS3` | `S3Source.outputFile`: up to four parts uploading in the background while the writer fills the next |
+/// | `parquetJavaS3` | S3A with its default block upload (`fs.s3a.fast.upload.active.blocks` 4, likewise four parts uploading while writing continues), buffered on the heap. Creating the file with overwrite first probes the key, one extra round trip |
 /// | `hardwoodMemory` | the same write to memory: the encode cost alone |
 /// | `parquetJavaMemory` | the same write to memory |
 ///
 /// Both S3 contenders use 8 MiB parts, S3A's `fs.s3a.multipart.size` lowered from its 64 MiB
-/// default to match, and the same page and row-group targets. The S3 time less the memory time of
-/// the same writer is what the upload adds. Before timing, each S3 contender's object is read back
-/// and its row count and fare sum checked; `--gate` does only that. Run with `run-s3-write.sh`.
+/// default to match, and the same page targets (1 MiB or 20,000 rows), row-group target, dictionary
+/// page limit and page checksums. The S3 time less the memory time of the same writer is what the
+/// upload adds. Before timing, each S3 contender's object is read back and every column checked
+/// against the fixture ([WriteBenchmark#checkReadBack]); `--gate` does only that. Run with
+/// `run-s3-write.sh`.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -87,6 +90,8 @@ public class S3WriteBenchmark {
     static final String LOCAL_COPY = "target/s3-write-fixture.parquet";
     private static final int PART_SIZE = 8 << 20;
     private static final int PAGE_TARGET_BYTES = 1 << 20;
+    private static final int PAGE_TARGET_ROWS = 20_000;
+    private static final int DICTIONARY_PAGE_LIMIT_BYTES = 1 << 20;
     private static final long ROW_GROUP_TARGET_BYTES = 16L << 20;
     private static final String PARQUET_JAVA_SCHEMA = """
             message flat {
@@ -108,6 +113,8 @@ public class S3WriteBenchmark {
     private S3Source source;
     private Configuration hadoopConf;
     private MessageType parquetJavaSchema;
+    private MemoryOutputFile hardwoodMemoryOut;
+    private ParquetMemoryOutputFile parquetJavaMemoryOut;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -117,6 +124,8 @@ public class S3WriteBenchmark {
         source = source();
         hadoopConf = s3aConf();
         parquetJavaSchema = MessageTypeParser.parseMessageType(PARQUET_JAVA_SCHEMA);
+        hardwoodMemoryOut = new MemoryOutputFile();
+        parquetJavaMemoryOut = new ParquetMemoryOutputFile();
     }
 
     @TearDown(Level.Trial)
@@ -139,21 +148,20 @@ public class S3WriteBenchmark {
 
     @Benchmark
     public long hardwoodMemory() throws IOException {
-        MemoryOutputFile out = new MemoryOutputFile();
-        WriteBenchmark.writeColumnar(out, fixture, schema, config);
-        return out.position();
+        WriteBenchmark.writeColumnar(hardwoodMemoryOut, fixture, schema, config);
+        return hardwoodMemoryOut.position();
     }
 
     @Benchmark
     public long parquetJavaMemory() throws IOException {
-        ParquetMemoryOutputFile out = new ParquetMemoryOutputFile();
-        writeGroups(ExampleParquetWriter.builder(out), fixture, parquetJavaSchema, hadoopConf, codec);
-        return out.bytes.size();
+        writeGroups(ExampleParquetWriter.builder(parquetJavaMemoryOut), fixture, parquetJavaSchema, hadoopConf, codec);
+        return parquetJavaMemoryOut.bytes.size();
     }
 
     private static WriterConfig hardwoodConfig(String codec) {
         return WriterConfig.builder()
                 .pageTargetBytes(PAGE_TARGET_BYTES)
+                .pageTargetRows(PAGE_TARGET_ROWS)
                 .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES)
                 .codec(CompressionCodec.valueOf(codec))
                 .build();
@@ -193,9 +201,11 @@ public class S3WriteBenchmark {
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .withCompressionCodec(CompressionCodecName.valueOf(codec))
                 .withPageSize(PAGE_TARGET_BYTES)
-                .withPageRowCountLimit(Integer.MAX_VALUE)
+                .withPageRowCountLimit(PAGE_TARGET_ROWS)
                 .withRowGroupSize(ROW_GROUP_TARGET_BYTES)
                 .withDictionaryEncoding(true)
+                .withDictionaryPageSize(DICTIONARY_PAGE_LIMIT_BYTES)
+                .withPageWriteChecksumEnabled(true)
                 .withWriterVersion(WriterVersion.PARQUET_1_0)
                 .build()) {
             SimpleGroupFactory groups = new SimpleGroupFactory(schema);
@@ -218,46 +228,22 @@ public class S3WriteBenchmark {
         }
     }
 
-    /// Writes each S3 contender's object once and reads it back through Hardwood, checking the row
-    /// count and fare sum. Returns the two objects' sizes.
+    /// Writes each S3 contender's object once and checks every column of it read back through
+    /// Hardwood against the fixture. Returns the two objects' compressed column-chunk bytes.
     private static long[] gate(WriteFixture f, String codec) throws IOException {
-        double fare = 0;
-        for (int b = 0; b < f.batchCount(); b++) {
-            for (double v : f.fare[b]) {
-                fare += v;
-            }
-        }
         long[] sizes = new long[2];
         try (S3Source source = source()) {
             WriteBenchmark.writeColumnar(source.outputFile(BUCKET, "write/hardwood.parquet"), f, WriteFixture.schema(),
                     hardwoodConfig(codec));
             writeGroups(ExampleParquetWriter.builder(new Path("s3a://" + BUCKET + "/write/parquet-java.parquet")), f,
                     MessageTypeParser.parseMessageType(PARQUET_JAVA_SCHEMA), s3aConf(), codec);
-            String[] keys = { "write/hardwood.parquet", "write/parquet-java.parquet" };
-            for (int i = 0; i < keys.length; i++) {
-                long rows = 0;
-                double sum = 0;
-                try (ParquetFileReader reader = ParquetFileReader.open(source.inputFile(BUCKET, keys[i]));
-                        RowReader rowReader = reader.rowReader()) {
-                    sizes[i] = reader.getFileMetaData().rowGroups().stream()
-                            .mapToLong(rg -> rg.columns().stream().mapToLong(c -> c.metaData().totalCompressedSize()).sum())
-                            .sum();
-                    while (rowReader.hasNext()) {
-                        rowReader.next();
-                        rows++;
-                        sum += rowReader.getDouble("fare");
-                    }
-                }
-                if (rows != f.rows || Math.abs(sum - fare) > 1e-6 * Math.abs(fare)) {
-                    throw new IllegalStateException(String.format("[%s] read back %d rows, fare %.3f; wrote %d rows, fare %.3f",
-                            keys[i], rows, sum, f.rows, fare));
-                }
-            }
+            sizes[0] = WriteBenchmark.checkReadBack(source.inputFile(BUCKET, "write/hardwood.parquet"), f, codec + ", hardwoodS3");
+            sizes[1] = WriteBenchmark.checkReadBack(source.inputFile(BUCKET, "write/parquet-java.parquet"), f, codec + ", parquetJavaS3");
         }
         MemoryOutputFile local = new MemoryOutputFile();
         WriteBenchmark.writeColumnar(local, f, WriteFixture.schema(), hardwoodConfig(codec));
         Files.write(Paths.get(LOCAL_COPY), local.toByteArray());
-        System.out.printf("Gate passed [%s] — both S3 objects read back %,d rows with the written fare sum "
+        System.out.printf("Gate passed [%s] — both S3 objects read back %,d rows, every column matching "
                 + "(%,d chunk bytes Hardwood, %,d parquet-java).%n", codec, f.rows, sizes[0], sizes[1]);
         return sizes;
     }
@@ -311,7 +297,9 @@ public class S3WriteBenchmark {
             return;
         }
         BenchReport.writeMeta("rows", Long.toString(ROWS), "bytes.hardwood", Long.toString(sizes[0]),
-                "bytes.parquetJava", Long.toString(sizes[1]));
+                "bytes.parquetJava", Long.toString(sizes[1]), "partBytes", Integer.toString(PART_SIZE),
+                "latencyMs", System.getProperty("perf.s3.latencyMs", "?"),
+                "bandwidthKBps", System.getProperty("perf.s3.bandwidthKBps", "?"));
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(S3WriteBenchmark.class))
                 .warmupIterations(Integer.getInteger("perf.warmup", 2))
@@ -325,6 +313,19 @@ public class S3WriteBenchmark {
                 opts.jvmArgsAppend("-D" + k + "=" + v);
             }
         });
+        String prof = System.getProperty("perf.prof");
+        if (prof != null && !prof.isBlank()) {
+            for (String raw : prof.split(",")) {
+                String p = raw.trim();
+                int colon = p.indexOf(':');
+                if (colon > 0) {
+                    opts.addProfiler(p.substring(0, colon), p.substring(colon + 1));
+                }
+                else {
+                    opts.addProfiler(p);
+                }
+            }
+        }
         Collection<RunResult> results = new Runner(opts.build()).run();
         BenchReport.appendMsPerOpTsv(results, S3WriteBenchmark.class);
     }

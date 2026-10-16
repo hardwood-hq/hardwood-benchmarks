@@ -21,7 +21,7 @@ import dev.hardwood.schema.FileSchema;
 /// and UTF-8 bytes for the column writer, `String`s and `Instant`s for the row writer, so
 /// neither contender converts inside the measured region what a caller of its API already
 /// holds.
-final class WriteFixture {
+public final class WriteFixture {
 
     static final int BATCH_ROWS = 1024;
 
@@ -34,20 +34,20 @@ final class WriteFixture {
     private static final int PICKUP_SPACING_MICROS = 1_000_000;
     private static final byte[] ABSENT = new byte[0];
 
-    final int rows;
-    final long[][] id;
-    final long[][] pickupMicros;
-    final Instant[][] pickup;
-    final int[][] passengerCount;
-    final boolean[][] passengerCountNulls;
-    final double[][] fare;
-    final byte[][][] paymentTypeBytes;
-    final String[][] paymentType;
-    final byte[][][] vendorBytes;
-    final String[][] vendor;
-    final boolean[][] vendorNulls;
+    public final int rows;
+    public final long[][] id;
+    public final long[][] pickupMicros;
+    public final Instant[][] pickup;
+    public final int[][] passengerCount;
+    public final boolean[][] passengerCountNulls;
+    public final double[][] fare;
+    public final byte[][][] paymentTypeBytes;
+    public final String[][] paymentType;
+    public final byte[][][] vendorBytes;
+    public final String[][] vendor;
+    public final boolean[][] vendorNulls;
 
-    WriteFixture(int rows) {
+    public WriteFixture(int rows) {
         if (rows <= 0) {
             throw new IllegalArgumentException("rows must be positive: " + rows);
         }
@@ -111,11 +111,11 @@ final class WriteFixture {
         }
     }
 
-    int batchCount() {
+    public int batchCount() {
         return id.length;
     }
 
-    static FileSchema schema() {
+    public static FileSchema schema() {
         return FileSchema.builder("flat")
                 .addColumn("id", PhysicalType.INT64, RepetitionType.REQUIRED)
                 .addColumn("pickup_ts", PhysicalType.INT64, RepetitionType.REQUIRED,

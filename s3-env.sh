@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 #
-# A local, latency-emulating S3 endpoint for run-s3.sh: S3Proxy (filesystem-backed, the
-# version the Hardwood S3 tests run as a container) behind Toxiproxy, which adds a first-byte
-# latency and a per-connection bandwidth cap to every response. Both run as plain processes on
-# the loopback interface, pinned to one core where taskset exists, and live under
-# target/s3-env/ (downloaded on first use). Nothing is installed.
+# A local, latency-emulating S3 endpoint for run-s3.sh and run-s3-write.sh: S3Proxy (the version
+# the Hardwood S3 tests run as a container) behind Toxiproxy, which adds a first-byte latency and
+# a per-connection bandwidth cap. All three processes (two S3Proxy servers and Toxiproxy) run on
+# the loopback interface, pinned to one core where taskset exists, and live under target/s3-env/
+# (downloaded on first use). Nothing is installed.
 #
-#   ./s3-env.sh start | stop | status | settings | cpu
+#   ./s3-env.sh start | stop | status | settings [s3|s3-write] | cpu
+#
+# Reads (run-s3.sh) go through port 18081 to a filesystem-backed S3Proxy; its toxics shape
+# responses only. Writes (run-s3-write.sh) go through port 18082 to an S3Proxy holding objects in
+# memory (the transient provider), so that completing a multipart upload costs no copy of the
+# whole object on disk, which S3 does not pay either; its toxics add the same latency to each
+# response and cap the bandwidth of request bodies, the direction an upload's bytes travel.
 #
 # S3_LATENCY_MS (default 30) and S3_BANDWIDTH_KBPS (default 81920, i.e. 80 MB/s per connection)
-# set the emulated storage. Reads go through port 18081, which shapes responses only; writes
-# (run-s3-write.sh) go through port 18082, which adds the same latency to each response and caps
-# the bandwidth of request bodies instead, the direction an upload's bytes travel. Port 18082 is
-# served by a second S3Proxy holding objects in memory (the transient provider), so that completing
-# a multipart upload does not cost a copy of the whole object on disk, which S3 does not pay; S3_ENV_CPU (default: the machine's last core) the core both
-# processes run on. `settings` prints the latency and bandwidth the running endpoint applies,
-# `cpu` the core it runs on.
+# set the emulated storage, and S3_ENV_CPU (default: the machine's last core) the core the
+# processes run on. `settings` prints the latency and bandwidth the running endpoint applies on
+# the read port, or on the write port with `settings s3-write`; `cpu` prints the core.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -72,8 +74,11 @@ fetch() {
   fi
 }
 
+# Running means both ports are set up: an endpoint started before the write port existed, or one
+# whose start failed part-way, does not count.
 running() {
-  curl -fs "http://127.0.0.1:$TOXI_API_PORT/version" > /dev/null 2>&1
+  curl -fs "http://127.0.0.1:$TOXI_API_PORT/proxies/s3" > /dev/null 2>&1 \
+    && curl -fs "http://127.0.0.1:$TOXI_API_PORT/proxies/s3-write" > /dev/null 2>&1
 }
 
 wait_for() {
@@ -90,6 +95,9 @@ start() {
     echo "s3-env: already running"
     return 0
   fi
+  # Whatever an earlier, incomplete start left behind, and whatever this one launches if it fails.
+  stop
+  trap 'stop' EXIT
   fetch
   cat > "$DIR/s3proxy.conf" <<CONF
 s3proxy.endpoint=http://127.0.0.1:$S3PROXY_PORT
@@ -133,13 +141,14 @@ CONF
     -d "{\"name\":\"bandwidth\",\"type\":\"bandwidth\",\"stream\":\"upstream\",\"attributes\":{\"rate\":$BANDWIDTH_KBPS}}"
   echo "s3-env: http://127.0.0.1:$S3_PORT (latency ${LATENCY_MS} ms, ${BANDWIDTH_KBPS} KB/s per connection, core ${CPU:-unpinned})"
   echo "s3-env: writes through http://127.0.0.1:$S3_WRITE_PORT (latency ${LATENCY_MS} ms, ${BANDWIDTH_KBPS} KB/s upload per connection)"
+  trap - EXIT
 }
 
 # The latency (ms) and bandwidth (KB/s) the running endpoint's toxics apply, read back from
 # Toxiproxy rather than taken from the environment, which may differ from the one it was
 # started in.
 settings() {
-  curl -fsS "http://127.0.0.1:$TOXI_API_PORT/proxies/s3/toxics" | python3 -c '
+  curl -fsS "http://127.0.0.1:$TOXI_API_PORT/proxies/${1:-s3}/toxics" | python3 -c '
 import json, sys
 toxics = {t["type"]: t["attributes"] for t in json.load(sys.stdin)}
 print(toxics["latency"]["latency"], toxics["bandwidth"]["rate"])'
@@ -158,7 +167,7 @@ case "${1:-}" in
   start) start ;;
   stop) stop ;;
   status) if running; then echo running; else echo stopped; fi ;;
-  settings) settings ;;
+  settings) settings "${2:-s3}" ;;
   cpu) echo "$CPU" ;;
-  *) echo "usage: $0 start | stop | status | settings | cpu" >&2; exit 2 ;;
+  *) echo "usage: $0 start | stop | status | settings [s3|s3-write] | cpu" >&2; exit 2 ;;
 esac
