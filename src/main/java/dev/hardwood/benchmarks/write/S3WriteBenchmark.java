@@ -9,6 +9,8 @@ package dev.hardwood.benchmarks.write;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
@@ -80,6 +82,9 @@ public class S3WriteBenchmark {
     private static final int ROWS = Integer.getInteger("perf.rows", 4_000_000);
     private static final String ENDPOINT = System.getProperty("perf.s3.endpoint", "http://127.0.0.1:18082");
     private static final String BUCKET = "test-bucket";
+    /// The Hardwood-written file of the gate, kept for `run-s3-write-python.sh`, whose PyArrow and
+    /// DuckDB contenders rewrite exactly these values.
+    static final String LOCAL_COPY = "target/s3-write-fixture.parquet";
     private static final int PART_SIZE = 8 << 20;
     private static final int PAGE_TARGET_BYTES = 1 << 20;
     private static final long ROW_GROUP_TARGET_BYTES = 16L << 20;
@@ -249,6 +254,9 @@ public class S3WriteBenchmark {
                 }
             }
         }
+        MemoryOutputFile local = new MemoryOutputFile();
+        WriteBenchmark.writeColumnar(local, f, WriteFixture.schema(), hardwoodConfig(codec));
+        Files.write(Paths.get(LOCAL_COPY), local.toByteArray());
         System.out.printf("Gate passed [%s] — both S3 objects read back %,d rows with the written fare sum "
                 + "(%,d chunk bytes Hardwood, %,d parquet-java).%n", codec, f.rows, sizes[0], sizes[1]);
         return sizes;

@@ -11,7 +11,9 @@
 # S3_LATENCY_MS (default 30) and S3_BANDWIDTH_KBPS (default 81920, i.e. 80 MB/s per connection)
 # set the emulated storage. Reads go through port 18081, which shapes responses only; writes
 # (run-s3-write.sh) go through port 18082, which adds the same latency to each response and caps
-# the bandwidth of request bodies instead, the direction an upload's bytes travel; S3_ENV_CPU (default: the machine's last core) the core both
+# the bandwidth of request bodies instead, the direction an upload's bytes travel. Port 18082 is
+# served by a second S3Proxy holding objects in memory (the transient provider), so that completing
+# a multipart upload does not cost a copy of the whole object on disk, which S3 does not pay; S3_ENV_CPU (default: the machine's last core) the core both
 # processes run on. `settings` prints the latency and bandwidth the running endpoint applies,
 # `cpu` the core it runs on.
 set -euo pipefail
@@ -22,6 +24,7 @@ TOXIPROXY_VERSION=2.12.0
 DIR="$PWD/target/s3-env"
 DATA="$DIR/data"
 S3PROXY_PORT=18080
+S3PROXY_WRITE_PORT=18083
 TOXI_API_PORT=18474
 S3_PORT=18081
 S3_WRITE_PORT=18082
@@ -98,9 +101,22 @@ jclouds.filesystem.basedir=$DATA
 CONF
   "${PIN[@]+"${PIN[@]}"}" java -jar "$DIR/s3proxy-$S3PROXY_VERSION.jar" --properties "$DIR/s3proxy.conf" > "$DIR/s3proxy.log" 2>&1 &
   echo $! > "$DIR/s3proxy.pid"
+  cat > "$DIR/s3proxy-write.conf" <<CONF
+s3proxy.endpoint=http://127.0.0.1:$S3PROXY_WRITE_PORT
+s3proxy.authorization=aws-v2-or-v4
+s3proxy.identity=access
+s3proxy.credential=secret
+jclouds.provider=transient
+CONF
+  "${PIN[@]+"${PIN[@]}"}" java -jar "$DIR/s3proxy-$S3PROXY_VERSION.jar" --properties "$DIR/s3proxy-write.conf" > "$DIR/s3proxy-write.log" 2>&1 &
+  echo $! > "$DIR/s3proxy-write.pid"
   "${PIN[@]+"${PIN[@]}"}" "$DIR/toxiproxy-server-$TOXIPROXY_VERSION" -host 127.0.0.1 -port "$TOXI_API_PORT" > "$DIR/toxiproxy.log" 2>&1 &
   echo $! > "$DIR/toxiproxy.pid"
   wait_for "http://127.0.0.1:$S3PROXY_PORT/"
+  wait_for "http://127.0.0.1:$S3PROXY_WRITE_PORT/"
+  # The in-memory server starts empty; the write benchmark writes into test-bucket.
+  curl -fsS -X PUT -o /dev/null --aws-sigv4 "aws:amz:us-east-1:s3" --user access:secret \
+    "http://127.0.0.1:$S3PROXY_WRITE_PORT/test-bucket"
   wait_for "http://127.0.0.1:$TOXI_API_PORT/version"
   api="http://127.0.0.1:$TOXI_API_PORT"
   curl -fsS -X POST "$api/proxies" -o /dev/null \
@@ -110,7 +126,7 @@ CONF
   curl -fsS -X POST "$api/proxies/s3/toxics" -o /dev/null \
     -d "{\"name\":\"bandwidth\",\"type\":\"bandwidth\",\"stream\":\"downstream\",\"attributes\":{\"rate\":$BANDWIDTH_KBPS}}"
   curl -fsS -X POST "$api/proxies" -o /dev/null \
-    -d "{\"name\":\"s3-write\",\"listen\":\"127.0.0.1:$S3_WRITE_PORT\",\"upstream\":\"127.0.0.1:$S3PROXY_PORT\"}"
+    -d "{\"name\":\"s3-write\",\"listen\":\"127.0.0.1:$S3_WRITE_PORT\",\"upstream\":\"127.0.0.1:$S3PROXY_WRITE_PORT\"}"
   curl -fsS -X POST "$api/proxies/s3-write/toxics" -o /dev/null \
     -d "{\"name\":\"latency\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$LATENCY_MS,\"jitter\":0}}"
   curl -fsS -X POST "$api/proxies/s3-write/toxics" -o /dev/null \
@@ -130,7 +146,7 @@ print(toxics["latency"]["latency"], toxics["bandwidth"]["rate"])'
 }
 
 stop() {
-  for p in toxiproxy s3proxy; do
+  for p in toxiproxy s3proxy s3proxy-write; do
     if [ -f "$DIR/$p.pid" ]; then
       kill "$(cat "$DIR/$p.pid")" 2> /dev/null || true
       rm -f "$DIR/$p.pid"

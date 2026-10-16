@@ -37,7 +37,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-encodings.sh`](#floating-point-encodings--run-encodingssh) | regression-only | Taxi's `DOUBLE` columns under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD | Measures each encoding's read and write time beside the bytes it produces | Hardwood column reader and column writer |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
-| [`run-s3-write.sh`](#s3-writes--run-s3-writesh) | comparison | Flat records written to an emulated object store | Measures what writing to S3 costs beside the encode alone | Hardwood `S3Source.outputFile`; parquet-java over S3A |
+| [`run-s3-write.sh`](#s3-writes--run-s3-writesh) | comparison | Flat records written to an emulated object store | Measures what writing to S3 costs beside the encode alone | Hardwood `S3Source.outputFile`; parquet-java over S3A; PyArrow and DuckDB (`run-s3-write-python.sh`) |
 
 A **published** benchmark backs a post: its definition is fixed once a post cites it,
 the cited runs are archived under `results/`, and it has chart generators of its own.
@@ -341,8 +341,10 @@ afterwards; an endpoint already running with other settings is an error.
 ### S3 writes — `run-s3-write.sh`
 
 4M flat, taxi-shaped records (the fixture of `run-write.sh`, about 52 MB under ZSTD) written
-through the same endpoint's write port, 18082, which adds the 30 ms latency to each response
-and caps the bandwidth of each connection's uploads at 80 MB/s:
+through the endpoint's write port, 18082, which adds the 30 ms latency to each response and
+caps the bandwidth of each connection's uploads at 80 MB/s. Behind it is a second S3Proxy holding
+objects in memory, so completing a multipart upload costs no on-disk copy of the object, which S3
+does not pay either:
 
 | Contender | Sink |
 | --- | --- |
@@ -354,3 +356,9 @@ An S3 contender's time less its writer's memory time is what the upload adds. Bo
 read back through Hardwood and checked before timing; the meta sidecar records each object's
 compressed column-chunk bytes (`bytes.hardwood`, `bytes.parquetJava`). The benchmark needs a
 Hardwood version with `S3Source.outputFile`.
+
+`run-s3-write-python.sh` runs PyArrow and DuckDB beside it, in a virtualenv of pinned versions
+under `target/py-venv`: each rewrites the file the gate wrote (`target/s3-write-fixture.parquet`,
+so every writer encodes the same values) to memory or a local file and to the write port, ZSTD,
+with the fixture file's row-group size. PyArrow runs at its default ZSTD level (1) and at level 3,
+DuckDB on one thread and on all but the endpoint's core. Run `./run-s3-write.sh --gate` first.
