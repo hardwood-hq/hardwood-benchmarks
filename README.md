@@ -37,11 +37,13 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-encodings.sh`](#floating-point-encodings--run-encodingssh) | regression-only | Taxi's `DOUBLE` columns under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD | Measures each encoding's read and write time beside the bytes it produces | Hardwood column reader and column writer |
 | [`run-write.sh`](#writes--run-writesh) | regression-only | Flat records written to memory, SNAPPY and ZSTD | Measures encode throughput and compressed size | Hardwood column and row writers |
 | [`run-s3.sh`](#s3-reads--run-s3sh) | regression-only | Reads from an emulated object store | Shows that a remote read fetches only what it needs, in few requests: projected columns, surviving pages, page-index and bloom-filter slices per window | Hardwood column reader |
+| [`run-s3-write.sh`](#s3-writes--run-s3-writesh) | mixed-use | Flat records written to an emulated object store | Measures what writing to S3 costs beside the encode alone | Hardwood `S3Source.outputFile`; parquet-java over S3A; PyArrow and DuckDB (`run-s3-write-python.sh`) |
 
 A **published** benchmark backs a post: its definition is fixed once a post cites it,
 the cited runs are archived under `results/`, and it has chart generators of its own.
 A **regression-only** benchmark witnesses one scenario, times Hardwood alone over a
-fixture of one size, and changes or goes with the code it witnesses. Both kinds serve
+fixture of one size, and changes or goes with the code it witnesses. A **mixed-use**
+benchmark times Hardwood beside other engines without backing a post. All kinds serve
 [version comparison](#comparing-versions). The plan for the suite, including the
 benchmarks still to come, is in
 [`_designs/BENCHMARK_WORKLOAD_COVERAGE.md`](_designs/BENCHMARK_WORKLOAD_COVERAGE.md).
@@ -336,3 +338,36 @@ request counts are the footer reads plus the bloom-filter reads.
 on first use and pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the
 last core). `run-s3.sh` starts the endpoint when it is not running and stops it
 afterwards; an endpoint already running with other settings is an error.
+
+### S3 writes — `run-s3-write.sh`
+
+4M flat, taxi-shaped records (the fixture of `run-write.sh`, about 52 MB under ZSTD) written
+through the endpoint's write port, 18082, which adds the 30 ms latency to each response and
+caps the bandwidth of each connection's uploads at 80 MB/s. Behind it is a second S3Proxy holding
+objects in memory, so completing a multipart upload costs no on-disk copy of the object, which S3
+does not pay either:
+
+| Contender | Sink |
+| --- | --- |
+| `hardwoodS3` | Hardwood's column writer into `S3Source.outputFile`: 8 MiB parts, up to four uploading in the background while the writer fills the next |
+| `parquetJavaS3` | parquet-java's `ExampleParquetWriter` into S3A, heap-buffered: 8 MiB parts (`fs.s3a.multipart.size`, lowered from 64 MiB), up to four uploading while writing continues (`fs.s3a.fast.upload.active.blocks`). Creating the file with overwrite first probes the key, one round trip more than `hardwoodS3` makes |
+| `hardwoodMemory`, `parquetJavaMemory` | the same writes to memory |
+
+Both writers use the same page targets (1 MiB or 20,000 rows), row-group target, dictionary page
+limit and page checksums. An S3 contender's time less its writer's memory time is what the upload
+adds. Before timing, both objects are read back through Hardwood and every column checked against
+the fixture, as `run-write.sh` checks its files; the meta sidecar records each object's compressed
+column-chunk bytes (`bytes.hardwood`, `bytes.parquetJava`), the part size and the endpoint's
+latency and bandwidth. The benchmark is in a package of its own, `s3write`, and builds on the
+`write` package's classes, so it needs a Hardwood version with `S3Source.outputFile` while
+`run-write.sh` does not.
+
+`run-s3-write-python.sh` runs PyArrow and DuckDB beside it, in a virtualenv of pinned versions
+under `target/`: each rewrites the file the gate wrote (`target/s3-write-fixture.parquet`, so every
+writer encodes the same values) to memory or a local file and to the write port, ZSTD, with the
+fixture file's row-group size. PyArrow runs at its default ZSTD level (1) and at level 3 and writes
+the page index and page checksums, as the Java writers do; it uploads in parts of its own fixed
+size, in the background. DuckDB runs on one thread and on all but the endpoint's core, with 8 MB
+upload parts (from its default of about 80 MB, which would send this file as one part after
+encoding ends). Every output is read back and compared with the source table; the script prints
+each contender's mean and median. Run `./run-s3-write.sh --gate` first.

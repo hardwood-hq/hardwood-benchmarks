@@ -16,7 +16,7 @@ import dev.hardwood.OutputFile;
 /// once the array has grown to the file's size the sink allocates nothing and a write costs one
 /// copy. It is the benchmark's own class rather than one of Hardwood's, so the sink stays the
 /// same whichever Hardwood version is measured.
-final class MemoryOutputFile implements OutputFile {
+public final class MemoryOutputFile implements OutputFile {
 
     private byte[] buffer = new byte[1 << 20];
     private int size;
@@ -52,7 +52,7 @@ final class MemoryOutputFile implements OutputFile {
     }
 
     /// A copy of the file written since the last [#create()].
-    byte[] toByteArray() {
+    public byte[] toByteArray() {
         return Arrays.copyOf(buffer, size);
     }
 }

@@ -104,7 +104,7 @@ public class WriteBenchmark {
         return out.position();
     }
 
-    static void writeColumnar(OutputFile out, WriteFixture f, FileSchema schema, WriterConfig config) throws IOException {
+    public static void writeColumnar(OutputFile out, WriteFixture f, FileSchema schema, WriterConfig config) throws IOException {
         try (ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config)) {
             ColumnWriter columns = writer.columnWriter();
             for (int b = 0; b < f.batchCount(); b++) {
@@ -168,13 +168,6 @@ public class WriteBenchmark {
     /// count of each nullable one. Returns the compressed column-chunk bytes of the column writer's
     /// file.
     private static long gate(WriteFixture f, String codec) throws IOException {
-        Totals expected = new Totals();
-        for (int b = 0; b < f.batchCount(); b++) {
-            for (int r = 0; r < f.id[b].length; r++) {
-                expected.add(f.id[b][r], f.pickupMicros[b][r], f.passengerCountNulls[b][r], f.passengerCount[b][r],
-                        f.fare[b][r], f.paymentType[b][r], f.vendorNulls[b][r], f.vendor[b][r]);
-            }
-        }
         long size = -1;
         for (String api : new String[] { "column writer", "row writer" }) {
             MemoryOutputFile out = new MemoryOutputFile();
@@ -184,27 +177,46 @@ public class WriteBenchmark {
             else {
                 writeRows(out, f, WriteFixture.schema(), config(codec));
             }
-            Totals actual = new Totals();
-            try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(ByteBuffer.wrap(out.toByteArray())));
-                 RowReader rows = reader.buildRowReader().build()) {
-                if (api.equals("column writer")) {
-                    size = compressedChunkBytes(reader.getFileMetaData());
-                }
-                while (rows.hasNext()) {
-                    rows.next();
-                    boolean passengerCountNull = rows.isNull("passenger_count");
-                    boolean vendorNull = rows.isNull("vendor");
-                    actual.add(rows.getLong("id"), micros(rows.getTimestamp("pickup_ts")), passengerCountNull,
-                            passengerCountNull ? 0 : rows.getInt("passenger_count"), rows.getDouble("fare"),
-                            rows.getString("payment_type"), vendorNull, vendorNull ? null : rows.getString("vendor"));
-                }
-            }
-            if (!actual.equals(expected)) {
-                throw new IllegalStateException(String.format("[%s, %s] read back %s; wrote %s", codec, api, actual, expected));
+            long bytes = checkReadBack(InputFile.of(ByteBuffer.wrap(out.toByteArray())), f, codec + ", " + api);
+            if (api.equals("column writer")) {
+                size = bytes;
             }
         }
         System.out.printf("Gate passed [%s] — column and row writer files read back %d rows, every column matching (%,d chunk bytes).%n",
                 codec, f.rows, size);
+        return size;
+    }
+
+    /// Reads `file` back and checks every column against the fixture `f` wrote into it: a sum per
+    /// numeric column, an order-sensitive hash per string column, and the null count of each
+    /// nullable one. Returns the file's compressed column-chunk bytes.
+    ///
+    /// @throws IllegalStateException naming `label` if any column differs
+    public static long checkReadBack(InputFile file, WriteFixture f, String label) throws IOException {
+        Totals expected = new Totals();
+        for (int b = 0; b < f.batchCount(); b++) {
+            for (int r = 0; r < f.id[b].length; r++) {
+                expected.add(f.id[b][r], f.pickupMicros[b][r], f.passengerCountNulls[b][r], f.passengerCount[b][r],
+                        f.fare[b][r], f.paymentType[b][r], f.vendorNulls[b][r], f.vendor[b][r]);
+            }
+        }
+        Totals actual = new Totals();
+        long size;
+        try (ParquetFileReader reader = ParquetFileReader.open(file);
+             RowReader rows = reader.buildRowReader().build()) {
+            size = compressedChunkBytes(reader.getFileMetaData());
+            while (rows.hasNext()) {
+                rows.next();
+                boolean passengerCountNull = rows.isNull("passenger_count");
+                boolean vendorNull = rows.isNull("vendor");
+                actual.add(rows.getLong("id"), micros(rows.getTimestamp("pickup_ts")), passengerCountNull,
+                        passengerCountNull ? 0 : rows.getInt("passenger_count"), rows.getDouble("fare"),
+                        rows.getString("payment_type"), vendorNull, vendorNull ? null : rows.getString("vendor"));
+            }
+        }
+        if (!actual.equals(expected)) {
+            throw new IllegalStateException(String.format("[%s] read back %s; wrote %s", label, actual, expected));
+        }
         return size;
     }
 

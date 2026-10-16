@@ -271,6 +271,9 @@ bench_build() {
   # other.
   local package=${BENCH_PACKAGE:?"BENCH_PACKAGE must name the script's source package"}
   mvn_args+=("-Dbench.include=dev/hardwood/benchmarks/$package/**/*.java")
+  # A benchmark that builds on another package's classes names it in BENCH_EXTRA_PACKAGE; that
+  # package compiles with it, and never the other way round.
+  [ -n "${BENCH_EXTRA_PACKAGE:-}" ] && mvn_args+=("-Dbench.include.extra=dev/hardwood/benchmarks/$BENCH_EXTRA_PACKAGE/**/*.java")
 
   # Each Hardwood version and package builds into a directory of its own under
   # target/build/, so classes compiled against one version never mix with another's,
