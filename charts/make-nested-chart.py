@@ -4,9 +4,9 @@
 Reads the nested throughput TSV (default
 target/bench-throughput-NestedScanBenchmark.tsv) and fills the SVG template in
 charts/templates/nested/. The chart plots throughput (M rows/s, higher is
-better), the axis sized to the data, with the named (ergonomic) pair leading and
-the indexed (positional) pair second — the same six-bar record layout as the flat
-scan's chart 2, over the same contender names.
+better), the axis sized to the data: the typed row reader first and the column
+readers second, each as Hardwood all cores, Hardwood single-core and
+AvroParquetReader by position, the reader every Hardwood contender is held against.
 
 Row count, on-disk size, JVM, Vector API status, the Overture release, and the
 schema composition come from the run's bench-meta-NestedScanBenchmark.tsv
@@ -71,12 +71,12 @@ def nested_descriptor(meta):
 
 
 def chart(data, name):
-    hwn = cell(data, "hardwoodRowReaderNamed", "unpinned", name)
-    hwnp = cell(data, "hardwoodRowReaderNamed", "pinned", name)
-    avn = cell(data, "avroParquetReaderNamed", "unpinned", name)
-    hwi = cell(data, "hardwoodRowReaderIndexed", "unpinned", name)
-    hwip = cell(data, "hardwoodRowReaderIndexed", "pinned", name)
-    avi = cell(data, "avroParquetReaderIndexed", "unpinned", name)
+    hwn = cell(data, "hardwoodRowReaderTyped", "unpinned", name)
+    hwnp = cell(data, "hardwoodRowReaderTyped", "pinned", name)
+    avn = cell(data, "avroParquetReaderIndexed", "unpinned", name)
+    hwi = cell(data, "hardwoodColumnReaders", "unpinned", name)
+    hwip = cell(data, "hardwoodColumnReaders", "pinned", name)
+    avi = avn
     scale, grid, labels = nested_axis(
         [hwn["rows"], hwnp["rows"], avn["rows"], hwi["rows"], hwip["rows"], avi["rows"]])
     subst = {"gridlines": grid, "ticklabels": labels}
