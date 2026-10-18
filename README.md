@@ -339,6 +339,8 @@ generator with the original challenge's 413 stations, in row groups of 2^20 rows
 both columns dictionary-encoded (ZSTD). `hardwoodColumnIds` aggregates by dictionary
 entry id on one consumer thread; `hardwoodColumnSplits` does the same over contiguous
 row-group byte ranges, one reader and consumer per available processor, and merges the
+tables; `hardwoodColumnFanOut` advances one column reader and hands each batch's arrays to
+one of as many aggregating workers as there are available processors, and merges their
 tables; `hardwoodRowReader` reads each row with `getString` and `getDouble` into a
 `HashMap`; the regression preset leaves it out, since the per-row lookup takes most of its
 time. The column contenders need `hardwood-core` 1.1.0.Beta2 or later. The
