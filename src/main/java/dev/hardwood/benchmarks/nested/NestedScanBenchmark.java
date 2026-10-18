@@ -40,28 +40,43 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.InputFile;
+import dev.hardwood.Validity;
+import dev.hardwood.metadata.LogicalType;
+import dev.hardwood.reader.ColumnReader;
+import dev.hardwood.reader.ColumnReaders;
+import dev.hardwood.reader.LayerKind;
 import dev.hardwood.reader.ParquetFileReader;
 import dev.hardwood.reader.RowReader;
+import dev.hardwood.row.PqIntList;
 import dev.hardwood.row.PqList;
+import dev.hardwood.row.PqLongList;
+import dev.hardwood.row.PqDoubleList;
 import dev.hardwood.row.PqMap;
 import dev.hardwood.row.PqStruct;
 import dev.hardwood.row.StructAccessor;
+import dev.hardwood.schema.ColumnProjection;
+import dev.hardwood.schema.SchemaNode;
 
 /// Nested-read benchmark (benchmark #2): a full read of the single-file Overture
-/// Maps places dataset — deeply nested struct / list / map — comparing the
-/// record pair, Hardwood's row reader against parquet-java's `AvroParquetReader`.
-/// Both reconstruct nested records, so this is the like-for-like nested
-/// comparison; the file is single, so there is no cross-file asymmetry and the
-/// parallel advantage is purely within-file concurrent decode.
+/// Maps places dataset — deeply nested struct / list / map — through Hardwood's
+/// row reader and column readers, against parquet-java's `AvroParquetReader`.
+/// The file is single, so there is no cross-file asymmetry and the parallel
+/// advantage is purely within-file concurrent decode.
 ///
-/// Each contender **traverses the whole record** — recursing every struct, list,
-/// and map down to the scalar leaves — so neither skips reconstruction the other
-/// performs. Every leaf is folded into a representation-stable checksum
-/// ([Checksum]) so the two readers are proven to assemble the same data before
-/// any timing counts.
+/// Each contender **reads every leaf** of every record, so none skips work
+/// another performs, and folds it into a representation-stable checksum
+/// ([Checksum]) in the gate, so all of them are proven to read the same data
+/// before any timing counts.
 ///
-/// Each reader is timed through both access styles — by field name, the idiomatic
-/// way to read a nested record, and by position — mirroring [FlatScanBenchmark].
+/// - `hardwoodRowReaderTyped` reads each record the way an application with a
+///   known schema does: field positions and types are resolved from the file
+///   schema once per read, and every value is read through its typed getter
+///   (`getLong`, `getString`, `getStruct`, a list's `strings()`, …).
+/// - `hardwoodColumnReaders` reads every leaf column through [ColumnReaders],
+///   batch by batch, from its value arrays, layer offsets and validity.
+/// - `avroParquetReaderNamed` / `Indexed` walk the `GenericRecord` that
+///   `AvroParquetReader` materializes, by field name and by position.
+///
 /// parquet-java is single-threaded by construction; the single-core Hardwood
 /// number comes from the taskset-pinned pass, which `run-nested.sh` runs after the
 /// all-cores one.
@@ -112,13 +127,13 @@ public class NestedScanBenchmark {
     private void runGate() throws IOException {
         System.out.println("Correctness gate — reconstructing every record, comparing to AvroParquetReader:");
         Checksum ref = avro();
-        check("Hardwood row reader", hardwoodRow(), ref);
+        check("Hardwood row reader, typed", hardwoodRowTyped(), ref);
+        check("Hardwood column readers", hardwoodColumns(), ref);
         // Named access must read the same values as indexed; the timed loop uses
         // the light per-leaf touch, whose sum is order-independent, so equal sums
         // prove the named path resolves the same fields the indexed path does.
-        checkSameAccess("Hardwood row reader", hardwoodScan(true), hardwoodScan(false));
         checkSameAccess("AvroParquetReader", avroScan(true), avroScan(false));
-        System.out.println("Gate passed — record pair assembles identical data; named and indexed access agree.");
+        System.out.println("Gate passed — every contender reads identical data; Avro's named and indexed access agree.");
     }
 
     private static void check(String name, Checksum actual, Checksum ref) {
@@ -144,20 +159,18 @@ public class NestedScanBenchmark {
     // checksum still runs once in `setup()` to prove both readers reconstruct
     // identical data; the timed loop just measures read + materialize.
 
-    // Named access (by field name) is the idiomatic way to read nested records and
-    // is the headline pair; indexed (positional) access is the secondary
-    // power-user number. Both are published, mirroring the flat scan. Each uses the
-    // default (all-cores) context; the single-thread engine-for-engine number comes
-    // from the taskset-pinned pass (the JVM then sees one core).
+    // Each Hardwood contender uses the default (all-cores) context; the
+    // single-thread engine-for-engine number comes from the taskset-pinned pass
+    // (the JVM then sees one core).
 
     @Benchmark
-    public long hardwoodRowReaderNamed() throws IOException {
-        return hardwoodScan(true);
+    public long hardwoodRowReaderTyped() throws IOException {
+        return hardwoodTypedScan();
     }
 
     @Benchmark
-    public long hardwoodRowReaderIndexed() throws IOException {
-        return hardwoodScan(false);
+    public long hardwoodColumnReaders() throws IOException {
+        return hardwoodColumnScan();
     }
 
     @Benchmark
@@ -170,119 +183,327 @@ public class NestedScanBenchmark {
         return avroScan(false);
     }
 
-    // ==================== Hardwood row reader ====================
+    // ==================== Hardwood row reader, typed ====================
 
-    /// Hardwood row reader over the single file, default (all-cores) context. Each
-    /// row is traversed in full — every nested struct, list, and map is recursed to
-    /// its scalar leaves — so the record is fully reconstructed, matching what
-    /// `AvroParquetReader` does eagerly. (Heavy checksum path, used by the gate.)
-    private Checksum hardwoodRow() throws IOException {
+    /// What a typed read does with a field: the kind of its value, resolved once
+    /// per read from the file schema, and for a group the reads of its parts.
+    private enum Kind { INT, LONG, FLOAT, DOUBLE, BOOLEAN, STRING, BINARY, STRUCT, LIST, MAP }
+
+    private record Field(Kind kind, Field[] fields, Field element, Field key, Field value) {
+
+        static Field of(SchemaNode node) {
+            return switch (node) {
+                case SchemaNode.PrimitiveNode primitive -> new Field(kindOf(primitive), null, null, null, null);
+                case SchemaNode.GroupNode group when group.isList() ->
+                        new Field(Kind.LIST, null, of(group.getListElement()), null, null);
+                case SchemaNode.GroupNode group when group.isMap() ->
+                        new Field(Kind.MAP, null, null, of(group.getMapKey()), of(group.getMapValue()));
+                case SchemaNode.GroupNode group -> new Field(Kind.STRUCT, fieldsOf(group), null, null, null);
+            };
+        }
+
+        static Field[] fieldsOf(SchemaNode.GroupNode group) {
+            return group.children().stream().map(Field::of).toArray(Field[]::new);
+        }
+
+        private static Kind kindOf(SchemaNode.PrimitiveNode primitive) {
+            return switch (primitive.type()) {
+                case INT32 -> Kind.INT;
+                case INT64 -> Kind.LONG;
+                case FLOAT -> Kind.FLOAT;
+                case DOUBLE -> Kind.DOUBLE;
+                case BOOLEAN -> Kind.BOOLEAN;
+                case BYTE_ARRAY -> primitive.logicalType() instanceof LogicalType.StringType ? Kind.STRING : Kind.BINARY;
+                case FIXED_LEN_BYTE_ARRAY -> Kind.BINARY;
+                default -> throw new IllegalStateException("No typed read for " + primitive);
+            };
+        }
+    }
+
+    /// Timed typed row scan: every leaf is read through its typed getter, with
+    /// the same cheap per-leaf touch as the other scans.
+    private long hardwoodTypedScan() throws IOException {
+        long acc = 0;
+        try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
+             RowReader rows = reader.rowReader()) {
+            Field[] fields = Field.fieldsOf(reader.getFileSchema().getRootNode());
+            long read = 0;
+            while (rows.hasNext() && read < MAX_ROWS) {
+                rows.next();
+                read++;
+                acc += scanStruct(rows, fields, null);
+            }
+        }
+        return acc;
+    }
+
+    /// The typed row scan folding every leaf into a [Checksum], for the gate.
+    private Checksum hardwoodRowTyped() throws IOException {
         Checksum cs = new Checksum();
         try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
              RowReader rows = reader.rowReader()) {
+            Field[] fields = Field.fieldsOf(reader.getFileSchema().getRootNode());
             while (rows.hasNext() && cs.rowCount < MAX_ROWS) {
                 rows.next();
                 cs.rowCount++;
-                foldStruct(rows, cs);
+                scanStruct(rows, fields, cs);
             }
         }
         return cs;
     }
 
-    /// Fold every field of a struct-shaped accessor (the row itself or a nested
-    /// [PqStruct]). Field order is irrelevant — the checksum is order-independent.
-    private static void foldStruct(StructAccessor struct, Checksum cs) {
-        int fieldCount = struct.getFieldCount();
-        for (int i = 0; i < fieldCount; i++) {
-            foldHardwood(struct.getValue(i), cs);
+    /// Reads every field of a struct-shaped accessor by position, returning the
+    /// leaves' touch sum and folding them into `cs` when it is not `null`.
+    private static long scanStruct(StructAccessor struct, Field[] fields, Checksum cs) {
+        long acc = 0;
+        for (int i = 0; i < fields.length; i++) {
+            acc += scanField(struct, i, fields[i], cs);
         }
+        return acc;
     }
 
-    /// Recurse a decoded Hardwood value: structs, lists, and maps descend; scalar
-    /// leaves fold into the checksum. Nulls (absent fields, null elements) fold to
-    /// nothing, matching the Avro side.
-    private static void foldHardwood(Object value, Checksum cs) {
-        if (value == null) {
-            return;
-        }
-        if (value instanceof PqStruct struct) {
-            foldStruct(struct, cs);
-        }
-        else if (value instanceof PqList list) {
-            int size = list.size();
-            for (int i = 0; i < size; i++) {
-                foldHardwood(list.get(i), cs);
+    private static long scanField(StructAccessor struct, int i, Field field, Checksum cs) {
+        return switch (field.kind()) {
+            case STRUCT -> {
+                PqStruct value = struct.getStruct(i);
+                yield value == null ? 0 : scanStruct(value, field.fields(), cs);
+            }
+            case LIST -> {
+                PqList value = struct.getList(i);
+                yield value == null ? 0 : scanList(value, field.element(), cs);
+            }
+            case MAP -> {
+                PqMap value = struct.getMap(i);
+                yield value == null ? 0 : scanMap(value, field, cs);
+            }
+            default -> struct.isNull(i) ? 0 : scanLeaf(struct, i, field.kind(), cs);
+        };
+    }
+
+    private static long scanLeaf(StructAccessor struct, int i, Kind kind, Checksum cs) {
+        return switch (kind) {
+            case INT -> number(struct.getInt(i), cs);
+            case LONG -> number(struct.getLong(i), cs);
+            case FLOAT -> number(struct.getFloat(i), cs);
+            case DOUBLE -> number(struct.getDouble(i), cs);
+            case BOOLEAN -> number(struct.getBoolean(i) ? 1 : 0, cs);
+            case STRING -> string(struct.getString(i), cs);
+            case BINARY -> bytes(struct.getBinary(i).length, cs);
+            default -> throw new IllegalStateException("Not a leaf: " + kind);
+        };
+    }
+
+    private static long scanList(PqList list, Field element, Checksum cs) {
+        long acc = 0;
+        switch (element.kind()) {
+            case STRUCT -> {
+                for (PqStruct value : list.structs()) {
+                    acc += value == null ? 0 : scanStruct(value, element.fields(), cs);
+                }
+            }
+            case LIST -> {
+                for (PqList value : list.lists()) {
+                    acc += value == null ? 0 : scanList(value, element.element(), cs);
+                }
+            }
+            case MAP -> {
+                for (PqMap value : list.maps()) {
+                    acc += value == null ? 0 : scanMap(value, element, cs);
+                }
+            }
+            case STRING -> {
+                for (String value : list.strings()) {
+                    acc += value == null ? 0 : string(value, cs);
+                }
+            }
+            case BINARY -> {
+                for (byte[] value : list.binaries()) {
+                    acc += value == null ? 0 : bytes(value.length, cs);
+                }
+            }
+            case INT -> {
+                PqIntList values = list.ints();
+                for (int j = 0; j < values.size(); j++) {
+                    acc += values.isNull(j) ? 0 : number(values.get(j), cs);
+                }
+            }
+            case LONG -> {
+                PqLongList values = list.longs();
+                for (int j = 0; j < values.size(); j++) {
+                    acc += values.isNull(j) ? 0 : number(values.get(j), cs);
+                }
+            }
+            case DOUBLE -> {
+                PqDoubleList values = list.doubles();
+                for (int j = 0; j < values.size(); j++) {
+                    acc += values.isNull(j) ? 0 : number(values.get(j), cs);
+                }
+            }
+            case FLOAT -> {
+                for (Float value : list.floats()) {
+                    acc += value == null ? 0 : number(value, cs);
+                }
+            }
+            case BOOLEAN -> {
+                for (Boolean value : list.booleans()) {
+                    acc += value == null ? 0 : number(value ? 1 : 0, cs);
+                }
             }
         }
-        else if (value instanceof PqMap map) {
-            for (PqMap.Entry entry : map.getEntries()) {
-                foldHardwood(entry.getKey(), cs);
-                foldHardwood(entry.getValue(), cs);
+        return acc;
+    }
+
+    private static long scanMap(PqMap map, Field field, Checksum cs) {
+        long acc = 0;
+        for (PqMap.Entry entry : map.getEntries()) {
+            acc += switch (field.key().kind()) {
+                case STRING -> string(entry.getStringKey(), cs);
+                case INT -> number(entry.getIntKey(), cs);
+                case LONG -> number(entry.getLongKey(), cs);
+                case BINARY -> bytes(entry.getBinaryKey().length, cs);
+                default -> throw new IllegalStateException("No typed read for map key " + field.key().kind());
+            };
+            if (entry.isValueNull()) {
+                continue;
             }
+            Field value = field.value();
+            acc += switch (value.kind()) {
+                case STRING -> string(entry.getStringValue(), cs);
+                case BINARY -> bytes(entry.getBinaryValue().length, cs);
+                case INT -> number(entry.getIntValue(), cs);
+                case LONG -> number(entry.getLongValue(), cs);
+                case FLOAT -> number(entry.getFloatValue(), cs);
+                case DOUBLE -> number(entry.getDoubleValue(), cs);
+                case BOOLEAN -> number(entry.getBooleanValue() ? 1 : 0, cs);
+                case STRUCT -> scanStruct(entry.getStructValue(), value.fields(), cs);
+                case LIST -> scanList(entry.getListValue(), value.element(), cs);
+                case MAP -> scanMap(entry.getMapValue(), value, cs);
+            };
         }
-        else {
+        return acc;
+    }
+
+    /// A numeric or boolean leaf: its value as the touch, folded as a double.
+    private static long number(double value, Checksum cs) {
+        if (cs != null) {
+            cs.number(value);
+        }
+        return (long) value;
+    }
+
+    /// A string leaf: its length as the touch, folded as its UTF-8 byte length.
+    private static long string(String value, Checksum cs) {
+        if (cs != null) {
             cs.leaf(value);
         }
+        return value.length();
     }
 
-    /// Timed Hardwood scan: same full traversal as [#hardwoodRow], but each leaf
-    /// gets the cheap [#touch] instead of the checksum fold. `getValue` still
-    /// materializes every value, so this measures read + reconstruction without
-    /// the per-string re-encoding overhead.
-    private long hardwoodScan(boolean byName) throws IOException {
+    /// A binary leaf: its length as both the touch and the fold.
+    private static long bytes(int length, Checksum cs) {
+        if (cs != null) {
+            cs.bytes(length);
+        }
+        return length;
+    }
+
+    // ==================== Hardwood column readers ====================
+
+    /// Timed column scan: every leaf column through [ColumnReaders], each batch's
+    /// values touched from their arrays, skipping nulls by the leaf validity.
+    private long hardwoodColumnScan() throws IOException {
         long acc = 0;
         try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
-             RowReader rows = reader.rowReader()) {
+             ColumnReaders columns = reader.columnReaders(ColumnProjection.all())) {
             long read = 0;
-            while (rows.hasNext() && read < MAX_ROWS) {
-                rows.next();
-                read++;
-                acc += scanStruct(rows, byName);
+            while (read < MAX_ROWS && columns.nextBatch()) {
+                int records = (int) Math.min(columns.getRecordCount(), MAX_ROWS - read);
+                read += records;
+                for (int c = 0; c < columns.getColumnCount(); c++) {
+                    acc += scanColumn(columns.getColumnReader(c), records, null);
+                }
             }
         }
         return acc;
     }
 
-    /// Walk a struct's fields, by name (the ergonomic path — each `getValue(name)`
-    /// resolves the field by name) or by position, recursing into each value.
-    private static long scanStruct(StructAccessor struct, boolean byName) {
+    /// The column scan folding every leaf into a [Checksum], for the gate.
+    private Checksum hardwoodColumns() throws IOException {
+        Checksum cs = new Checksum();
+        try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
+             ColumnReaders columns = reader.columnReaders(ColumnProjection.all())) {
+            while (cs.rowCount < MAX_ROWS && columns.nextBatch()) {
+                int records = (int) Math.min(columns.getRecordCount(), MAX_ROWS - cs.rowCount);
+                cs.rowCount += records;
+                for (int c = 0; c < columns.getColumnCount(); c++) {
+                    scanColumn(columns.getColumnReader(c), records, cs);
+                }
+            }
+        }
+        return cs;
+    }
+
+    /// Reads the leaf values of the batch's first `records` records.
+    private static long scanColumn(ColumnReader column, int records, Checksum cs) {
+        int values = leafValuesOf(column, records);
+        Validity validity = column.getLeafValidity();
         long acc = 0;
-        int fieldCount = struct.getFieldCount();
-        if (byName) {
-            for (int i = 0; i < fieldCount; i++) {
-                acc += scanHardwood(struct.getValue(struct.getFieldName(i)), byName);
+        switch (column.getColumnSchema().type()) {
+            case INT32 -> {
+                int[] v = column.getInts();
+                for (int i = 0; i < values; i++) {
+                    acc += validity.isNull(i) ? 0 : number(v[i], cs);
+                }
             }
-        } else {
-            for (int i = 0; i < fieldCount; i++) {
-                acc += scanHardwood(struct.getValue(i), byName);
+            case INT64 -> {
+                long[] v = column.getLongs();
+                for (int i = 0; i < values; i++) {
+                    acc += validity.isNull(i) ? 0 : number(v[i], cs);
+                }
             }
+            case FLOAT -> {
+                float[] v = column.getFloats();
+                for (int i = 0; i < values; i++) {
+                    acc += validity.isNull(i) ? 0 : number(v[i], cs);
+                }
+            }
+            case DOUBLE -> {
+                double[] v = column.getDoubles();
+                for (int i = 0; i < values; i++) {
+                    acc += validity.isNull(i) ? 0 : number(v[i], cs);
+                }
+            }
+            case BOOLEAN -> {
+                boolean[] v = column.getBooleans();
+                for (int i = 0; i < values; i++) {
+                    acc += validity.isNull(i) ? 0 : number(v[i] ? 1 : 0, cs);
+                }
+            }
+            case BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY -> {
+                int[] starts = column.getBinaryStarts();
+                int[] ends = column.getBinaryEnds();
+                for (int i = 0; i < values; i++) {
+                    acc += validity.isNull(i) ? 0 : bytes(ends[i] - starts[i], cs);
+                }
+            }
+            default -> throw new IllegalStateException("No column read for " + column.getColumnSchema());
         }
         return acc;
     }
 
-    private static long scanHardwood(Object value, boolean byName) {
-        if (value == null) {
-            return 0;
+    /// The number of leaf values the batch's first `records` records hold: the
+    /// record index followed down the repeated layers' offsets.
+    private static int leafValuesOf(ColumnReader column, int records) {
+        if (records == column.getRecordCount()) {
+            return column.getValueCount();
         }
-        if (value instanceof PqStruct struct) {
-            return scanStruct(struct, byName);
-        }
-        if (value instanceof PqList list) {
-            long acc = 0;
-            int size = list.size();
-            for (int i = 0; i < size; i++) {
-                acc += scanHardwood(list.get(i), byName);
+        int index = records;
+        for (int layer = 0; layer < column.getLayerCount(); layer++) {
+            if (column.getLayerKind(layer) == LayerKind.REPEATED) {
+                index = column.getLayerOffsets(layer)[index];
             }
-            return acc;
         }
-        if (value instanceof PqMap map) {
-            long acc = 0;
-            for (PqMap.Entry entry : map.getEntries()) {
-                acc += scanHardwood(entry.getKey(), byName) + scanHardwood(entry.getValue(), byName);
-            }
-            return acc;
-        }
-        return touch(value);
+        return index;
     }
 
     // ==================== parquet-java AvroParquetReader ====================
@@ -392,13 +613,12 @@ public class NestedScanBenchmark {
         return touch(value);
     }
 
-    /// A cheap, allocation-free read of a scalar leaf, shared by both scans to
-    /// keep the per-leaf work symmetric. Each branch reads an O(1) field of the
-    /// already-materialized value (so the JIT cannot elide the materialization)
-    /// without re-encoding or allocating. Handles both Hardwood's leaf types
-    /// (`String`, boxed numbers, `byte[]`) and Avro's (`Utf8`/`CharSequence`,
-    /// boxed numbers, `ByteBuffer`, `GenericFixed`); `String.length()` and
-    /// `Utf8.length()` are both O(1) field reads.
+    /// A cheap, allocation-free read of an Avro scalar leaf, matching the touch
+    /// the Hardwood scans give each typed leaf. Each branch reads an O(1) field of
+    /// the already-materialized value (so the JIT cannot elide the
+    /// materialization) without re-encoding or allocating: `Utf8`/`CharSequence`,
+    /// boxed numbers, `ByteBuffer`, `GenericFixed`; `Utf8.length()` is an O(1)
+    /// field read.
     private static long touch(Object value) {
         if (value instanceof CharSequence text) {
             return text.length();
@@ -449,6 +669,19 @@ public class NestedScanBenchmark {
         long leafCount;
         long lengthSum;
         long numericHash;
+
+        /// A numeric or boolean leaf read through a typed getter, folded as
+        /// [#leaf(Object)] folds its boxed form.
+        void number(double value) {
+            leafCount++;
+            numericHash ^= Double.doubleToLongBits(value);
+        }
+
+        /// A binary leaf of `length` bytes read through a typed getter.
+        void bytes(int length) {
+            leafCount++;
+            lengthSum += length;
+        }
 
         void leaf(Object value) {
             leafCount++;

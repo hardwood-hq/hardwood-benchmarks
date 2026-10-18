@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Nested read benchmark: deeply nested struct/list/map records from an Overture
-# Maps places file. Contenders: Hardwood row reader vs AvroParquetReader (the
-# like-for-like record path). See ./run-nested.sh --help.
+# Maps places file. Contenders: Hardwood's typed row reader and column readers vs
+# AvroParquetReader. See ./run-nested.sh --help.
 #
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -26,8 +26,8 @@ Usage: ./run-nested.sh [options]
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --rows 20000; contenders matching hardwood
 
-Two modes: --gate checks the row reader and AvroParquetReader assemble identical
-records, then exits (no JMH); without it, the script benchmarks. Publish flow —
+Two modes: --gate checks the row reader, the column readers and AvroParquetReader read
+identical data, then exits (no JMH); without it, the script benchmarks. Publish flow —
 gate, smoke-test, measure (numbers only, no chart):
   ./run-nested.sh --gate                         # correctness, no timing
   ./run-nested.sh --warmup 1 --meas 1 --forks 1  # smoke test (throwaway)

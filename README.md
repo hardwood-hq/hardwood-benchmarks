@@ -30,7 +30,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-flat.sh`](#flat-full-scan--run-flatsh) | published | Full scan of every column of NYC taxi | Measures full-scan decode throughput against parquet-java, Avro and Arrow | Hardwood column and row readers; parquet-java, `AvroParquetReader`, Arrow Dataset |
 | [`run-filter.sh`](#filtered-scan--run-filtersh) | published | Range predicate over a time-clustered file | Measures what page-level filtering saves on a selective predicate, and what it costs when every row matches | Hardwood filtered column and row readers; parquet-java |
 | [`run-bloom.sh`](#bloom-filter-point-lookup--run-bloomsh) | published | Equality lookup on a unique key, bloom file against a statistics-only twin | Measures what a bloom filter saves where only it can rule out row groups | Hardwood; parquet-java |
-| [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Measures record assembly throughput for structs, lists and maps | Hardwood row reader; `AvroParquetReader` |
+| [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Measures record assembly throughput for structs, lists and maps | Hardwood row reader and column readers; `AvroParquetReader` |
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
 | [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | `IN` over a dictionary-encoded string column | Shows that a string predicate is decided once per dictionary entry, and that reading the matches as strings builds no byte views | Hardwood row reader |
@@ -235,18 +235,20 @@ the pinned pass.
 
 ### Nested scan — `run-nested.sh`
 
-A full read of the Overture Maps places file (struct / list / map), every record down
-to the scalar leaves: Hardwood's row reader against `AvroParquetReader`, by name and by
-index, with a checksum proving they assemble identical data.
+A full read of the Overture Maps places file (struct / list / map), every leaf of every
+record: Hardwood's row reader with typed getters, field positions resolved from the
+schema once, and Hardwood's column readers over every leaf column, against
+`AvroParquetReader` by name and by index, with a checksum proving they read identical
+data.
 
 The download resolves the STAC catalog's latest release and records it in the meta
 sidecar as `release`; a file passed with `--file` is recorded as `release unknown`. The
 catalog serves only recent releases, so archive the file with a run whose numbers are
 published.
 
-**Charts** (`make-nested-chart.py`): `nested_record.svg`, throughput in M rows/s, per
-access mode Hardwood all-cores, Hardwood single-core (needs the pinned pass) and
-`AvroParquetReader`. The footnote gives the schema's leaf count and the share of
+**Charts** (`make-nested-chart.py`): `nested_record.svg`, throughput in M rows/s, for
+the typed row reader and the column readers each Hardwood all-cores, Hardwood
+single-core (needs the pinned pass) and `AvroParquetReader` by index. The footnote gives the schema's leaf count and the share of
 compressed bytes in `STRING` columns, which is most of them.
 
 ### Fixed-size-list scan — `run-fixedlist.sh`
