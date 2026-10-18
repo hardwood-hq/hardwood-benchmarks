@@ -10,13 +10,17 @@ package dev.hardwood.benchmarks.onebrc;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import dev.hardwood.InputFile;
 import dev.hardwood.metadata.ColumnMetaData;
@@ -131,6 +135,90 @@ final class OneBrcScans {
                 for (int i = 0; i < n; i++) {
                     table.add(slotOfEntry[ids[i]], Math.round(measurements[i] * 10.0));
                 }
+            }
+        }
+        return table;
+    }
+
+    /// Batches queued per worker before the reader's loop waits for one to be taken.
+    private static final int QUEUED_PER_WORKER = 2;
+
+    /// A batch's arrays, handed from the reader's loop to a worker. The column reader allocates
+    /// them fresh per batch and never reuses them, so a worker may read them after the reader
+    /// has advanced.
+    private record Batch(int rows, int[] ids, double[] measurements, BinaryDictionary dictionary) {
+    }
+
+    private static final Batch END = new Batch(0, null, null, null);
+
+    /// Aggregates every row on `workers` threads: this thread advances one column reader and
+    /// queues each batch, and each worker aggregates the batches it takes into its own table.
+    static StationTable fanOut(ParquetFileReader reader, int workers)
+            throws IOException, InterruptedException, ExecutionException {
+        BlockingQueue<Batch> queue = new ArrayBlockingQueue<>(QUEUED_PER_WORKER * workers);
+        try (ExecutorService executor = Executors.newFixedThreadPool(workers)) {
+            List<Future<StationTable>> tables = new ArrayList<>(workers);
+            for (int w = 0; w < workers; w++) {
+                tables.add(executor.submit(() -> aggregateQueued(queue)));
+            }
+            try (ColumnReaders columns = reader.buildColumnReaders(COLUMNS).build()) {
+                ColumnReader station = columns.getColumnReader("station");
+                ColumnReader measurement = columns.getColumnReader("measurement");
+                while (columns.nextBatch()) {
+                    int[] ids = station.getDictionaryIds();
+                    if (ids == null) {
+                        throw new IllegalStateException("station batch is not dictionary-encoded");
+                    }
+                    enqueue(queue, new Batch(columns.getRecordCount(), ids, measurement.getDoubles(),
+                            station.getBinaryDictionary()), tables);
+                }
+            }
+            finally {
+                for (int w = 0; w < workers; w++) {
+                    enqueue(queue, END, tables);
+                }
+            }
+            StationTable merged = tables.get(0).get();
+            for (int w = 1; w < workers; w++) {
+                merged.mergeFrom(tables.get(w).get());
+            }
+            return merged;
+        }
+    }
+
+    /// Queues `batch`, waiting for room; fails if a worker has ended, which before the end of
+    /// the read only a failure does.
+    private static void enqueue(BlockingQueue<Batch> queue, Batch batch, List<Future<StationTable>> workers)
+            throws InterruptedException, ExecutionException {
+        while (!queue.offer(batch, 10, TimeUnit.MILLISECONDS)) {
+            for (Future<StationTable> worker : workers) {
+                if (worker.isDone()) {
+                    worker.get();
+                    throw new IllegalStateException("A worker ended before the read did");
+                }
+            }
+        }
+    }
+
+    /// A worker: aggregates the batches it takes until it takes [#END], each dictionary's
+    /// entries resolved to table slots once.
+    private static StationTable aggregateQueued(BlockingQueue<Batch> queue) throws InterruptedException {
+        StationTable table = new StationTable();
+        BinaryDictionary dictionary = null;
+        int[] slotOfEntry = null;
+        Batch batch;
+        while ((batch = queue.take()) != END) {
+            if (batch.dictionary() != dictionary) {
+                dictionary = batch.dictionary();
+                slotOfEntry = new int[dictionary.size()];
+                for (int e = 0; e < slotOfEntry.length; e++) {
+                    slotOfEntry[e] = table.slot(dictionary.getBinary(e));
+                }
+            }
+            int[] ids = batch.ids();
+            double[] measurements = batch.measurements();
+            for (int i = 0; i < batch.rows(); i++) {
+                table.add(slotOfEntry[ids[i]], Math.round(measurements[i] * 10.0));
             }
         }
         return table;

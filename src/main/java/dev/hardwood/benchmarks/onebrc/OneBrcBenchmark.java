@@ -37,7 +37,9 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.InputFile;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.reader.ParquetFileReader;
 
 /// The One Billion Row Challenge over Parquet: min, mean and max `measurement` per `station`.
 ///
@@ -52,6 +54,9 @@ import dev.hardwood.benchmarks.BenchReport;
 /// - `hardwoodColumnSplits`: the same, over contiguous row-group byte ranges
 ///   ([RowGroupPredicate#byteRange]), one reader and one consumer per available processor,
 ///   their tables merged at the end
+/// - `hardwoodColumnFanOut`: one column reader, whose loop hands each batch's arrays to one of
+///   as many aggregating workers as there are available processors, through a queue bounded at
+///   [#QUEUED_PER_WORKER] batches per worker; the workers' tables are merged at the end
 /// - `hardwoodRowReader`: the row reader, one `getString` and `getDouble` per row into a
 ///   `HashMap`
 ///
@@ -81,6 +86,13 @@ public class OneBrcBenchmark {
     @Benchmark
     public StationTable hardwoodColumnSplits() throws IOException, InterruptedException, ExecutionException {
         return OneBrcScans.columnSplits(FILE, Runtime.getRuntime().availableProcessors());
+    }
+
+    @Benchmark
+    public StationTable hardwoodColumnFanOut() throws IOException, InterruptedException, ExecutionException {
+        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE))) {
+            return OneBrcScans.fanOut(reader, Runtime.getRuntime().availableProcessors());
+        }
     }
 
     @Benchmark
@@ -114,6 +126,7 @@ public class OneBrcBenchmark {
         Map<String, StationTable> results = Map.of(
                 "hardwoodColumnIds", benchmark.hardwoodColumnIds(),
                 "hardwoodColumnSplits", benchmark.hardwoodColumnSplits(),
+                "hardwoodColumnFanOut", benchmark.hardwoodColumnFanOut(),
                 "hardwoodRowReader", benchmark.hardwoodRowReader());
         for (Map.Entry<String, StationTable> result : results.entrySet()) {
             if (result.getValue().rows() != ROWS) {

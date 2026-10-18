@@ -24,7 +24,9 @@ Regression preset (--regression): --rows 100000000; contenders matching hardwood
 
 Contenders: hardwoodColumnIds (column reader, one consumer, by dictionary id),
 hardwoodColumnSplits (the same, one reader and consumer per row-group byte-range
-split, one split per available processor), hardwoodRowReader (row reader into a
+split, one split per available processor), hardwoodColumnFanOut (one column reader
+whose loop hands each batch to one of as many aggregating workers as there are
+available processors), hardwoodRowReader (row reader into a
 HashMap; not in the regression preset, since the per-row HashMap lookup takes most of
 its time). The column contenders need hardwood-core 1.1.0.Beta2 or later. --gate
 checks that every page is dictionary-encoded and that every contender matches the

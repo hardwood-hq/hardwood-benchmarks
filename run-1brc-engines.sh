@@ -24,6 +24,10 @@ from start to printed result with the OS page cache warm:
   hardwood   java -cp <hardwood-core, zstd-jni, this suite's classes> OneBrc: the column
              reader by dictionary id, one row-group byte-range split per processor,
              with an AOT cache from one training run over the file
+  hardwood-fanout
+             the same program with one ColumnReaders handing each batch to
+             FAN_WORKERS workers (default 8) and FAN_DECODE decode threads
+             (default 4), with its own AOT cache
   duckdb     the DuckDB CLI $DUCKDB_VERSION, downloaded to target/engines/
   polars     engines/onebrc_polars.py   } in a venv under target/engines/, versions
   pyarrow    engines/onebrc_pyarrow.py  } pinned in engines/requirements.txt
@@ -43,6 +47,7 @@ Usage: ./run-1brc-engines.sh [options]
 Needs hyperfine (https://github.com/sharkdp/hyperfine) and python3 with venv (PYTHON=
 to pick another interpreter). Results: target/engines/1brc-<rows>.{json,md}, with the
 engine, JVM and machine versions in target/engines/1brc-<rows>-versions.txt.
+ONLY="hardwood duckdb" times a subset of the contenders.
 EOF
 }
 
@@ -93,6 +98,11 @@ AOT="$OUT/onebrc-$ROWS.aot"
 rm -f "$AOT"
 $JAVA -XX:AOTCacheOutput="$AOT" $HARDWOOD_MAIN "$FILE" > /dev/null
 HARDWOOD="$JAVA -XX:AOTMode=on -XX:AOTCache=$AOT $HARDWOOD_MAIN"
+FAN_ARGS="-Donebrc.mode=fanout -Donebrc.workers=${FAN_WORKERS:-8} -Donebrc.decode=${FAN_DECODE:-4}"
+AOT_FAN="$OUT/onebrc-fanout-$ROWS.aot"
+rm -f "$AOT_FAN"
+$JAVA -XX:AOTCacheOutput="$AOT_FAN" $FAN_ARGS $HARDWOOD_MAIN "$FILE" > /dev/null
+HARDWOOD_FAN="$JAVA -XX:AOTMode=on -XX:AOTCache=$AOT_FAN $FAN_ARGS $HARDWOOD_MAIN"
 
 # DuckDB: the CLI release, downloaded once per version and platform.
 case "$(uname -s)-$(uname -m)" in
@@ -138,8 +148,12 @@ fi
 POLARS="$VENV/bin/python engines/onebrc_polars.py $FILE"
 PYARROW="$VENV/bin/python engines/onebrc_pyarrow.py $FILE"
 
-NAMES=(hardwood duckdb polars pyarrow)
-COMMANDS=("$HARDWOOD $FILE" "$DUCK" "$POLARS" "$PYARROW")
+ALL_NAMES=(hardwood hardwood-fanout duckdb polars pyarrow)
+ALL_COMMANDS=("$HARDWOOD $FILE" "$HARDWOOD_FAN $FILE" "$DUCK" "$POLARS" "$PYARROW")
+NAMES=(); COMMANDS=()
+for i in "${!ALL_NAMES[@]}"; do
+  if [[ " ${ONLY:-${ALL_NAMES[*]}} " == *" ${ALL_NAMES[i]} "* ]]; then NAMES+=("${ALL_NAMES[i]}"); COMMANDS+=("${ALL_COMMANDS[i]}"); fi
+done
 
 echo "---- Gate: every contender against $EXPECTED ----"
 for i in "${!NAMES[@]}"; do
