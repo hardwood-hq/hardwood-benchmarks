@@ -183,14 +183,41 @@ public class FixedSizeListScanBenchmark {
                      ? reader.buildColumnReader(column).batchSize(Math.max(1, batchValues / valuesPerRow)).build()
                      : reader.columnReader(column)) {
             while (col.nextBatch()) {
-                float[] values = col.getFloats();
-                int n = col.getValueCount();
-                for (int i = 0; i < n; i++) {
-                    sum += values[i];
-                }
+                sum += fold(col.getFloats(), col.getValueCount());
             }
         }
         return sum;
+    }
+
+    /// Sums `values[0, n)` into eight independent accumulators. A single running sum is
+    /// a chain of dependent adds, one add latency per value, which on its own takes about
+    /// as long as the reader takes to decode: the consumer then sets the pace, and decode
+    /// work the reader adds or removes stays hidden in its shadow. Eight chains bring the
+    /// fold down to add throughput, so the reader's cost shows in the timing.
+    private static double fold(float[] values, int n) {
+        double s0 = 0;
+        double s1 = 0;
+        double s2 = 0;
+        double s3 = 0;
+        double s4 = 0;
+        double s5 = 0;
+        double s6 = 0;
+        double s7 = 0;
+        int i = 0;
+        for (; i + 8 <= n; i += 8) {
+            s0 += values[i];
+            s1 += values[i + 1];
+            s2 += values[i + 2];
+            s3 += values[i + 3];
+            s4 += values[i + 4];
+            s5 += values[i + 5];
+            s6 += values[i + 6];
+            s7 += values[i + 7];
+        }
+        for (; i < n; i++) {
+            s0 += values[i];
+        }
+        return ((s0 + s1) + (s2 + s3)) + ((s4 + s5) + (s6 + s7));
     }
 
     /// Full scan through the row reader: materialize the vector [PqList] per row
