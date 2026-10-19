@@ -31,6 +31,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 | [`run-filter.sh`](#filtered-scan--run-filtersh) | published | Range predicate over a time-clustered file | Measures what page-level filtering saves on a selective predicate, and what it costs when every row matches | Hardwood filtered column and row readers; parquet-java |
 | [`run-bloom.sh`](#bloom-filter-point-lookup--run-bloomsh) | published | Equality lookup on a unique key, bloom file against a statistics-only twin | Measures what a bloom filter saves where only it can rule out row groups | Hardwood; parquet-java |
 | [`run-nested.sh`](#nested-scan--run-nestedsh) | published | Full record read of deeply nested Overture Maps places | Measures record assembly throughput for structs, lists and maps | Hardwood row reader and column readers; `AvroParquetReader` |
+| [`run-nested-columns.sh`](#nested-column-readers--run-nested-columnssh) | regression-only | `run-nested.sh`'s column readers over the whole Overture Maps places file | Shows a change to nested decoding or the real-items view, which `run-nested.sh`'s 20,000-row preset does not | Hardwood column readers |
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | `LIST<float32>` vectors, fast path on and off | Measures how close the fixed-size-list fast path comes to flat-column speed | Hardwood column and row readers |
 | [`run-narrow.sh`](#narrow-projection-scan--run-narrowsh) | regression-only | Three numeric columns of the 2016-01 NYC taxi file: one row group of 10.9M rows, about 15 pages per column | Shows that a long read of few columns keeps the decode pool busy | Hardwood column and row readers |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Recent time window over a time-sorted event log | Shows that row groups before the window are skipped and fully matching ones are not filtered row by row | Hardwood column and row readers |
@@ -253,6 +254,15 @@ published.
 the typed row reader and the column readers each Hardwood all-cores, Hardwood
 single-core (needs the pinned pass) and `AvroParquetReader` by index. The footnote gives the schema's leaf count and the share of
 compressed bytes in `STRING` columns, which is most of them.
+
+### Nested column readers — `run-nested-columns.sh`
+
+`run-nested.sh`'s benchmark under a second regression preset: `hardwoodColumnReaders` over
+the whole file. `run-nested.sh`'s preset reads 20,000 rows, where the read is mostly
+per-read setup and the typed row reader is bound by its consumer thread, so neither shows
+a change to nested decoding: a 28% faster column-reader read of the whole file left the
+20,000-row read unchanged within its noise. Over the whole file the column readers are
+bound by decoding. The script takes `run-nested.sh`'s flags and file.
 
 ### Fixed-size-list scan — `run-fixedlist.sh`
 
