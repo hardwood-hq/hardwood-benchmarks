@@ -7,6 +7,7 @@
  */
 package dev.hardwood.benchmarks.nested;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.BinaryWindows;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -480,10 +481,9 @@ public class NestedScanBenchmark {
                 }
             }
             case BYTE_ARRAY, FIXED_LEN_BYTE_ARRAY -> {
-                int[] starts = column.getBinaryStarts();
-                int[] ends = column.getBinaryEnds();
+                BinaryWindows binary = BinaryWindows.of(column);
                 for (int i = 0; i < values; i++) {
-                    acc += validity.isNull(i) ? 0 : bytes(ends[i] - starts[i], cs);
+                    acc += validity.isNull(i) ? 0 : bytes(binary.end(i) - binary.start(i), cs);
                 }
             }
             default -> throw new IllegalStateException("No column read for " + column.getColumnSchema());

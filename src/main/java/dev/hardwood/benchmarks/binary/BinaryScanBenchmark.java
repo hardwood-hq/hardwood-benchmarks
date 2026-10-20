@@ -42,6 +42,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 import dev.hardwood.InputFile;
 import dev.hardwood.Validity;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.BinaryWindows;
 import dev.hardwood.reader.ColumnReader;
 import dev.hardwood.reader.ColumnReaders;
 import dev.hardwood.reader.ParquetFileReader;
@@ -89,19 +90,17 @@ public class BinaryScanBenchmark {
             while (columns.nextBatch()) {
                 for (String name : COLUMNS) {
                     ColumnReader column = columns.getColumnReader(name);
-                    byte[] bytes = column.getBinaryValues();
-                    int[] starts = column.getBinaryStarts();
-                    int[] ends = column.getBinaryEnds();
+                    BinaryWindows binary = BinaryWindows.of(column);
                     Validity validity = column.getLeafValidity();
                     boolean nulls = validity.hasNulls();
                     for (int i = 0; i < column.getRecordCount(); i++) {
                         if (nulls && validity.isNull(i)) {
                             continue;
                         }
-                        int start = starts[i];
+                        int start = binary.start(i);
                         values++;
-                        length += ends[i] - start;
-                        firstChars += bytes[start];
+                        length += binary.end(i) - start;
+                        firstChars += binary.buffer(i)[start];
                     }
                 }
             }
