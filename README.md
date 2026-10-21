@@ -394,6 +394,7 @@ which adds 30 ms first-byte latency and caps each connection at 80 MB/s
 | `hardwoodWideFilteredScan` | a range predicate keeping the first page of every row group, projecting 3 of 200 columns, over a generated file of 40 row groups with 20 pages per column chunk (a 5.3 MB page index); each row group's data is under the coalescing gap, so the read fetches it whole |
 | `hardwoodBloomLookup` | an equality probe for a key no row holds and every bloom filter rejects (chosen when the file is generated, and checked on every run), over a generated file of 200 row groups with a unique, unclustered `INT64` key and a bloom filter of tens of KB per row group; statistics keep every row group and its bloom filter drops it |
 | `hardwoodLargeBloomLookup` | the same kind of probe over 6 row groups whose bloom filters are 16 MB each |
+| `hardwoodLocalBesideRemote` | the projected scan of the local copy of the first month, on a context whose pool a remote projected scan of the same month shares, repeated on a thread of its own for the whole iteration |
 
 Each read is checked against the same read of the local file, and its request and byte
 counts go into the meta sidecar (`requests.*`, `bytes.*`), so a change in the fetch
