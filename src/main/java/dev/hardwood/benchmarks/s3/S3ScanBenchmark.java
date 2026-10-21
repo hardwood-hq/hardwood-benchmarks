@@ -37,6 +37,7 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.EventFileGenerator;
@@ -62,6 +63,7 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodWideFilteredScan` | selective range predicate projecting 3 of 200 columns, 40 row groups with a large page index | page-index reads across many row groups; each row group's data is under the coalescing gap, so it is fetched whole |
 /// | `hardwoodBloomLookup` | equality probe for an absent unique key that every bloom filter rejects, 200 row groups with small bloom filters | bloom-filter reads across many row groups, each of which its filter drops |
 /// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups with 16 MB bloom filters | bloom-filter reads each larger than one page-index window |
+/// | `hardwoodLocalBesideRemote` | the projected scan of the local file, on a context a remote projected scan reads with throughout | whether a remote read's requests hold threads of the shared context's pool that a local read needs |
 ///
 /// Before timing, each read is checked against the same read of the local file, and its request
 /// and byte counts go into the meta sidecar (`requests.*`, `bytes.*`): a change in the fetch
@@ -137,6 +139,60 @@ public class S3ScanBenchmark {
                 largeBloomProbe).sum();
     }
 
+    /// A context shared by the local scan this benchmark times and a remote projected scan that a
+    /// thread of its own repeats throughout each iteration.
+    @State(Scope.Benchmark)
+    public static class SharedContext {
+
+        HardwoodContext context;
+        private S3Source source;
+        private Thread remote;
+        private volatile boolean stopped;
+        private volatile Throwable remoteFailure;
+
+        @Setup(Level.Trial)
+        public void createContext() {
+            context = HardwoodContext.create();
+            source = source();
+        }
+
+        @Setup(Level.Iteration)
+        public void startRemote() {
+            stopped = false;
+            String key = monthKeys().get(0);
+            remote = Thread.ofPlatform().name("remote-scan").start(() -> {
+                try {
+                    while (!stopped) {
+                        projectedScan(source.inputFile(BUCKET, key), context);
+                    }
+                }
+                catch (Throwable t) {
+                    remoteFailure = t;
+                }
+            });
+        }
+
+        @TearDown(Level.Iteration)
+        public void stopRemote() throws InterruptedException {
+            stopped = true;
+            remote.join();
+            if (remoteFailure != null) {
+                throw new IllegalStateException("Remote scan failed", remoteFailure);
+            }
+        }
+
+        @TearDown(Level.Trial)
+        public void closeContext() {
+            context.close();
+            source.close();
+        }
+    }
+
+    @Benchmark
+    public double hardwoodLocalBesideRemote(SharedContext shared) throws IOException {
+        return projectedScan(InputFile.of(localPath(monthKeys.get(0))), shared.context);
+    }
+
     @Benchmark
     public double hardwoodMultiFileScan() throws IOException {
         List<InputFile> files = new ArrayList<>();
@@ -147,9 +203,20 @@ public class S3ScanBenchmark {
     }
 
     static double projectedScan(InputFile file) throws IOException {
+        try (ParquetFileReader reader = ParquetFileReader.open(file)) {
+            return projectedSum(reader);
+        }
+    }
+
+    static double projectedScan(InputFile file, HardwoodContext context) throws IOException {
+        try (ParquetFileReader reader = ParquetFileReader.open(file, context)) {
+            return projectedSum(reader);
+        }
+    }
+
+    private static double projectedSum(ParquetFileReader reader) throws IOException {
         double sum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(file);
-             ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(PROJECTED)).build()) {
+        try (ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(PROJECTED)).build()) {
             while (cols.nextBatch()) {
                 for (int c = 0; c < PROJECTED.length; c++) {
                     for (double x : cols.getColumnReader(c).getDoubles()) {
@@ -412,6 +479,11 @@ public class S3ScanBenchmark {
             bloomLookup = gateLookup("bloom lookup", source, BloomLookupGenerator.SMALL);
             largeBloomLookup = gateLookup("large bloom lookup", source, BloomLookupGenerator.LARGE);
             multiFile = gateAll("multi-file scan", source, keys);
+            Path local = localPath(keys.get(0));
+            try (HardwoodContext context = HardwoodContext.create()) {
+                check("local beside remote", projectedScan(InputFile.of(local), context),
+                        projectedScan(InputFile.of(local)));
+            }
         }
         if (Boolean.getBoolean("perf.gate")) {
             return;
