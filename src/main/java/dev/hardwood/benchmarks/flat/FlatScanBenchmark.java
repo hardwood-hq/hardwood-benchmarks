@@ -6,6 +6,8 @@
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package dev.hardwood.benchmarks.flat;
+import dev.hardwood.HardwoodContext;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.TaxiDataDownloader;
 
@@ -194,7 +196,8 @@ public class FlatScanBenchmark {
     @Benchmark
     public long hardwoodColumnar() throws IOException {
         long checksum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.openAll(inputFiles);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(inputFiles, context);
              ColumnReaders cols = buildColumnReaders(reader)) {
             ColumnReader vendorId = cols.getColumnReader(0);
             ColumnReader pickup = cols.getColumnReader(1);
@@ -303,7 +306,8 @@ public class FlatScanBenchmark {
     /// named access.
     private long hardwoodRowNamed() throws IOException {
         long checksum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.openAll(inputFiles);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(inputFiles, context);
              RowReader rows = reader.rowReader()) {
             while (rows.hasNext()) {
                 rows.next();
@@ -316,7 +320,8 @@ public class FlatScanBenchmark {
     /// Hardwood row reader, positional index access (the power-user path).
     private long hardwoodRowIndexed() throws IOException {
         long checksum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.openAll(inputFiles);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(inputFiles, context);
              RowReader rows = reader.rowReader()) {
             while (rows.hasNext()) {
                 rows.next();

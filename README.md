@@ -136,6 +136,18 @@ time are alike:
 Passing a flag the preset sets is an error. Regression numbers are compared only with
 each other.
 
+**`-Dperf.threads=N`** sizes the pool of every Hardwood contender's context
+(`BenchContext`), reads and writes alike; without it the pool has Hardwood's default size.
+`run-regression.sh` passes no `-D` to its runs, so set it for a whole regression run
+through the environment, which every JVM of the run picks up:
+
+```sh
+JAVA_TOOL_OPTIONS=-Dperf.threads=6 ./run-regression.sh BASE NEW
+```
+
+The meta sidecar records the pool size (`threads`), and `compare-runs.py` warns when two
+snapshots differ in it.
+
 **The tools underneath.** `charts/compare-runs.py BASE NEW` differences two snapshots,
 each a run directory or a directory of `run-*` repeats, and calls a change only beyond a
 noise band measured from the repeats. `charts/make-version-chart.py` charts every

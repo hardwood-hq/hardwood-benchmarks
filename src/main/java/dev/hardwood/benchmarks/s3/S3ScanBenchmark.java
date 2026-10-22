@@ -39,6 +39,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.EventFileGenerator;
 import dev.hardwood.benchmarks.TaxiDataDownloader;
@@ -152,7 +153,7 @@ public class S3ScanBenchmark {
 
         @Setup(Level.Trial)
         public void createContext() {
-            context = HardwoodContext.create();
+            context = BenchContext.create();
             source = source();
         }
 
@@ -203,7 +204,8 @@ public class S3ScanBenchmark {
     }
 
     static double projectedScan(InputFile file) throws IOException {
-        try (ParquetFileReader reader = ParquetFileReader.open(file)) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(file, context)) {
             return projectedSum(reader);
         }
     }
@@ -230,7 +232,8 @@ public class S3ScanBenchmark {
 
     static double filteredScan(InputFile file) throws IOException {
         double sum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(file);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(file, context);
              ColumnReader amount = reader.buildColumnReader("amount").filter(SELECTIVE).build()) {
             while (amount.nextBatch()) {
                 double[] values = amount.getDoubles();
@@ -244,7 +247,8 @@ public class S3ScanBenchmark {
 
     static double wideFilteredScan(InputFile file) throws IOException {
         double sum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(file);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(file, context);
              ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(WIDE_PROJECTED))
                      .filter(WIDE_SELECTIVE)
                      .build()) {
@@ -270,7 +274,8 @@ public class S3ScanBenchmark {
     static Lookup bloomLookup(InputFile file, long probe) throws IOException {
         long rows = 0;
         double sum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(file);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(file, context);
              ColumnReader value = reader.buildColumnReader(BloomLookupGenerator.VALUE_COLUMN)
                      .filter(FilterPredicate.eq(BloomLookupGenerator.KEY_COLUMN, probe))
                      .build()) {
@@ -287,7 +292,8 @@ public class S3ScanBenchmark {
 
     static double multiFileScan(List<InputFile> files) throws IOException {
         double sum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.openAll(files);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(files, context);
              ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns("fare_amount")).build()) {
             ColumnReader fare = cols.getColumnReader(0);
             while (cols.nextBatch()) {
@@ -480,7 +486,7 @@ public class S3ScanBenchmark {
             largeBloomLookup = gateLookup("large bloom lookup", source, BloomLookupGenerator.LARGE);
             multiFile = gateAll("multi-file scan", source, keys);
             Path local = localPath(keys.get(0));
-            try (HardwoodContext context = HardwoodContext.create()) {
+            try (HardwoodContext context = BenchContext.create()) {
                 check("local beside remote", projectedScan(InputFile.of(local), context),
                         projectedScan(InputFile.of(local)));
             }

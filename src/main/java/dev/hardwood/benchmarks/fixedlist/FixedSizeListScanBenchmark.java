@@ -37,6 +37,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.reader.ColumnReader;
 import dev.hardwood.reader.ParquetFileReader;
@@ -128,7 +129,7 @@ public class FixedSizeListScanBenchmark {
         FixedSizeListFileGenerator.ensure(dir, k, totalValues);
         listPath = FixedSizeListFileGenerator.listFile(dir, k, totalValues);
         flatPath = FixedSizeListFileGenerator.flatFile(dir, k, totalValues);
-        context = HardwoodContext.create();
+        context = BenchContext.create();
         fastConfig = ReaderConfig.builder().option("hardwood.fixed-list-fast-path", "true").build();
         noFastConfig = ReaderConfig.builder().option("hardwood.fixed-list-fast-path", "false").build();
     }
@@ -286,7 +287,7 @@ public class FixedSizeListScanBenchmark {
         generate(ks);
         Path dir = Path.of(dataDir());
         System.out.println("Correctness gate — fast path vs reconstruction baseline vs flat floor:");
-        try (HardwoodContext context = HardwoodContext.create()) {
+        try (HardwoodContext context = BenchContext.create()) {
             ReaderConfig fast = ReaderConfig.builder().option("hardwood.fixed-list-fast-path", "true").build();
             ReaderConfig base = ReaderConfig.builder().option("hardwood.fixed-list-fast-path", "false").build();
             long totalValues = totalValues();

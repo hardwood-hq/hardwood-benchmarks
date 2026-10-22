@@ -22,7 +22,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.metadata.ColumnMetaData;
 import dev.hardwood.metadata.RowGroup;
 import dev.hardwood.reader.BinaryDictionary;
@@ -44,7 +46,8 @@ final class OneBrcScans {
 
     /// The column reader on one consumer thread, aggregating by dictionary entry id.
     static StationTable columnIds(Path file) throws IOException {
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file))) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context)) {
             return aggregate(reader, null);
         }
     }
@@ -52,7 +55,8 @@ final class OneBrcScans {
     /// The column reader over contiguous row-group byte ranges, one reader and one consumer
     /// per split, at most one split per row group; the tables are merged at the end.
     static StationTable columnSplits(Path file, int splits) throws IOException, InterruptedException, ExecutionException {
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file))) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context)) {
             List<RowGroup> rowGroups = reader.getFileMetaData().rowGroups();
             int k = Math.max(1, Math.min(splits, rowGroups.size()));
             long[] bounds = new long[k + 1];
@@ -79,7 +83,8 @@ final class OneBrcScans {
     /// The row reader, one `getString` and `getDouble` per row into a `HashMap`.
     static StationTable rowReader(Path file) throws IOException {
         Map<String, long[]> stations = new HashMap<>(1024);
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
                 RowReader rows = reader.rowReader()) {
             while (rows.hasNext()) {
                 rows.next();

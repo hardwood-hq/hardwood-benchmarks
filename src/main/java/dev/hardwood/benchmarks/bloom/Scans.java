@@ -30,7 +30,9 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.reader.ColumnReader;
 import dev.hardwood.reader.FilterPredicate;
 import dev.hardwood.reader.ParquetFileReader;
@@ -65,7 +67,8 @@ public final class Scans {
         FilterPredicate filter = FilterPredicate.eq(LookupFileGenerator.PROBE_COLUMN, key);
         long count = 0;
         double sum = 0.0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
              ColumnReader values = reader.buildColumnReader(LookupFileGenerator.PAYLOAD_COLUMN)
                      .filter(filter).build()) {
             while (values.nextBatch()) {

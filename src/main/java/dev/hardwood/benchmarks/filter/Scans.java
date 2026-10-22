@@ -27,7 +27,9 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.reader.ColumnReader;
 import dev.hardwood.reader.FilterPredicate;
 import dev.hardwood.reader.ParquetFileReader;
@@ -66,7 +68,8 @@ public final class Scans {
     public static Result hardwoodFiltered(Path file, FilterPredicate filter) throws IOException {
         long count = 0;
         double sum = 0.0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
              ColumnReader amt = reader.buildColumnReader("amount").filter(filter).build()) {
             while (amt.nextBatch()) {
                 int n = amt.getRecordCount();
@@ -85,7 +88,8 @@ public final class Scans {
     public static Result hardwoodUnfiltered(Path file) throws IOException {
         long count = 0;
         double sum = 0.0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
              ColumnReader amt = reader.buildColumnReader("amount").build()) {
             while (amt.nextBatch()) {
                 int n = amt.getRecordCount();
@@ -110,7 +114,8 @@ public final class Scans {
     public static Result hardwoodRowReaderFiltered(Path file, FilterPredicate filter) throws IOException {
         long count = 0;
         double sum = 0.0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
              RowReader rows = reader.buildRowReader()
                      .projection(ColumnProjection.columns("amount"))
                      .filter(filter)
@@ -129,7 +134,8 @@ public final class Scans {
     public static Result hardwoodRowReaderUnfiltered(Path file) throws IOException {
         long count = 0;
         double sum = 0.0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
              RowReader rows = reader.buildRowReader()
                      .projection(ColumnProjection.columns("amount"))
                      .build()) {
