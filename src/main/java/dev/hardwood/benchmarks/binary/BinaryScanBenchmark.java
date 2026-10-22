@@ -39,8 +39,10 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
 import dev.hardwood.Validity;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.BinaryWindows;
 import dev.hardwood.reader.ColumnReader;
@@ -85,7 +87,8 @@ public class BinaryScanBenchmark {
         long values = 0;
         long length = 0;
         long firstChars = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE), context);
              ColumnReaders columns = reader.buildColumnReaders(ColumnProjection.columns(COLUMNS)).build()) {
             while (columns.nextBatch()) {
                 for (String name : COLUMNS) {
@@ -114,7 +117,8 @@ public class BinaryScanBenchmark {
         long values = 0;
         long length = 0;
         long firstChars = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE), context);
              RowReader rows = reader.buildRowReader().projection(ColumnProjection.columns(COLUMNS)).build()) {
             while (rows.hasNext()) {
                 rows.next();

@@ -189,6 +189,7 @@ public final class BenchReport {
         sb.append("java\t").append(javaVersion()).append('\n');
         sb.append("hardwood\t").append(hardwoodVersion()).append('\n');
         sb.append("simd\t").append(simdStatus()).append('\n');
+        sb.append("threads\t").append(BenchContext.recordedThreads()).append('\n');
         try {
             Files.writeString(Path.of(metaPath), sb.toString());
         }

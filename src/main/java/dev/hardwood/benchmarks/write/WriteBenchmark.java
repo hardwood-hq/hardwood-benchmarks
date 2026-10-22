@@ -31,8 +31,10 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
 import dev.hardwood.OutputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.metadata.ColumnChunk;
 import dev.hardwood.metadata.CompressionCodec;
@@ -105,7 +107,8 @@ public class WriteBenchmark {
     }
 
     public static void writeColumnar(OutputFile out, WriteFixture f, FileSchema schema, WriterConfig config) throws IOException {
-        try (ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config)) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config, context)) {
             ColumnWriter columns = writer.columnWriter();
             for (int b = 0; b < f.batchCount(); b++) {
                 int i = b;
@@ -121,7 +124,8 @@ public class WriteBenchmark {
     }
 
     static void writeRows(OutputFile out, WriteFixture f, FileSchema schema, WriterConfig config) throws IOException {
-        try (ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config)) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config, context)) {
             RowWriter rows = writer.rowWriter();
             for (int b = 0; b < f.batchCount(); b++) {
                 long[] ids = f.id[b];
@@ -202,7 +206,8 @@ public class WriteBenchmark {
         }
         Totals actual = new Totals();
         long size;
-        try (ParquetFileReader reader = ParquetFileReader.open(file);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(file, context);
              RowReader rows = reader.buildRowReader().build()) {
             size = compressedChunkBytes(reader.getFileMetaData());
             while (rows.hasNext()) {

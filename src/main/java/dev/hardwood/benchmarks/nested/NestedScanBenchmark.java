@@ -6,6 +6,8 @@
  *  Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package dev.hardwood.benchmarks.nested;
+import dev.hardwood.HardwoodContext;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.BinaryWindows;
 
@@ -225,7 +227,8 @@ public class NestedScanBenchmark {
     /// the same cheap per-leaf touch as the other scans.
     private long hardwoodTypedScan() throws IOException {
         long acc = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(inputFile, context);
              RowReader rows = reader.rowReader()) {
             Field[] fields = Field.fieldsOf(reader.getFileSchema().getRootNode());
             long read = 0;
@@ -241,7 +244,8 @@ public class NestedScanBenchmark {
     /// The typed row scan folding every leaf into a [Checksum], for the gate.
     private Checksum hardwoodRowTyped() throws IOException {
         Checksum cs = new Checksum();
-        try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(inputFile, context);
              RowReader rows = reader.rowReader()) {
             Field[] fields = Field.fieldsOf(reader.getFileSchema().getRootNode());
             while (rows.hasNext() && cs.rowCount < MAX_ROWS) {
@@ -414,7 +418,8 @@ public class NestedScanBenchmark {
     /// values touched from their arrays, skipping nulls by the leaf validity.
     private long hardwoodColumnScan() throws IOException {
         long acc = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(inputFile, context);
              ColumnReaders columns = reader.columnReaders(ColumnProjection.all())) {
             long read = 0;
             while (read < MAX_ROWS && columns.nextBatch()) {
@@ -431,7 +436,8 @@ public class NestedScanBenchmark {
     /// The column scan folding every leaf into a [Checksum], for the gate.
     private Checksum hardwoodColumns() throws IOException {
         Checksum cs = new Checksum();
-        try (ParquetFileReader reader = ParquetFileReader.open(inputFile);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(inputFile, context);
              ColumnReaders columns = reader.columnReaders(ColumnProjection.all())) {
             while (cs.rowCount < MAX_ROWS && columns.nextBatch()) {
                 int records = (int) Math.min(columns.getRecordCount(), MAX_ROWS - cs.rowCount);

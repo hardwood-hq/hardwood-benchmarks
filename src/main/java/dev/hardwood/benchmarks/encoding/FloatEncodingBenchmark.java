@@ -35,9 +35,11 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
 import dev.hardwood.OutputFile;
 import dev.hardwood.Validity;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.TaxiDataDownloader;
 import dev.hardwood.metadata.ColumnChunk;
@@ -147,7 +149,8 @@ public class FloatEncodingBenchmark {
     }
 
     static void write(OutputFile out, TaxiDoubles data, FileSchema schema, WriterConfig config) throws IOException {
-        try (ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config)) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config, context)) {
             ColumnWriter columns = writer.columnWriter();
             for (int b = 0; b < data.batchCount(); b++) {
                 int batchIndex = b;
@@ -166,7 +169,8 @@ public class FloatEncodingBenchmark {
     }
 
     static TaxiDoubles.Checksum scan(Path file, String[] names) throws IOException {
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file))) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context)) {
             return scan(reader, names);
         }
     }
@@ -212,7 +216,8 @@ public class FloatEncodingBenchmark {
             for (String codec : CODECS) {
                 MemoryOutputFile out = new MemoryOutputFile();
                 write(out, data, data.schema(), config(encoding, codec));
-                try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(ByteBuffer.wrap(out.toByteArray())))) {
+                try (HardwoodContext context = BenchContext.create();
+                     ParquetFileReader reader = ParquetFileReader.open(InputFile.of(ByteBuffer.wrap(out.toByteArray())), context)) {
                     FileMetaData metadata = reader.getFileMetaData();
                     if (policy != ColumnEncoding.AUTO) {
                         Encoding named = Encoding.valueOf(encoding);

@@ -37,7 +37,9 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.reader.ParquetFileReader;
 
@@ -90,7 +92,8 @@ public class OneBrcBenchmark {
 
     @Benchmark
     public StationTable hardwoodColumnFanOut() throws IOException, InterruptedException, ExecutionException {
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE))) {
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(FILE), context)) {
             return OneBrcScans.fanOut(reader, Runtime.getRuntime().availableProcessors());
         }
     }

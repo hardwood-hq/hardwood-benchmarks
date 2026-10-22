@@ -40,7 +40,9 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.reader.FilterPredicate;
 import dev.hardwood.reader.ParquetFileReader;
@@ -150,7 +152,8 @@ public class DictionaryFilterBenchmark {
     private static Result hardwoodRowIn(Path file, FilterPredicate filter) throws IOException {
         long count = 0;
         long length = 0;
-        try (ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file));
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
              RowReader rows = reader.buildRowReader()
                      .projection(ColumnProjection.columns("url"))
                      .filter(filter)

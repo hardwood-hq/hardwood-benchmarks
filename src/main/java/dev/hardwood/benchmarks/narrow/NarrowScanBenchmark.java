@@ -39,7 +39,9 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
+import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.TaxiDataDownloader;
 import dev.hardwood.reader.ColumnReader;
@@ -108,7 +110,8 @@ public class NarrowScanBenchmark {
     @Benchmark
     public long hardwoodColumnar() throws IOException {
         long checksum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.openAll(inputFiles);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(inputFiles, context);
              ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(COLUMNS)).build()) {
             ColumnReader passengerCount = cols.getColumnReader(0);
             ColumnReader tripDistance = cols.getColumnReader(1);
@@ -130,7 +133,8 @@ public class NarrowScanBenchmark {
     @Benchmark
     public long hardwoodRowReaderIndexed() throws IOException {
         long checksum = 0;
-        try (ParquetFileReader reader = ParquetFileReader.openAll(inputFiles);
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(inputFiles, context);
              RowReader rows = reader.buildRowReader().projection(ColumnProjection.columns(COLUMNS)).build()) {
             while (rows.hasNext()) {
                 rows.next();

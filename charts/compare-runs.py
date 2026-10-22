@@ -214,6 +214,7 @@ def meta_line(label, snap, benchmark):
         fields.get("hardwood", "hardwood version unrecorded"),
         fields.get("java", "?"),
         fields.get("machine", "?"),
+        "{} threads".format(fields["threads"]) if fields.get("threads") else "threads unrecorded",
         "{} run{}".format(len(snap["runs"]), "" if len(snap["runs"]) == 1 else "s"),
     ]
     return "  {:<5} {}".format(label, "   ".join(parts))
@@ -224,7 +225,8 @@ def warnings_for(base, new, benchmark):
     out = []
     b = base["meta"].get(benchmark, {})
     n = new["meta"].get(benchmark, {})
-    for key, why in (("machine", "different hardware"), ("java", "different JVM")):
+    for key, why in (("machine", "different hardware"), ("java", "different JVM"),
+                     ("threads", "a different pool size")):
         if b.get(key) and n.get(key) and b[key] != n[key]:
             out.append("{}: {} vs {} — {}, the delta is not attributable to Hardwood"
                        .format(key, b[key], n[key], why))
