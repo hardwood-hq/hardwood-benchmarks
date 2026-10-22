@@ -65,6 +65,7 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodBloomLookup` | equality probe for an absent unique key that every bloom filter rejects, 200 row groups with small bloom filters | bloom-filter reads across many row groups, each of which its filter drops |
 /// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups with 16 MB bloom filters | bloom-filter reads each larger than one page-index window |
 /// | `hardwoodLocalBesideRemote` | the projected scan of the local file, on a context a remote projected scan reads with throughout | whether a remote read's requests hold threads of the shared context's pool that a local read needs |
+/// | `hardwoodRemoteBesideWideRemote` | the projected scan, on a context a remote scan of every column of the same file reads with throughout | whether a read with a request in flight for each of its columns holds the shared context's pool from another remote read |
 ///
 /// Before timing, each read is checked against the same read of the local file, and its request
 /// and byte counts go into the meta sidecar (`requests.*`, `bytes.*`): a change in the fetch
@@ -140,16 +141,19 @@ public class S3ScanBenchmark {
                 largeBloomProbe).sum();
     }
 
-    /// A context shared by the local scan this benchmark times and a remote projected scan that a
-    /// thread of its own repeats throughout each iteration.
+    /// A context shared by the scan a contender times and a remote scan of the first month that
+    /// a thread of its own repeats throughout each iteration ([#readInBackground]).
     @State(Scope.Benchmark)
-    public static class SharedContext {
+    public abstract static class SharedContext {
 
         HardwoodContext context;
         private S3Source source;
         private Thread remote;
         private volatile boolean stopped;
         private volatile Throwable remoteFailure;
+
+        /// One pass of the background read.
+        abstract void readInBackground(InputFile file, HardwoodContext context) throws IOException;
 
         @Setup(Level.Trial)
         public void createContext() {
@@ -164,7 +168,7 @@ public class S3ScanBenchmark {
             remote = Thread.ofPlatform().name("remote-scan").start(() -> {
                 try {
                     while (!stopped) {
-                        projectedScan(source.inputFile(BUCKET, key), context);
+                        readInBackground(source.inputFile(BUCKET, key), context);
                     }
                 }
                 catch (Throwable t) {
@@ -189,9 +193,36 @@ public class S3ScanBenchmark {
         }
     }
 
+    /// The background read is the projected scan.
+    public static class BesideProjected extends SharedContext {
+
+        @Override
+        void readInBackground(InputFile file, HardwoodContext context) throws IOException {
+            projectedScan(file, context);
+        }
+    }
+
+    /// The background read takes every column, so that it has a request in flight for each.
+    public static class BesideWide extends SharedContext {
+
+        @Override
+        void readInBackground(InputFile file, HardwoodContext context) throws IOException {
+            try (ParquetFileReader reader = ParquetFileReader.open(file, context);
+                 ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.all()).build()) {
+                while (cols.nextBatch()) {
+                }
+            }
+        }
+    }
+
     @Benchmark
-    public double hardwoodLocalBesideRemote(SharedContext shared) throws IOException {
+    public double hardwoodLocalBesideRemote(BesideProjected shared) throws IOException {
         return projectedScan(InputFile.of(localPath(monthKeys.get(0))), shared.context);
+    }
+
+    @Benchmark
+    public double hardwoodRemoteBesideWideRemote(BesideWide shared) throws IOException {
+        return projectedScan(source.inputFile(BUCKET, monthKeys.get(0)), shared.context);
     }
 
     @Benchmark
