@@ -403,6 +403,7 @@ which adds 30 ms first-byte latency and caps each connection at 80 MB/s
 | `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month |
 | `hardwoodFilteredScan` | a selective range predicate over the filter corpus, with its page index |
 | `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
+| `hardwoodManySmallFiles` | every column of 200 files of 100 KiB to 5 MiB through one multi-file reader: one row group each, written by PyArrow (SNAPPY, dictionary, page index on), sizes spread log-uniformly and shuffled |
 | `hardwoodWideFilteredScan` | a range predicate keeping the first page of every row group, projecting 3 of 200 columns, over a generated file of 40 row groups with 20 pages per column chunk (a 5.3 MB page index); each row group's data is under the coalescing gap, so the read fetches it whole |
 | `hardwoodBloomLookup` | an equality probe for a key no row holds and every bloom filter rejects (chosen when the file is generated, and checked on every run), over a generated file of 200 row groups with a unique, unclustered `INT64` key and a bloom filter of tens of KB per row group; statistics keep every row group and its bloom filter drops it |
 | `hardwoodLargeBloomLookup` | the same kind of probe over 6 row groups whose bloom filters are 16 MB each |
@@ -416,7 +417,24 @@ overlapping the page-index region and their bytes are also recorded apart
 (`indexRequests.*`, `indexBytes.*`), beside the file's page-index size and the
 index bytes the read needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`).
 The two bloom lookups read nothing but the footer and the bloom filters, so their
-request counts are the footer reads plus the bloom-filter reads.
+request counts are the footer reads plus the bloom-filter reads. The many-small-files
+read records its requests per file and their distribution (`manySmallFiles.requestsPerFile`,
+`manySmallFiles.requestsPerFileDistribution`, as `requests:files`), and its files,
+requests and bytes per band of file size, bounded at 64 KiB, 256 KiB and 1 MiB
+(`manySmallFiles.band.<band>.*`).
+
+`hardwoodManySmallFiles` is left out of `--regression`: one read takes about 8 s at
+30 ms, longer than another contender's whole preset, and about 50 s at 235 ms, where
+this run takes about 3 min:
+
+```sh
+S3_LATENCY_MS=235 ./run-s3.sh --include hardwoodManySmallFiles --warmup 0 --meas 2 --time 1
+```
+
+`run-s3.sh` writes its files on first use on every run outside `--regression`, with
+PyArrow and NumPy pinned in a virtualenv under `target/` (needs `python3` with `venv`),
+and gates the contender only when the run includes it. The gate compares the row count
+with the manifest and a sum per column with the local read's, exactly.
 
 `./s3-env.sh start | stop | status` runs the endpoint, downloaded into `target/s3-env/`
 on first use and pinned to one core where `taskset` exists (`S3_ENV_CPU`, default the

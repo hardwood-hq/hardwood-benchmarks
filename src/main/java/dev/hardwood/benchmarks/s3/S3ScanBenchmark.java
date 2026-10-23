@@ -14,10 +14,13 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -61,6 +64,7 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodProjectedScan` | 3 non-adjacent of 20 taxi columns, one month | cross-column coalescing against parallel GETs, chunk sizing |
 /// | `hardwoodFilteredScan` | selective range predicate with a page index | index slices, surviving pages only, dictionary reads |
 /// | `hardwoodMultiFileScan` | one column across 12 files, one multi-file reader | planning each file as the read reaches it, footers, moving between files |
+/// | `hardwoodManySmallFiles` | every column of 200 files of 100 KiB to 5 MiB, one row group each, written by PyArrow ([SmallFileSet]), one multi-file reader | the requests each file costs, opening the next file, and how a file's size compares with the tail its open fetches |
 /// | `hardwoodWideFilteredScan` | selective range predicate projecting 3 of 200 columns, 40 row groups with a large page index | page-index reads across many row groups; each row group's data is under the coalescing gap, so it is fetched whole |
 /// | `hardwoodBloomLookup` | equality probe for an absent unique key that every bloom filter rejects, 200 row groups with small bloom filters | bloom-filter reads across many row groups, each of which its filter drops |
 /// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups with 16 MB bloom filters | bloom-filter reads each larger than one page-index window |
@@ -72,7 +76,10 @@ import dev.hardwood.schema.ColumnProjection;
 /// plan shows up there exactly, even where the time does not move. For the wide read, the
 /// requests overlapping the file's page-index region and their bytes are recorded apart
 /// (`indexRequests.*`, `indexBytes.*`), beside the region's size and the index bytes the read
-/// needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`). Run with `run-s3.sh`.
+/// needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`). The many-small-files read records
+/// its requests per file and, per band of file size, its files, requests and bytes
+/// (`manySmallFiles.*`). It is gated and timed only when the run includes it, which
+/// `--regression` does not. Run with `run-s3.sh`.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -93,6 +100,11 @@ public class S3ScanBenchmark {
     /// The first page of each row group's `seq` chunk: 5 % of the rows, spread over every row group.
     private static final FilterPredicate WIDE_SELECTIVE =
             FilterPredicate.lt(WideTableGenerator.FILTER_COLUMN, (long) WideTableGenerator.PAGE_ROWS);
+    private static final String[] SMALL_FILE_COLUMNS =
+            { "id", "pickup_us", "passenger_count", "zone", "trip_distance", "fare_amount" };
+    /// The upper bounds of the file-size bands the many-small-files read's counts are recorded in:
+    /// the tail `S3InputFile` fetches on open today (64 KiB) and two larger candidates.
+    private static final long[] SMALL_FILE_BANDS = { 64L << 10, 256L << 10, 1L << 20 };
     private static final YearMonth FIRST_MONTH = YearMonth.of(2025, 1);
     private static final YearMonth LAST_MONTH = YearMonth.of(2025, 12);
 
@@ -225,6 +237,27 @@ public class S3ScanBenchmark {
         return projectedScan(source.inputFile(BUCKET, monthKeys.get(0)), shared.context);
     }
 
+    /// The many-small-files fixture's keys, loaded only for the contender that reads them.
+    @State(Scope.Benchmark)
+    public static class SmallFiles {
+
+        List<String> keys;
+
+        @Setup(Level.Trial)
+        public void load() throws IOException {
+            keys = SmallFileSet.load().keys();
+        }
+    }
+
+    @Benchmark
+    public SmallFileSums hardwoodManySmallFiles(SmallFiles smallFiles) throws IOException {
+        List<InputFile> files = new ArrayList<>();
+        for (String key : smallFiles.keys) {
+            files.add(source.inputFile(BUCKET, key));
+        }
+        return smallFilesScan(files);
+    }
+
     @Benchmark
     public double hardwoodMultiFileScan() throws IOException {
         List<InputFile> files = new ArrayList<>();
@@ -337,6 +370,52 @@ public class S3ScanBenchmark {
         return sum;
     }
 
+    /// The rows of the many-small-files read and a sum per column: exact for the integer columns,
+    /// and taken in row order for the doubles, so two reads of the same rows agree bit for bit.
+    record SmallFileSums(long rows, long ids, long pickups, long passengers, long zones, double distances,
+            double fares) {
+    }
+
+    /// Every column of `files`, summed per column.
+    static SmallFileSums smallFilesScan(List<InputFile> files) throws IOException {
+        long rows = 0;
+        long idSum = 0;
+        long pickupSum = 0;
+        long passengerSum = 0;
+        long zoneSum = 0;
+        double distanceSum = 0;
+        double fareSum = 0;
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(files, context);
+             ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(SMALL_FILE_COLUMNS)).build()) {
+            ColumnReader id = cols.getColumnReader(0);
+            ColumnReader pickup = cols.getColumnReader(1);
+            ColumnReader passengers = cols.getColumnReader(2);
+            ColumnReader zone = cols.getColumnReader(3);
+            ColumnReader distance = cols.getColumnReader(4);
+            ColumnReader fare = cols.getColumnReader(5);
+            while (cols.nextBatch()) {
+                long[] ids = id.getLongs();
+                long[] pickups = pickup.getLongs();
+                int[] passengerCounts = passengers.getInts();
+                int[] zones = zone.getInts();
+                double[] distances = distance.getDoubles();
+                double[] fares = fare.getDoubles();
+                int count = cols.getRecordCount();
+                for (int i = 0; i < count; i++) {
+                    idSum += ids[i];
+                    pickupSum += pickups[i];
+                    passengerSum += passengerCounts[i];
+                    zoneSum += zones[i];
+                    distanceSum += distances[i];
+                    fareSum += fares[i];
+                }
+                rows += count;
+            }
+        }
+        return new SmallFileSums(rows, idSum, pickupSum, passengerSum, zoneSum, distanceSum, fareSum);
+    }
+
     static S3Source source() {
         return S3Source.builder()
                 .endpoint(System.getProperty("perf.s3.endpoint", "http://127.0.0.1:18081"))
@@ -356,7 +435,12 @@ public class S3ScanBenchmark {
 
     /// Links (or copies) a fixture into the bucket directory the filesystem-backed S3Proxy serves.
     private static void publish(Path file, Path bucketDir) throws IOException {
-        Path target = bucketDir.resolve(file.getFileName().toString());
+        publish(file, bucketDir, file.getFileName().toString());
+    }
+
+    /// As [#publish(Path,Path)], under the key `key`.
+    private static void publish(Path file, Path bucketDir, String key) throws IOException {
+        Path target = bucketDir.resolve(key);
         if (Files.exists(target)) {
             // A link to the file, or a copy at least as new: anything else is a stale fixture.
             if (Files.isSameFile(target, file) || (Files.size(target) == Files.size(file)
@@ -442,6 +526,84 @@ public class S3ScanBenchmark {
         return new long[] { requests, bytes };
     }
 
+    /// As [#gate], for the many-small-files read: checks it against the local files and returns
+    /// its sidecar pairs, the totals, requests per file and their distribution, and the files,
+    /// requests and bytes of each band of file size.
+    private static List<String> gateSmallFiles(S3Source source, SmallFileSet set) throws IOException {
+        List<S3InputFile> s3Files = new ArrayList<>();
+        List<InputFile> localFiles = new ArrayList<>();
+        for (SmallFileSet.Entry entry : set.files()) {
+            s3Files.add(source.inputFile(BUCKET, set.key(entry)));
+            localFiles.add(InputFile.of(localPath(set.key(entry))));
+        }
+        SmallFileSums s3 = smallFilesScan(new ArrayList<>(s3Files));
+        SmallFileSums local = smallFilesScan(localFiles);
+        if (!s3.equals(local) || s3.rows() != set.totalRows()) {
+            throw new IllegalStateException(String.format("[many small files] S3 read %s, local read %s, manifest %d rows",
+                    s3, local, set.totalRows()));
+        }
+        int bands = SMALL_FILE_BANDS.length + 1;
+        long[] bandFiles = new long[bands];
+        long[] bandRequests = new long[bands];
+        long[] bandBytes = new long[bands];
+        Map<Long, Integer> perFile = new TreeMap<>();
+        for (int i = 0; i < s3Files.size(); i++) {
+            int band = band(set.files().get(i).size());
+            long requests = s3Files.get(i).networkRequestCount();
+            bandFiles[band]++;
+            bandRequests[band] += requests;
+            bandBytes[band] += s3Files.get(i).networkBytesFetched();
+            perFile.merge(requests, 1, Integer::sum);
+        }
+        long requests = 0;
+        long bytes = 0;
+        for (int b = 0; b < bands; b++) {
+            requests += bandRequests[b];
+            bytes += bandBytes[b];
+        }
+        String distribution = String.join(",", perFile.entrySet().stream()
+                .map(e -> e.getKey() + ":" + e.getValue()).toList());
+        System.out.printf("Gate passed [many small files] — S3 and local reads agree (%d files, %,d bytes; "
+                + "%,d requests, %.2f per file (requests:files %s), %,d bytes).%n", s3Files.size(), set.totalBytes(),
+                requests, (double) requests / s3Files.size(), distribution, bytes);
+        List<String> meta = new ArrayList<>(List.of(
+                "requests.manySmallFiles", Long.toString(requests),
+                "bytes.manySmallFiles", Long.toString(bytes),
+                "manySmallFiles.files", Integer.toString(s3Files.size()),
+                "manySmallFiles.fileBytes", Long.toString(set.totalBytes()),
+                "manySmallFiles.rows", Long.toString(set.totalRows()),
+                "manySmallFiles.requestsPerFile", String.format("%.2f", (double) requests / s3Files.size()),
+                "manySmallFiles.requestsPerFileDistribution", distribution));
+        for (int b = 0; b < bands; b++) {
+            String name = "manySmallFiles.band." + bandName(b);
+            meta.addAll(List.of(name + ".files", Long.toString(bandFiles[b]),
+                    name + ".requests", Long.toString(bandRequests[b]),
+                    name + ".bytes", Long.toString(bandBytes[b])));
+        }
+        return meta;
+    }
+
+    /// The band of [#SMALL_FILE_BANDS] a file of `size` bytes falls into.
+    private static int band(long size) {
+        int band = 0;
+        while (band < SMALL_FILE_BANDS.length && size >= SMALL_FILE_BANDS[band]) {
+            band++;
+        }
+        return band;
+    }
+
+    /// Band `b`'s name, by its bounds in KiB: `0-64KiB`, `64-256KiB`, `256-1024KiB`, `1024KiB+`.
+    private static String bandName(int b) {
+        long lower = b == 0 ? 0 : SMALL_FILE_BANDS[b - 1] >> 10;
+        return b == SMALL_FILE_BANDS.length ? lower + "KiB+" : lower + "-" + (SMALL_FILE_BANDS[b] >> 10) + "KiB";
+    }
+
+    /// Whether the run's `--include` selects the contender `method`, as JMH matches it.
+    private static boolean included(String method) {
+        return Pattern.compile(BenchReport.includePattern(S3ScanBenchmark.class))
+                .matcher(S3ScanBenchmark.class.getName() + "." + method).find();
+    }
+
     private static Function<InputFile, Double> unchecked(IoRead read) {
         return in -> {
             try {
@@ -490,6 +652,12 @@ public class S3ScanBenchmark {
         publish(WIDE_FILE, bucketDir);
         publish(BloomLookupGenerator.SMALL.file(), bucketDir);
         publish(BloomLookupGenerator.LARGE.file(), bucketDir);
+        SmallFileSet smallFiles = included("hardwoodManySmallFiles") ? SmallFileSet.load() : null;
+        if (smallFiles != null) {
+            for (SmallFileSet.Entry entry : smallFiles.files()) {
+                publish(smallFiles.dir().resolve(entry.name()), bucketDir, smallFiles.key(entry));
+            }
+        }
 
         List<String> keys = monthKeys();
         String filterKey = FILTER_FILE.getFileName().toString();
@@ -504,6 +672,7 @@ public class S3ScanBenchmark {
         Fetches bloomLookup;
         Fetches largeBloomLookup;
         long[] multiFile;
+        List<String> smallFilesMeta = List.of();
         try (S3Source source = source()) {
             // The taxi files carry no page index, and the event file's lies in the footer tail
             // S3InputFile.open() fetches, so only the wide read's index requests are attributed.
@@ -516,6 +685,9 @@ public class S3ScanBenchmark {
             bloomLookup = gateLookup("bloom lookup", source, BloomLookupGenerator.SMALL);
             largeBloomLookup = gateLookup("large bloom lookup", source, BloomLookupGenerator.LARGE);
             multiFile = gateAll("multi-file scan", source, keys);
+            if (smallFiles != null) {
+                smallFilesMeta = gateSmallFiles(source, smallFiles);
+            }
             Path local = localPath(keys.get(0));
             try (HardwoodContext context = BenchContext.create()) {
                 check("local beside remote", projectedScan(InputFile.of(local), context),
@@ -538,6 +710,7 @@ public class S3ScanBenchmark {
                 "wide.neededIndexBytes", Long.toString(wideLayout.neededBytes()),
                 "latencyMs", System.getProperty("perf.s3.latencyMs", "?"),
                 "bandwidthKBps", System.getProperty("perf.s3.bandwidthKBps", "?")));
+        meta.addAll(smallFilesMeta);
         BenchReport.writeRunParams(BenchReport.totalRows(months.subList(0, 1)), Files.size(months.get(0)),
                 null, null, meta.toArray(String[]::new));
 
