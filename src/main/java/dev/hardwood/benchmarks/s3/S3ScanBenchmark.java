@@ -522,7 +522,8 @@ public class S3ScanBenchmark {
             bytes += in.networkBytesFetched();
         }
         check(name, s3, local);
-        System.out.printf("Gate passed [%s] — S3 and local reads agree (%,d requests, %,d bytes).%n", name, requests, bytes);
+        System.out.printf("Gate passed [%s] — S3 and local reads agree (%d files, %,d requests, %,d bytes).%n", name,
+                keys.size(), requests, bytes);
         return new long[] { requests, bytes };
     }
 

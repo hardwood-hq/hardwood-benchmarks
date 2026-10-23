@@ -23,11 +23,15 @@ Usage: ./run-gate.sh [options] BASE HEAD
   --fail-on-regression
                     exit 1 when a read makes more requests, or fetches more bytes than its
                     allowance, or a timed contender is slower beyond its band
+  --tail-bytes N    the tail HEAD reads of each file it opens (hardwood.internal.tailBytes),
+                    where BASE read 64 KiB: each file a read opens may then fetch up to
+                    N - 64 KiB more (default 65536, no allowance)
 
 Counts: every read the S3 benchmark checks before timing (projected, filtered, wide filtered,
 the two Bloom lookups, the multi-file scan, many small files) records its requests and bytes,
 which are exact. A read fails the check (MORE) when it makes more requests than the base, or
-fetches more bytes than the base plus 1 MiB (the coalescing gap) for every request it saves.
+fetches more bytes than the base plus 1 MiB (the coalescing gap) for every request it saves,
+plus, under --tail-bytes, the tail's growth over 64 KiB for every file it opens.
 
 Timed (without --counts-only): $INCLUDE at 30 ms emulated latency, with ${ITERATIONS[*]},
 compared by compare-runs.py with a band of at least $MIN_BAND %. About 5 min for two rounds.
@@ -40,6 +44,7 @@ ROUNDS=2
 OUT=target/gate
 FAIL=""
 COUNTS_ONLY=""
+TAIL_BYTES=65536
 VERSIONS=()
 while (( $# )); do
   case "$1" in
@@ -48,6 +53,7 @@ while (( $# )); do
     --rounds) ROUNDS="${2:?--rounds needs a value}"; shift 2 ;;
     --out) OUT="${2:?--out needs a value}"; shift 2 ;;
     --fail-on-regression) FAIL="--fail-on-regression"; shift ;;
+    --tail-bytes) TAIL_BYTES="${2:?--tail-bytes needs a value}"; shift 2 ;;
     -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
     *) VERSIONS+=("$1"); shift ;;
   esac
@@ -83,17 +89,18 @@ step() {
   echo "$1  exit $2  $3s" | tee -a "$progress"
 }
 
-# Counts: the "Gate passed" line of each read, as name<TAB>requests<TAB>bytes
+# Counts: the "Gate passed" line of each read, as name<TAB>requests<TAB>bytes<TAB>files; a read
+# whose line names no file count opens one file
 counts() {
   python3 - "$1" <<'PY'
 import re, sys
-plain = re.compile(r"^Gate passed \[(.+?)\] .*?\(([\d,]+) requests, ([\d,]+) bytes")
-small = re.compile(r"^Gate passed \[(many small files)\] .*?; ([\d,]+) requests, [\d.]+ per file .*, ([\d,]+) bytes\)")
+plain = re.compile(r"^Gate passed \[(.+?)\] .*?\((?:(\d+) files, )?([\d,]+) requests, ([\d,]+) bytes")
+small = re.compile(r"^Gate passed \[(many small files)\] .*?\((\d+) files, .*?; ([\d,]+) requests, [\d.]+ per file .*, ([\d,]+) bytes\)")
 seen = {}
 for line in open(sys.argv[1]):
     m = small.match(line) or plain.match(line)
     if m:
-        seen[m.group(1)] = (m.group(2).replace(",", ""), m.group(3).replace(",", ""))
+        seen[m.group(1)] = (m.group(3).replace(",", ""), m.group(4).replace(",", ""), m.group(2) or "1")
 for name in sorted(seen):
     print("\t".join((name,) + seen[name]))
 PY
@@ -139,15 +146,15 @@ if [[ -z "$COUNTS_ONLY" ]]; then
     || status=1
 fi
 
-python3 - "$OUT/base/counts.tsv" "$OUT/head/counts.tsv" >> "$OUT/verdict.txt" <<'EOF' || status=1
+python3 - "$OUT/base/counts.tsv" "$OUT/head/counts.tsv" "$TAIL_BYTES" >> "$OUT/verdict.txt" <<'EOF' || status=1
 import sys
 
 def load(path):
     rows = {}
     with open(path) as f:
         for line in f:
-            name, requests, size = line.rstrip("\n").split("\t")
-            rows[name] = (int(requests), int(size))
+            name, requests, size, files = line.rstrip("\n").split("\t")
+            rows[name] = (int(requests), int(size), int(files))
     return rows
 
 base, head = load(sys.argv[1]), load(sys.argv[2])
@@ -155,11 +162,12 @@ if not base or set(base) != set(head):
     print("\nThe two runs checked different reads: {} vs {}".format(sorted(base), sorted(head)))
     sys.exit(1)
 GAP = 1024 * 1024
+TAIL_GROWTH = max(0, int(sys.argv[3]) - 64 * 1024)
 more = False
 print("\nS3 reads, requests and bytes (base -> head)")
 for name in sorted(base):
-    (br, bb), (hr, hb) = base[name], head[name]
-    allowance = bb + max(0, br - hr) * GAP
+    (br, bb, files), (hr, hb, _) = base[name], head[name]
+    allowance = bb + max(0, br - hr) * GAP + files * TAIL_GROWTH
     worse = hr > br or hb > allowance
     flag = "  MORE" if worse else "  fewer" if hr < br or hb < bb else ""
     more = more or worse
