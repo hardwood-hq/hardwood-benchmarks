@@ -6,7 +6,7 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-INCLUDE='hardwood(ProjectedScan|FilteredScan|ManySmallFiles)$'
+INCLUDE='hardwood(ProjectedScan|ManySmallFiles|MultiFileScan|RemoteBesideWideRemote)$'
 ITERATIONS=(--warmup 2 --meas 4 --time 2)
 MIN_BAND=5
 
@@ -21,15 +21,16 @@ Usage: ./run-gate.sh [options] BASE HEAD
   --rounds N        timed rounds (default 2); each runs BASE, then HEAD
   --out DIR         where the snapshots, logs and verdict go (default target/gate)
   --fail-on-regression
-                    exit 1 when a read makes more requests or fetches more bytes, or a timed
-                    contender is slower beyond its band
+                    exit 1 when a read makes more requests, or fetches more bytes than its
+                    allowance, or a timed contender is slower beyond its band
 
 Counts: every read the S3 benchmark checks before timing (projected, filtered, wide filtered,
 the two Bloom lookups, the multi-file scan, many small files) records its requests and bytes,
-which are exact. Any increase is reported as MORE.
+which are exact. A read fails the check (MORE) when it makes more requests than the base, or
+fetches more bytes than the base plus 1 MiB (the coalescing gap) for every request it saves.
 
 Timed (without --counts-only): $INCLUDE at 30 ms emulated latency, with ${ITERATIONS[*]},
-compared by compare-runs.py with a band of at least $MIN_BAND %. About 3.5 min for two rounds.
+compared by compare-runs.py with a band of at least $MIN_BAND %. About 5 min for two rounds.
 Latency dominates these reads, so the container times them steadily; local reads are not
 timed here, since short runs of them on the container vary by 20 % and more between rounds.
 EOF
@@ -153,12 +154,15 @@ base, head = load(sys.argv[1]), load(sys.argv[2])
 if not base or set(base) != set(head):
     print("\nThe two runs checked different reads: {} vs {}".format(sorted(base), sorted(head)))
     sys.exit(1)
+GAP = 1024 * 1024
 more = False
 print("\nS3 reads, requests and bytes (base -> head)")
 for name in sorted(base):
     (br, bb), (hr, hb) = base[name], head[name]
-    flag = "  MORE" if hr > br or hb > bb else "  fewer" if hr < br or hb < bb else ""
-    more = more or hr > br or hb > bb
+    allowance = bb + max(0, br - hr) * GAP
+    worse = hr > br or hb > allowance
+    flag = "  MORE" if worse else "  fewer" if hr < br or hb < bb else ""
+    more = more or worse
     print("  {:<22} {:>6} -> {:<6} requests {:>12} -> {:<12} bytes{}".format(name, br, hr, bb, hb, flag))
 sys.exit(1 if more else 0)
 EOF
