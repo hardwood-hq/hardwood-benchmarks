@@ -113,6 +113,22 @@ More than two versions give a progression, such as 1.0 → 1.1 → 1.2; `--only`
 the benchmarks, and `--fail-on-regression` sets the exit status: 1 when a Hardwood contender
 is slower beyond its band or a written file larger beyond 1%.
 
+`./run-gate.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
+benchmark alone:
+
+- `--counts-only` compares the requests and bytes of every S3 read the benchmark checks
+  before timing (about 20 s at 0 ms latency). They are exact, so any increase is reported.
+- Without it, it also times `hardwoodProjectedScan`, `hardwoodManySmallFiles`,
+  `hardwoodMultiFileScan` and `hardwoodRemoteBesideWideRemote` at 30 ms, base and head
+  interleaved over two rounds, with a band of at least 5 % (4 min 50 s on an 8-core container).
+  Run base against base, these contenders moved by at most 0.8 %.
+- A read fails the counts when it makes more requests than the base, or fetches more bytes than
+  the base plus 1 MiB, the coalescing gap, for every request it saves.
+
+It writes `verdict.txt` under `target/gate/`. Local reads are not timed by it: on the dev
+container, short runs of the narrow and flat scans move by 20 % and more between rounds of
+the same version, so they belong to `run-regression.sh` on quieter hardware.
+
 **`--hardwood-version`** selects the version for one run. It sets a pom property, so it
 reaches Maven; a bare `-Dhardwood.version=…` would reach the JVM instead and measure the
 pom's version. Each version builds into its own `target/build/` directory, compiling
