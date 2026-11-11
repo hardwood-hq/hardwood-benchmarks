@@ -420,6 +420,8 @@ which adds 30 ms first-byte latency and caps each connection at 80 MB/s
 | `hardwoodFilteredScan` | a selective range predicate over the filter corpus, with its page index |
 | `hardwoodMultiFileScan` | one column across 12 taxi files through one multi-file reader |
 | `hardwoodManySmallFiles` | every column of 200 files of 100 KiB to 5 MiB through one multi-file reader: one row group each, written by PyArrow (SNAPPY, dictionary, page index on), sizes spread log-uniformly and shuffled |
+| `hardwoodManySmallFilesEarlyClose` | the many-small-files read, its consumer closing the reader once it has taken the rows of the first 20 files |
+| `hardwoodMultiFileEarlyClose` | the multi-file scan, its consumer closing the reader once it has taken the rows of the first file |
 | `hardwoodWideFilteredScan` | a range predicate keeping the first page of every row group, projecting 3 of 200 columns, over a generated file of 40 row groups with 20 pages per column chunk (a 5.3 MB page index); each row group's data is under the coalescing gap, so the read fetches it whole |
 | `hardwoodBloomLookup` | an equality probe for a key no row holds and every bloom filter rejects (chosen when the file is generated, and checked on every run), over a generated file of 200 row groups with a unique, unclustered `INT64` key and a bloom filter of tens of KB per row group; statistics keep every row group and its bloom filter drops it |
 | `hardwoodLargeBloomLookup` | the same kind of probe over 6 row groups whose bloom filters are 16 MB each |
@@ -439,9 +441,20 @@ read records its requests per file and their distribution (`manySmallFiles.reque
 requests and bytes per band of file size, bounded at 64 KiB, 256 KiB and 1 MiB
 (`manySmallFiles.band.<band>.*`).
 
-`hardwoodManySmallFiles` is left out of `--regression`: one read takes about 8 s at
-30 ms, longer than another contender's whole preset, and about 50 s at 235 ms, where
-this run takes about 3 min:
+The two early-close reads record their requests and bytes over the files the consumer
+reached and over the files past them, the files past them the read opened, and the
+requests counted only after the reader closed (`earlyClose.<read>.*`), with the time from
+opening the reader to its consumer's last batch and the time its close then took
+(`consumedMs`, `closeMs`). `-Dperf.s3.earlyCloseWarmup=N` makes N reads of the same
+files before the counted one, so that its consumer runs warm. Each multi-file read, the
+early-close reads included, records the requests it had in flight, at most and on average
+over the read (`inFlight.<read>.peak`, `inFlight.<read>.mean`); a call into a file counts
+as a request when the file's request count grew while it ran, so the figures are close
+but not exact.
+
+`hardwoodManySmallFiles` and `hardwoodManySmallFilesEarlyClose` are left out of
+`--regression`, which does not write their files. One read of the whole set takes about
+0.5 s at 30 ms and 1.7 s at 235 ms, where this run takes about 3 min:
 
 ```sh
 S3_LATENCY_MS=235 ./run-s3.sh --include hardwoodManySmallFiles --warmup 0 --meas 2 --time 1

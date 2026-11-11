@@ -36,8 +36,8 @@ SMALL_FILES_MIN_KIB=100
 SMALL_FILES_MAX_KIB=5120
 SMALL_FILES_SEED=1663
 BENCH_REGRESSION_PRESET='--warmup 5'
-# hardwoodManySmallFiles stays out: one read of it takes about 8 s at 30 ms, longer than another
-# contender's whole preset.
+# hardwoodManySmallFiles and its early-close read stay out: their files are written only outside
+# --regression.
 BENCH_REGRESSION_INCLUDE='hardwood(?!ManySmallFiles)'
 # Every contender is Hardwood, and the benchmark already runs on all but the endpoint's core.
 BENCH_SINGLE_CORE=0
@@ -47,9 +47,9 @@ BENCH_USAGE="S3 read benchmark, regression-only (column reader over an emulated 
 Usage: ./run-s3.sh [options]
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --warmup 5 (requests over the emulated latency take
-longer to settle); every contender but hardwoodManySmallFiles, whose single read takes
-longer than another contender's whole preset (--include hardwoodManySmallFiles times it);
-the dataset has one size
+longer to settle); every contender but hardwoodManySmallFiles and
+hardwoodManySmallFilesEarlyClose, whose files it does not write (--include
+hardwoodManySmallFiles times both); the dataset has one size
 
 The endpoint is S3Proxy behind Toxiproxy, started by ./s3-env.sh unless already running
 (S3_LATENCY_MS, default 30; S3_BANDWIDTH_KBPS, default 81920 per connection). A running
@@ -59,7 +59,7 @@ are recorded in the meta sidecar.
 
 hardwoodManySmallFiles reads $SMALL_FILES_COUNT files of ${SMALL_FILES_MIN_KIB} KiB to ${SMALL_FILES_MAX_KIB} KiB, written on first use by
 PyArrow $PYARROW_VERSION and NumPy $NUMPY_VERSION in a virtualenv under target/ (needs python3
-with venv) on every run outside --regression. One read takes about 8 s at 30 ms and 50 s at
+with venv) on every run outside --regression. One read takes about 0.5 s at 30 ms and 1.7 s at
 235 ms, where this run takes about 3 min:
   S3_LATENCY_MS=235 ./run-s3.sh --include hardwoodManySmallFiles --warmup 0 --meas 2 --time 1"
 
