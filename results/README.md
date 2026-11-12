@@ -10,6 +10,8 @@ results/
   2026-07-22-fixed-size-list/    # the fixed-size-list fast-path post (see its README)
     headline/ headline-plain/    # several experiments, each run-1..3 + a derived median/
     sweep/                       #   snapshot published per point (see below)
+  2026-11-12-n300-rerun/         # the 1.0 flat + filter runs repeated on an Intel N300,
+    pq1.18.2/ pq1.17.1/          #   1.0.0.Final beside a later Hardwood, per parquet-java version
 ```
 
 Each `run-N/` is a self-contained, chartable snapshot — TSVs, `bench-meta`
@@ -19,7 +21,8 @@ captures flat + filter together in each run). Where three runs are published as 
 median, the `median/` snapshot is derived with `charts/median-runs.py` (per-point
 median across the runs). Charts are regenerated from the TSVs with the
 per-benchmark generators (`charts/make-flat-chart.py`, `make-filter-chart.py`,
-`make-fixedlist-chart.py`) and are git-ignored — they rebuild byte-for-byte from
+`make-fixedlist-chart.py`, and `make-two-version-charts.py` for two Hardwood
+versions side by side) and are git-ignored — they rebuild byte-for-byte from
 the archived results.
 
 Each publication directory carries its own `README.md` with the exact provenance
