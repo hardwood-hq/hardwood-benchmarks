@@ -1,0 +1,16 @@
+
+######################################################################
+## FlatScanBenchmark
+######################################################################
+Started FlatScanBenchmark at 2026-11-12 11:22:07 CET
+---- Gate check (correctness only — no benchmarking) ----
+Correctness gate — folding every contender, comparing to parquet-java:
+  OK  Hardwood column reader
+  OK  Hardwood row reader (indexed)
+  OK  Hardwood row reader (named)
+  OK  AvroParquetReader (indexed)
+  OK  AvroParquetReader (named)
+  OK  AvroParquetReader (specific)
+  OK  Arrow Dataset
+Gate passed — all contenders agree (checksum 4367556737279301406).
+Finished FlatScanBenchmark at 2026-11-12 11:22:43 CET (duration 0h 00m 36s)

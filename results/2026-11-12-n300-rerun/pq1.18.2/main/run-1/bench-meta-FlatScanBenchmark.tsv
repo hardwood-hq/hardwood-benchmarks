@@ -1,0 +1,9 @@
+rows	3475226
+bytes	59158238
+window	2025-01–2025-01
+java	Java 25.0.4 (Eclipse Adoptium)
+hardwood	1.1.0-main-SNAPSHOT (b7ffc87)
+simd	scalar
+threads	8 (default)
+machine	Intel N300 (8 cores, fixed 1.5 GHz)
+preset	none

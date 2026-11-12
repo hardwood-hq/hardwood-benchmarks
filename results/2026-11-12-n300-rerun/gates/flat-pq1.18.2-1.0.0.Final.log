@@ -1,0 +1,18 @@
+
+######################################################################
+## FlatScanBenchmark
+######################################################################
+Started FlatScanBenchmark at 2026-11-12 13:11:50 CET
+---- Gate check (correctness only — no benchmarking) ----
+Correctness gate — folding every contender, comparing to parquet-java:
+Nov 12, 2026 1:11:56 PM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+  OK  Hardwood column reader
+  OK  Hardwood row reader (indexed)
+  OK  Hardwood row reader (named)
+  OK  AvroParquetReader (indexed)
+  OK  AvroParquetReader (named)
+  OK  AvroParquetReader (specific)
+  OK  Arrow Dataset
+Gate passed — all contenders agree (checksum 4367556737279301406).
+Finished FlatScanBenchmark at 2026-11-12 13:12:29 CET (duration 0h 00m 39s)

@@ -1,0 +1,160 @@
+
+######################################################################
+## FlatScanBenchmark
+######################################################################
+Started FlatScanBenchmark at 2026-11-12 11:55:26 CET
+---- Out-of-the-box (all cores) ----
+Run params: 3,475,226 rows, 59.2 MB, Java 25.0.4 (Eclipse Adoptium), Hardwood 1.0.0.Final (cb41af6) (2025-01–2025-01)
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.start=2025-01 -Dperf.end=2025-01 -Dperf.warmup=5 -Dperf.meas=5 -Dperf.include=hardwoodColumnar$|hardwoodRowReaderIndexed|hardwoodRowReaderNamed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 5 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.flat.FlatScanBenchmark.hardwoodColumnar
+
+# Run progress: 0.00% complete, ETA 00:01:00
+# Fork: 1 of 1
+# Warmup Iteration   1: Nov 12, 2026 11:55:30 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+2027.026 ms/op
+# Warmup Iteration   2: 742.719 ms/op
+# Warmup Iteration   3: 610.926 ms/op
+# Warmup Iteration   4: 609.341 ms/op
+# Warmup Iteration   5: 608.889 ms/op
+Iteration   1: 676.860 ms/op
+Iteration   2: 673.455 ms/op
+Iteration   3: 634.446 ms/op
+Iteration   4: 630.210 ms/op
+Iteration   5: 594.768 ms/op
+
+
+Result "dev.hardwood.benchmarks.flat.FlatScanBenchmark.hardwoodColumnar":
+  641.948 ±(99.9%) 131.029 ms/op [Average]
+  (min, avg, max) = (594.768, 641.948, 676.860), stdev = 34.028
+  CI (99.9%): [510.918, 772.977] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.start=2025-01 -Dperf.end=2025-01 -Dperf.warmup=5 -Dperf.meas=5 -Dperf.include=hardwoodColumnar$|hardwoodRowReaderIndexed|hardwoodRowReaderNamed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 5 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.flat.FlatScanBenchmark.hardwoodRowReaderIndexed
+
+# Run progress: 33.33% complete, ETA 00:00:49
+# Fork: 1 of 1
+# Warmup Iteration   1: Nov 12, 2026 11:55:55 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+1463.730 ms/op
+# Warmup Iteration   2: 754.292 ms/op
+# Warmup Iteration   3: 725.614 ms/op
+# Warmup Iteration   4: 766.281 ms/op
+# Warmup Iteration   5: 770.921 ms/op
+Iteration   1: 751.459 ms/op
+Iteration   2: 731.473 ms/op
+Iteration   3: 798.071 ms/op
+Iteration   4: 750.562 ms/op
+Iteration   5: 729.305 ms/op
+
+
+Result "dev.hardwood.benchmarks.flat.FlatScanBenchmark.hardwoodRowReaderIndexed":
+  752.174 ±(99.9%) 106.523 ms/op [Average]
+  (min, avg, max) = (729.305, 752.174, 798.071), stdev = 27.664
+  CI (99.9%): [645.651, 858.697] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.start=2025-01 -Dperf.end=2025-01 -Dperf.warmup=5 -Dperf.meas=5 -Dperf.include=hardwoodColumnar$|hardwoodRowReaderIndexed|hardwoodRowReaderNamed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 5 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.flat.FlatScanBenchmark.hardwoodRowReaderNamed
+
+# Run progress: 66.67% complete, ETA 00:00:24
+# Fork: 1 of 1
+# Warmup Iteration   1: Nov 12, 2026 11:56:20 AM dev.hardwood.internal.encoding.simd.VectorSupport <clinit>
+INFO: SIMD support: disabled (Vector API not available: jdk/incubator/vector/IntVector)
+4911.927 ms/op
+# Warmup Iteration   2: 3506.023 ms/op
+# Warmup Iteration   3: 3705.879 ms/op
+# Warmup Iteration   4: 3610.331 ms/op
+# Warmup Iteration   5: 3456.951 ms/op
+Iteration   1: 3641.731 ms/op
+Iteration   2: 3633.739 ms/op
+Iteration   3: 3512.366 ms/op
+Iteration   4: 3507.956 ms/op
+Iteration   5: 3489.571 ms/op
+
+
+Result "dev.hardwood.benchmarks.flat.FlatScanBenchmark.hardwoodRowReaderNamed":
+  3557.073 ±(99.9%) 285.651 ms/op [Average]
+  (min, avg, max) = (3489.571, 3557.073, 3641.731), stdev = 74.183
+  CI (99.9%): [3271.421, 3842.724] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:01:28
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                   Mode  Cnt     Score     Error  Units
+FlatScanBenchmark.hardwoodColumnar          avgt    5   641.948 ± 131.029  ms/op
+FlatScanBenchmark.hardwoodRowReaderIndexed  avgt    5   752.174 ± 106.523  ms/op
+FlatScanBenchmark.hardwoodRowReaderNamed    avgt    5  3557.073 ± 285.651  ms/op
+
+=== Throughput (derived: rows / avg time, bytes / avg time) ===
+    dataset: 3,475,226 rows, 59.2 MB
+    MB/s = on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate.
+    Benchmark                                         ms/op     M rows/s  MB/s disk
+    hardwoodColumnar                                  641.9         5.41         92
+    hardwoodRowReaderIndexed                          752.2         4.62         79
+    hardwoodRowReaderNamed                           3557.1         0.98         17
+Finished FlatScanBenchmark at 2026-11-12 11:56:57 CET (duration 0h 01m 31s)
+
+=====================================================================
+Chart input — throughput by contender (raw TSV: target/bench-throughput-FlatScanBenchmark.tsv)
+Only Hardwood is timed pinned. The single-threaded baselines show '-' for
+1-core: not separately measured — pinning doesn't change a single-threaded
+reader, so use their default value as the per-core number too.
+MB/s is on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate.
+=====================================================================
+benchmark            contender                      default      1-core  def MB/s   1c MB/s
+                                                   M rows/s    M rows/s                    
+FlatScanBenchmark    hardwoodColumnar                 5.414           -      92.2         -
+FlatScanBenchmark    hardwoodRowReaderIndexed         4.620           -      78.6         -
+FlatScanBenchmark    hardwoodRowReaderNamed           0.977           -      16.6         -
+
+ASCII charts — default (out-of-box) throughput, M rows/s; 1-core shown where measured
+
+  FlatScanBenchmark — columnar (raw decode)
+    hardwoodColumnar          │██████████████████████████████ 5.4
+
+  FlatScanBenchmark — record (materialization)
+    hardwoodRowReaderIndexed  │██████████████████████████████ 4.6
+    hardwoodRowReaderNamed    │██████ 1.0
+
+(--no-pin: ran the all-cores pass only, skipped the single-core pass.)

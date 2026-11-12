@@ -1,0 +1,148 @@
+
+######################################################################
+## FlatScanBenchmark
+######################################################################
+Started FlatScanBenchmark at 2026-11-12 12:10:52 CET
+---- Out-of-the-box (all cores) ----
+Run params: 3,475,226 rows, 59.2 MB, Java 25.0.4 (Eclipse Adoptium), Hardwood 1.0.0.Final (cb41af6) (2025-01–2025-01)
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.start=2025-01 -Dperf.end=2025-01 -Dperf.warmup=3 -Dperf.meas=5 -Dperf.include=parquetJavaColumnar|avroParquetReaderIndexed|avroParquetReaderNamed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.flat.FlatScanBenchmark.avroParquetReaderIndexed
+
+# Run progress: 0.00% complete, ETA 00:00:48
+# Fork: 1 of 1
+# Warmup Iteration   1: 8682.351 ms/op
+# Warmup Iteration   2: 7067.848 ms/op
+# Warmup Iteration   3: 7019.223 ms/op
+Iteration   1: 7023.280 ms/op
+Iteration   2: 7049.677 ms/op
+Iteration   3: 7081.498 ms/op
+Iteration   4: 7217.935 ms/op
+Iteration   5: 7126.067 ms/op
+
+
+Result "dev.hardwood.benchmarks.flat.FlatScanBenchmark.avroParquetReaderIndexed":
+  7099.691 ±(99.9%) 294.192 ms/op [Average]
+  (min, avg, max) = (7023.280, 7099.691, 7217.935), stdev = 76.401
+  CI (99.9%): [6805.499, 7393.883] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.start=2025-01 -Dperf.end=2025-01 -Dperf.warmup=3 -Dperf.meas=5 -Dperf.include=parquetJavaColumnar|avroParquetReaderIndexed|avroParquetReaderNamed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.flat.FlatScanBenchmark.avroParquetReaderNamed
+
+# Run progress: 33.33% complete, ETA 00:01:59
+# Fork: 1 of 1
+# Warmup Iteration   1: 9590.402 ms/op
+# Warmup Iteration   2: 8089.873 ms/op
+# Warmup Iteration   3: 8060.552 ms/op
+Iteration   1: 8033.877 ms/op
+Iteration   2: 8014.318 ms/op
+Iteration   3: 8121.445 ms/op
+Iteration   4: 8182.353 ms/op
+Iteration   5: 8066.368 ms/op
+
+
+Result "dev.hardwood.benchmarks.flat.FlatScanBenchmark.avroParquetReaderNamed":
+  8083.672 ±(99.9%) 263.661 ms/op [Average]
+  (min, avg, max) = (8014.318, 8083.672, 8182.353), stdev = 68.472
+  CI (99.9%): [7820.011, 8347.333] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: --add-opens=java.base/java.nio=ALL-UNNAMED --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow -Dperf.results=target/bench-throughput-FlatScanBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.start=2025-01 -Dperf.end=2025-01 -Dperf.warmup=3 -Dperf.meas=5 -Dperf.include=parquetJavaColumnar|avroParquetReaderIndexed|avroParquetReaderNamed -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.flat.FlatScanBenchmark.parquetJavaColumnar
+
+# Run progress: 66.67% complete, ETA 00:01:03
+# Fork: 1 of 1
+# Warmup Iteration   1: 4554.898 ms/op
+# Warmup Iteration   2: 3188.256 ms/op
+# Warmup Iteration   3: 3159.569 ms/op
+Iteration   1: 3130.583 ms/op
+Iteration   2: 3113.638 ms/op
+Iteration   3: 3117.662 ms/op
+Iteration   4: 3104.223 ms/op
+Iteration   5: 3106.401 ms/op
+
+
+Result "dev.hardwood.benchmarks.flat.FlatScanBenchmark.parquetJavaColumnar":
+  3114.501 ±(99.9%) 40.414 ms/op [Average]
+  (min, avg, max) = (3104.223, 3114.501, 3130.583), stdev = 10.495
+  CI (99.9%): [3074.087, 3154.915] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:02:35
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                   Mode  Cnt     Score     Error  Units
+FlatScanBenchmark.avroParquetReaderIndexed  avgt    5  7099.691 ± 294.192  ms/op
+FlatScanBenchmark.avroParquetReaderNamed    avgt    5  8083.672 ± 263.661  ms/op
+FlatScanBenchmark.parquetJavaColumnar       avgt    5  3114.501 ±  40.414  ms/op
+
+=== Throughput (derived: rows / avg time, bytes / avg time) ===
+    dataset: 3,475,226 rows, 59.2 MB
+    MB/s = on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate.
+    Benchmark                                         ms/op     M rows/s  MB/s disk
+    avroParquetReaderIndexed                         7099.7         0.49          8
+    avroParquetReaderNamed                           8083.7         0.43          7
+    parquetJavaColumnar                              3114.5         1.12         19
+Finished FlatScanBenchmark at 2026-11-12 12:13:30 CET (duration 0h 02m 38s)
+
+=====================================================================
+Chart input — throughput by contender (raw TSV: target/bench-throughput-FlatScanBenchmark.tsv)
+Only Hardwood is timed pinned. The single-threaded baselines show '-' for
+1-core: not separately measured — pinning doesn't change a single-threaded
+reader, so use their default value as the per-core number too.
+MB/s is on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate.
+=====================================================================
+benchmark            contender                      default      1-core  def MB/s   1c MB/s
+                                                   M rows/s    M rows/s                    
+FlatScanBenchmark    avroParquetReaderIndexed         0.489           -       8.3         -
+FlatScanBenchmark    avroParquetReaderNamed           0.430           -       7.3         -
+FlatScanBenchmark    parquetJavaColumnar              1.116           -      19.0         -
+
+ASCII charts — default (out-of-box) throughput, M rows/s; 1-core shown where measured
+
+  FlatScanBenchmark — record (materialization)
+    avroParquetReaderIndexed  │██████████████████████████████ 0.5
+    avroParquetReaderNamed    │██████████████████████████ 0.4
+
+  FlatScanBenchmark — columnar (raw decode)
+    parquetJavaColumnar       │██████████████████████████████ 1.1
+
+(--no-pin: ran the all-cores pass only, skipped the single-core pass.)
