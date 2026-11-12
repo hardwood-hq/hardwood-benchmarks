@@ -35,6 +35,13 @@ import statistics
 import sys
 
 
+def throughput_per_op(cols, i):
+    """Column i (a throughput) times ms/op, or None when the run reports no throughput."""
+    if len(cols) <= i or cols[i] == "-":
+        return None
+    return float(cols[i]) * float(cols[3])
+
+
 def median_snapshot(out_dir, run_dirs):
     if len(run_dirs) < 2:
         sys.exit("median-runs: need at least two run directories to take a median")
@@ -51,6 +58,7 @@ def median_snapshot(out_dir, run_dirs):
     for tsv_name in throughput_tsvs:
         # (pass, contender) -> [ms across runs]; header/order taken from run-1.
         samples = {}
+        per_op = {}
         order = []
         header = "pass\tbenchmark\tcontender\tms_per_op\tm_rows_per_s\tmb_per_s\n"
         benchmark = ""
@@ -66,6 +74,10 @@ def median_snapshot(out_dir, run_dirs):
                     if key not in samples:
                         samples[key] = []
                         order.append(key)
+                        # Rows and bytes per op are fixed by the dataset, so
+                        # throughput x ms/op is a per-contender constant: keep it
+                        # from the first run to derive the median's throughput.
+                        per_op[key] = [throughput_per_op(cols, i) for i in (4, 5)]
                     samples[key].append(float(cols[3]))
 
         out_tsv = os.path.join(out_dir, tsv_name)
@@ -74,7 +86,8 @@ def median_snapshot(out_dir, run_dirs):
             for key in order:
                 pass_, contender = key
                 med = statistics.median(samples[key])
-                f.write("{}\t{}\t{}\t{:.3f}\t-\t-\n".format(pass_, benchmark, contender, med))
+                rate = ["-" if c is None else "{:.3f}".format(c / med) for c in per_op[key]]
+                f.write("{}\t{}\t{}\t{:.3f}\t{}\t{}\n".format(pass_, benchmark, contender, med, *rate))
 
         # Copy the matching meta sidecar (identical across runs).
         meta_name = tsv_name.replace("bench-throughput-", "bench-meta-")
