@@ -24,7 +24,7 @@
     <bench.outputDirectory>${project.build.directory}/classes</bench.outputDirectory>
     <bench.generatedSources>${project.build.directory}/generated-sources/annotations</bench.generatedSources>
     <hardwood.version>1.1.0-SNAPSHOT</hardwood.version>
-    <parquet.version>1.17.1</parquet.version>
+    <parquet.version>1.18.2</parquet.version>
     <hadoop.version>3.4.3</hadoop.version>
     <jmh.version>1.37</jmh.version>
     <arrow.version>18.1.0</arrow.version>
