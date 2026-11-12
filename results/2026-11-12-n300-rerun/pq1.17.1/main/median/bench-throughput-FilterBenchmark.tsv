@@ -1,0 +1,7 @@
+pass	benchmark	contender	ms_per_op	m_rows_per_s	mb_per_s
+unpinned	FilterBenchmark	hardwoodDefault[selective]	25.441	-	-
+unpinned	FilterBenchmark	hardwoodDefault[matchAll]	170.635	-	-
+pinned	FilterBenchmark	hardwoodDefault[selective]	140.082	-	-
+pinned	FilterBenchmark	hardwoodDefault[matchAll]	365.623	-	-
+unpinned	FilterBenchmark	parquetJava[selective]	548.502	-	-
+unpinned	FilterBenchmark	parquetJava[matchAll]	9991.787	-	-

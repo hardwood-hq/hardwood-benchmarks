@@ -1,0 +1,126 @@
+
+######################################################################
+## FilterBenchmark
+######################################################################
+Started FilterBenchmark at 2026-11-12 12:13:30 CET
+---- Out-of-the-box (all cores) ----
+Run params: 50,000,000 rows, 1,038.4 MB, Java 25.0.4 (Eclipse Adoptium), Hardwood 1.0.0.Final (cb41af6)
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.warmup=3 -Dperf.meas=5 -Dperf.include=parquetJava$ -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.filter.FilterBenchmark.parquetJava
+# Parameters: (selectivity = selective)
+
+# Run progress: 0.00% complete, ETA 00:00:32
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+2170.214 ms/op
+# Warmup Iteration   2: 561.750 ms/op
+# Warmup Iteration   3: 553.859 ms/op
+Iteration   1: 550.241 ms/op
+Iteration   2: 552.735 ms/op
+Iteration   3: 547.284 ms/op
+Iteration   4: 547.430 ms/op
+Iteration   5: 544.778 ms/op
+
+
+Result "dev.hardwood.benchmarks.filter.FilterBenchmark.parquetJava":
+  548.493 ±(99.9%) 11.782 ms/op [Average]
+  (min, avg, max) = (544.778, 548.493, 552.735), stdev = 3.060
+  CI (99.9%): [536.712, 560.275] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.warmup=3 -Dperf.meas=5 -Dperf.include=parquetJava$ -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.filter.FilterBenchmark.parquetJava
+# Parameters: (selectivity = matchAll)
+
+# Run progress: 50.00% complete, ETA 00:00:18
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+11807.710 ms/op
+# Warmup Iteration   2: 9784.214 ms/op
+# Warmup Iteration   3: 10024.928 ms/op
+Iteration   1: 10007.992 ms/op
+Iteration   2: 10062.719 ms/op
+Iteration   3: 9952.587 ms/op
+Iteration   4: 9950.933 ms/op
+Iteration   5: 10016.487 ms/op
+
+
+Result "dev.hardwood.benchmarks.filter.FilterBenchmark.parquetJava":
+  9998.144 ±(99.9%) 181.712 ms/op [Average]
+  (min, avg, max) = (9950.933, 9998.144, 10062.719), stdev = 47.190
+  CI (99.9%): [9816.431, 10179.856] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:01:40
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                    (selectivity)  Mode  Cnt     Score     Error  Units
+FilterBenchmark.parquetJava      selective  avgt    5   548.493 ±  11.782  ms/op
+FilterBenchmark.parquetJava       matchAll  avgt    5  9998.144 ± 181.712  ms/op
+Finished FilterBenchmark at 2026-11-12 12:15:12 CET (duration 0h 01m 42s)
+
+=====================================================================
+Chart input — ms/op by contender (raw TSV: target/bench-throughput-FilterBenchmark.tsv) · lower is better
+=====================================================================
+benchmark          contender                            ms/op
+FilterBenchmark    parquetJava[selective]             548.493
+FilterBenchmark    parquetJava[matchAll]             9998.144
+
+ASCII chart — ms/op (lower is better)
+
+  FilterBenchmark — selective
+    parquetJava           │██████████████████████████████ 548.5
+
+  FilterBenchmark — matchAll
+    parquetJava           │██████████████████████████████ 9998.1
+
+(--no-pin: ran the all-cores pass only, skipped the single-core pass.)

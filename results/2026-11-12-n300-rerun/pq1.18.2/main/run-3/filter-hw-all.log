@@ -1,0 +1,130 @@
+
+######################################################################
+## FilterBenchmark
+######################################################################
+Started FilterBenchmark at 2026-11-12 17:52:03 CET
+---- Out-of-the-box (all cores) ----
+Run params: 50,000,000 rows, 1,038.4 MB, Java 25.0.4 (Eclipse Adoptium), Hardwood 1.1.0-main-SNAPSHOT (b7ffc87)
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.warmup=5 -Dperf.meas=5 -Dperf.include=hardwoodDefault$ -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 5 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.filter.FilterBenchmark.hardwoodDefault
+# Parameters: (selectivity = selective)
+
+# Run progress: 0.00% complete, ETA 00:00:40
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-main-SNAPSHOT/hardwood-core-1.1.0-main-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+72.478 ms/op
+# Warmup Iteration   2: 40.951 ms/op
+# Warmup Iteration   3: 28.446 ms/op
+# Warmup Iteration   4: 27.317 ms/op
+# Warmup Iteration   5: 27.189 ms/op
+Iteration   1: 27.666 ms/op
+Iteration   2: 25.562 ms/op
+Iteration   3: 25.442 ms/op
+Iteration   4: 24.938 ms/op
+Iteration   5: 24.748 ms/op
+
+
+Result "dev.hardwood.benchmarks.filter.FilterBenchmark.hardwoodDefault":
+  25.671 ±(99.9%) 4.488 ms/op [Average]
+  (min, avg, max) = (24.748, 25.671, 27.666), stdev = 1.166
+  CI (99.9%): [21.183, 30.159] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 25.0.4, OpenJDK 64-Bit Server VM, 25.0.4+7-LTS
+# VM invoker: /home/build/.sdkman/candidates/java/25.0.4-tem/bin/java
+# VM options: -Dperf.results=target/bench-throughput-FilterBenchmark.tsv -Dperf.pass=unpinned -Dperf.forks=1 -Dperf.time=2 -Dperf.warmup=5 -Dperf.meas=5 -Dperf.include=hardwoodDefault$ -Dperf.pass=unpinned
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 5 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: dev.hardwood.benchmarks.filter.FilterBenchmark.hardwoodDefault
+# Parameters: (selectivity = matchAll)
+
+# Run progress: 50.00% complete, ETA 00:00:20
+# Fork: 1 of 1
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.openjdk.jmh.util.Utils (file:/home/build/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar)
+WARNING: Please consider reporting this to the maintainers of class org.openjdk.jmh.util.Utils
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+# Warmup Iteration   1: WARNING: A restricted method in java.lang.foreign.SymbolLookup has been called
+WARNING: java.lang.foreign.SymbolLookup::libraryLookup has been called by dev.hardwood.internal.compression.libdeflate.LibdeflateLoader in an unnamed module (file:/home/build/.m2/repository/dev/hardwood/hardwood-core/1.1.0-main-SNAPSHOT/hardwood-core-1.1.0-main-SNAPSHOT.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+448.808 ms/op
+# Warmup Iteration   2: 232.244 ms/op
+# Warmup Iteration   3: 178.603 ms/op
+# Warmup Iteration   4: 194.091 ms/op
+# Warmup Iteration   5: 191.098 ms/op
+Iteration   1: 172.261 ms/op
+Iteration   2: 171.223 ms/op
+Iteration   3: 169.652 ms/op
+Iteration   4: 172.018 ms/op
+Iteration   5: 172.438 ms/op
+
+
+Result "dev.hardwood.benchmarks.filter.FilterBenchmark.hardwoodDefault":
+  171.518 ±(99.9%) 4.397 ms/op [Average]
+  (min, avg, max) = (169.652, 171.518, 172.438), stdev = 1.142
+  CI (99.9%): [167.122, 175.915] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:00:42
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                        (selectivity)  Mode  Cnt    Score   Error  Units
+FilterBenchmark.hardwoodDefault      selective  avgt    5   25.671 ± 4.488  ms/op
+FilterBenchmark.hardwoodDefault       matchAll  avgt    5  171.518 ± 4.397  ms/op
+Finished FilterBenchmark at 2026-11-12 17:52:47 CET (duration 0h 00m 44s)
+
+=====================================================================
+Chart input — ms/op by contender (raw TSV: target/bench-throughput-FilterBenchmark.tsv) · lower is better
+=====================================================================
+benchmark          contender                            ms/op
+FilterBenchmark    hardwoodDefault[selective]          25.671
+FilterBenchmark    hardwoodDefault[matchAll]          171.518
+
+ASCII chart — ms/op (lower is better)
+
+  FilterBenchmark — selective
+    hardwoodDefault       │██████████████████████████████ 25.7
+
+  FilterBenchmark — matchAll
+    hardwoodDefault       │██████████████████████████████ 171.5
+
+(--no-pin: ran the all-cores pass only, skipped the single-core pass.)

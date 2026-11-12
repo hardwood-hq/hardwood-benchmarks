@@ -1,0 +1,24 @@
+
+######################################################################
+## FilterBenchmark
+######################################################################
+Started FilterBenchmark at 2026-11-12 14:48:46 CET
+---- Gate check (correctness only — no benchmarking) ----
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by org.apache.hadoop.util.NativeCodeLoader in an unnamed module (file:/home/build/.m2/repository/org/apache/hadoop/hadoop-common/3.4.3/hadoop-common-3.4.3.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::invokeCleaner has been called by org.apache.parquet.hadoop.codec.CleanUtil (file:/home/build/.m2/repository/org/apache/parquet/parquet-hadoop/1.18.2/parquet-hadoop-1.18.2.jar)
+WARNING: Please consider reporting this to the maintainers of class org.apache.parquet.hadoop.codec.CleanUtil
+WARNING: sun.misc.Unsafe::invokeCleaner will be removed in a future release
+  OK    [selective] Hardwood (filtered column reader)
+  FAIL  [selective] Hardwood (filtered row reader): java.lang.IllegalArgumentException: [filter_benchmark_50000000.parquet] Column not in projection: event_time
+  OK    [selective] AvroParquetReader.withFilter
+  OK    [matchAll] Hardwood (filtered column reader)
+  FAIL  [matchAll] Hardwood (filtered row reader): java.lang.IllegalArgumentException: [filter_benchmark_50000000.parquet] Column not in projection: event_time
+  OK    [matchAll] AvroParquetReader.withFilter
+Gate passed [no filter] ? the unfiltered controls agree with parquet-java (50000000 rows, sum 25002687624.207).
+Exception in thread "main" java.lang.IllegalStateException: gate failed for 2 check(s): [selective] Hardwood (filtered row reader): java.lang.IllegalArgumentException: [filter_benchmark_50000000.parquet] Column not in projection: event_time; [matchAll] Hardwood (filtered row reader): java.lang.IllegalArgumentException: [filter_benchmark_50000000.parquet] Column not in projection: event_time
+	at dev.hardwood.benchmarks.filter.FilterBenchmark.main(FilterBenchmark.java:203)
