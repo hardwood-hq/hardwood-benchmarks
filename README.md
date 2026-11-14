@@ -375,7 +375,9 @@ min, mean and max of `measurement` per `station`, over a generated file of 100M 
 (`--rows 1000000000` for the full challenge). parquet-java writes it from a seeded
 generator with the original challenge's 413 stations, in row groups of 2^20 rows with
 both columns dictionary-encoded (ZSTD). `hardwoodColumnIds` aggregates by dictionary
-entry id on one consumer thread; `hardwoodColumnSplits` does the same over contiguous
+entry id on one consumer thread; `hardwoodColumnBytes` aggregates by each station's bytes,
+read in place through the column's binary window, on one consumer thread;
+`hardwoodColumnSplits` aggregates by entry id over contiguous
 row-group byte ranges, one reader and consumer per available processor, and merges the
 tables; `hardwoodColumnFanOut` advances one column reader and hands each batch's arrays to
 one of as many aggregating workers as there are available processors, and merges their

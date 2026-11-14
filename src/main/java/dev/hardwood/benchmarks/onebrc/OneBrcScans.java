@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
 import dev.hardwood.benchmarks.BenchContext;
+import dev.hardwood.benchmarks.BinaryWindows;
 import dev.hardwood.metadata.ColumnMetaData;
 import dev.hardwood.metadata.RowGroup;
 import dev.hardwood.reader.BinaryDictionary;
@@ -50,6 +51,28 @@ final class OneBrcScans {
              ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context)) {
             return aggregate(reader, null);
         }
+    }
+
+    /// The column reader on one consumer thread, aggregating by each station's bytes, read where
+    /// they sit through the column's binary window rather than through dictionary entry ids.
+    static StationTable columnBytes(Path file) throws IOException {
+        StationTable table = new StationTable();
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.open(InputFile.of(file), context);
+             ColumnReaders columns = reader.buildColumnReaders(COLUMNS).build()) {
+            ColumnReader station = columns.getColumnReader("station");
+            ColumnReader measurement = columns.getColumnReader("measurement");
+            while (columns.nextBatch()) {
+                int n = columns.getRecordCount();
+                BinaryWindows names = BinaryWindows.of(station);
+                double[] measurements = measurement.getDoubles();
+                for (int i = 0; i < n; i++) {
+                    int slot = table.slot(names.buffer(i), names.start(i), names.end(i));
+                    table.add(slot, Math.round(measurements[i] * 10.0));
+                }
+            }
+        }
+        return table;
     }
 
     /// The column reader over contiguous row-group byte ranges, one reader and one consumer

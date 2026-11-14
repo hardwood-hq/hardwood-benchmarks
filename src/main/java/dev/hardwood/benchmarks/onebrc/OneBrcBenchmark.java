@@ -86,6 +86,11 @@ public class OneBrcBenchmark {
     }
 
     @Benchmark
+    public StationTable hardwoodColumnBytes() throws IOException {
+        return OneBrcScans.columnBytes(FILE);
+    }
+
+    @Benchmark
     public StationTable hardwoodColumnSplits() throws IOException, InterruptedException, ExecutionException {
         return OneBrcScans.columnSplits(FILE, Runtime.getRuntime().availableProcessors());
     }
@@ -128,6 +133,7 @@ public class OneBrcBenchmark {
         OneBrcBenchmark benchmark = new OneBrcBenchmark();
         Map<String, StationTable> results = Map.of(
                 "hardwoodColumnIds", benchmark.hardwoodColumnIds(),
+                "hardwoodColumnBytes", benchmark.hardwoodColumnBytes(),
                 "hardwoodColumnSplits", benchmark.hardwoodColumnSplits(),
                 "hardwoodColumnFanOut", benchmark.hardwoodColumnFanOut(),
                 "hardwoodRowReader", benchmark.hardwoodRowReader());

@@ -120,7 +120,7 @@ compared with one measured to a published definition.
 | `run-fixedlist.sh` | 8M values, `k` = 768 | the fast-path arms |
 | `run-window.sh` | `last25pct` | Hardwood |
 | `run-dictfilter.sh` | fixed | Hardwood |
-| `run-1brc.sh` | 100M rows | `hardwoodColumnIds`, `hardwoodColumnSplits` |
+| `run-1brc.sh` | 100M rows | `hardwoodColumnIds`, `hardwoodColumnBytes`, `hardwoodColumnSplits`, `hardwoodColumnFanOut` |
 | `run-write.sh` | 500,000 rows | Hardwood |
 | `run-encodings.sh` | 1M rows, ZSTD, `BYTE_STREAM_SPLIT` and `ALP` | Hardwood |
 | `run-s3.sh` | fixed | Hardwood, except `hardwoodManySmallFiles` |

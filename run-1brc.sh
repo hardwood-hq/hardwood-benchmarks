@@ -23,6 +23,8 @@ $BENCH_COMMON_USAGE
 Regression preset (--regression): --rows 100000000; contenders matching hardwoodColumn
 
 Contenders: hardwoodColumnIds (column reader, one consumer, by dictionary id),
+hardwoodColumnBytes (the same, by each station's bytes read in place through the
+column's binary window),
 hardwoodColumnSplits (the same, one reader and consumer per row-group byte-range
 split, one split per available processor), hardwoodColumnFanOut (one column reader
 whose loop hands each batch to one of as many aggregating workers as there are
