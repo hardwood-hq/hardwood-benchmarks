@@ -1,0 +1,4 @@
+pass	benchmark	contender	ms_per_op	m_rows_per_s	mb_per_s
+pinned	FlatScanBenchmark	avroParquetReaderIndexed	7869.310	0.442	7.5
+pinned	FlatScanBenchmark	avroParquetReaderNamed	9036.710	0.385	6.5
+pinned	FlatScanBenchmark	parquetJavaColumnar	3270.471	1.063	18.1

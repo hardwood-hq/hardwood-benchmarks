@@ -4,11 +4,11 @@
 Takes two snapshots (a run directory or a median snapshot, each holding
 bench-throughput-/bench-meta-FlatScanBenchmark.tsv and -FilterBenchmark.tsv), the
 older first, and writes the three published charts with five bars per group:
-Hardwood all cores (older, newer), Hardwood 1 core (older, newer), and the
-baseline (parquet-java or AvroParquetReader). Both versions share the colours
+Hardwood all cores (older, newer), Hardwood 1 core (older, newer), and
+parquet-java (its column API or AvroParquetReader) on all cores. Both versions share the colours
 of the published charts; each Hardwood bar is labelled with its version
 underneath, and a key above the legend maps the labels to the versions. The
-baseline bar and the hardware/JVM line come from the newer snapshot, and the
+parquet-java bar and the hardware/JVM line come from the newer snapshot, and the
 ratios read older -> newer.
 
   <out>/flat_chart1_columnar.svg   columnar reader vs parquet-java column API
@@ -17,7 +17,7 @@ ratios read older -> newer.
 
 Usage:
     python charts/make-two-version-charts.py OLD NEW --old-label 1.0.0.Final \\
-        --new-label b7ffc871 --old-short 1.0 --new-short main [--baseline-label 'parquet-java 1.18.2'] [--out DIR]
+        --new-label b7ffc871 --old-short 1.0 --new-short main [--parquet-java-label 'parquet-java 1.18.2'] [--out DIR]
 
 Stdlib only; no third-party dependencies.
 """
@@ -39,7 +39,7 @@ TXT = {"all": "#1971c2", "one": "#228be6", "base": "#f08c00"}
 Y_LOW, Y_HIGH = 220.0, 106.0
 BREAK_Y = (Y_LOW + Y_HIGH) / 2.0
 BREAK_HALF, BREAK_PAD, MIN_CAP = 10.0, 4.0, 30.0
-FOOT_PIN = "* 1 core = taskset -c 0 (one hardware thread). Values are JMH means, the median across repeats."
+FOOT_PIN = "* 1 core = Hardwood under taskset -c 0; parquet-java always on all cores. JMH means, median across repeats."
 
 
 class Axis:
@@ -117,7 +117,7 @@ def bar(x, value, kind, pinned, axis, bw):
 
 
 def group(cx, bars, axis, labels, base_label, scale=1.0):
-    """Five bars centred on cx: all-cores old/new, 1-core old/new, baseline.
+    """Five bars centred on cx: all-cores old/new, 1-core old/new, parquet-java.
     `bars` = (all_old, all_new, one_old, one_new, base) values. `scale` widens bars
     and gaps alike, so a chart with a single group fills the plot width."""
     bw, pair, mode = BAR * scale, PAIR_GAP * scale, MODE_GAP * scale
@@ -208,7 +208,7 @@ def flat_charts(old_dir, new_dir, versions, short, base_label, out):
     axis = Axis(c)
     body = group(405, c, axis, short, base_label, scale=1.8)
     body.append('<text x="405" y="446" font-size="13.5" font-weight="700" fill="#1a1a1a" text-anchor="middle">'
-                'out-of-box {}  (Hardwood ÷ parquet-java)  ·  engine-for-engine {}</text>'.format(
+                'out-of-box {}  (Hardwood ÷ parquet-java)  ·  Hardwood on 1 core {}</text>'.format(
                     ratio(c[0] / c[4], c[1] / c[4]), ratio(c[2] / c[4], c[3] / c[4])))
     path = out / "flat_chart1_columnar.svg"
     path.write_text(svg("Flat full scan (columnar reader)",
@@ -284,12 +284,12 @@ def filter_chart(old_dir, new_dir, versions, short, base_label, out):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("old", help="snapshot of the older Hardwood version")
-    ap.add_argument("new", help="snapshot of the newer Hardwood version (also supplies the baselines)")
+    ap.add_argument("new", help="snapshot of the newer Hardwood version (also supplies parquet-java's bars)")
     ap.add_argument("--old-label", required=True, help="legend label of the older version, e.g. 1.0.0.Final")
     ap.add_argument("--new-label", required=True, help="legend label of the newer version, e.g. 'main b7ffc871'")
     ap.add_argument("--old-short", default=None, help="label under the older version's bars (default --old-label)")
     ap.add_argument("--new-short", default=None, help="label under the newer version's bars (default --new-label)")
-    ap.add_argument("--baseline-label", default="", help="label under the baseline bars, e.g. 'pq 1.18.2'")
+    ap.add_argument("--parquet-java-label", default="", help="label under the parquet-java bars, e.g. 'pq 1.18.2'")
     ap.add_argument("--out", default=None, help="output directory (default <new>/charts/two-version, git-ignored)")
     args = ap.parse_args()
     out = Path(args.out) if args.out else Path(args.new) / "charts" / "two-version"
@@ -297,8 +297,8 @@ def main():
     short = (args.old_short or args.old_label, args.new_short or args.new_label)
     versions = "   ·   ".join(lbl if sh == lbl else "{} = {}".format(sh, lbl)
                               for sh, lbl in zip(short, (args.old_label, args.new_label)))
-    written = flat_charts(args.old, args.new, versions, short, args.baseline_label, out)
-    written += filter_chart(args.old, args.new, versions, short, args.baseline_label, out)
+    written = flat_charts(args.old, args.new, versions, short, args.parquet_java_label, out)
+    written += filter_chart(args.old, args.new, versions, short, args.parquet_java_label, out)
     for p in written:
         print("wrote {}".format(p))
     render_pngs(written)

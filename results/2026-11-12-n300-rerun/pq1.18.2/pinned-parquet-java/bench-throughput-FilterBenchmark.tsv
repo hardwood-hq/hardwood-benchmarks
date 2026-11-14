@@ -1,0 +1,3 @@
+pass	benchmark	contender	ms_per_op	m_rows_per_s	mb_per_s
+pinned	FilterBenchmark	parquetJava[selective]	404.832	-	-
+pinned	FilterBenchmark	parquetJava[matchAll]	6118.641	-	-

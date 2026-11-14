@@ -1,0 +1,17 @@
+claim	expression	expect
+# The LinkedIn post of 2026-11-12 (https://lnkd.in/p/ewxE8RWs).
+# The post gives 4.93x for 1.0 vs parquet-java 1.17.1 (columnar), from the median of two runs; the median of three is 5.00x.
+1.0 vs parquet-java 1.17.1, columnar (announced 5.0x)	ms("pq1.17.1/1.0.0.Final", "unpinned", "parquetJavaColumnar") / ms("pq1.17.1/1.0.0.Final", "unpinned", "hardwoodColumnar")	5.0
+1.0 vs parquet-java 1.17.1, indexed row reader (announced 9.4x)	ms("pq1.17.1/1.0.0.Final", "unpinned", "avroParquetReaderIndexed") / ms("pq1.17.1/1.0.0.Final", "unpinned", "hardwoodRowReaderIndexed")	9.4
+more than 3x faster than 1.0 with by-name access	ms("pq1.18.2/1.0.0.Final", "unpinned", "hardwoodRowReaderNamed") / ms("pq1.18.2/main", "unpinned", "hardwoodRowReaderNamed")	>3
+1.7-1.8x faster than 1.0 on the columnar scan	ms("pq1.18.2/1.0.0.Final", "unpinned", "hardwoodColumnar") / ms("pq1.18.2/main", "unpinned", "hardwoodColumnar")	1.7..1.8
+1.7-1.8x faster than 1.0 with the indexed row reader	ms("pq1.18.2/1.0.0.Final", "unpinned", "hardwoodRowReaderIndexed") / ms("pq1.18.2/main", "unpinned", "hardwoodRowReaderIndexed")	1.7..1.8
+up to 15x faster than parquet-java 1.18.2 on all eight cores	max(ms("pq1.18.2/main", "unpinned", "parquetJavaColumnar") / ms("pq1.18.2/main", "unpinned", "hardwoodColumnar"), ms("pq1.18.2/main", "unpinned", "avroParquetReaderIndexed") / ms("pq1.18.2/main", "unpinned", "hardwoodRowReaderIndexed"), ms("pq1.18.2/main", "unpinned", "avroParquetReaderNamed") / ms("pq1.18.2/main", "unpinned", "hardwoodRowReaderNamed"))	15
+up to 6.3x with Hardwood limited to a single core	max(ms("pq1.18.2/main", "unpinned", "parquetJavaColumnar") / ms("pq1.18.2/main", "pinned", "hardwoodColumnar"), ms("pq1.18.2/main", "unpinned", "avroParquetReaderIndexed") / ms("pq1.18.2/main", "pinned", "hardwoodRowReaderIndexed"), ms("pq1.18.2/main", "unpinned", "avroParquetReaderNamed") / ms("pq1.18.2/main", "pinned", "hardwoodRowReaderNamed"))	6.3
+match-all on one core, 1.0: 2.9 s	ms("pq1.18.2/1.0.0.Final", "pinned", "hardwoodDefault[matchAll]") / 1000	2.9
+match-all on one core, now: 0.37 s	ms("pq1.18.2/main", "pinned", "hardwoodDefault[matchAll]") / 1000	0.37
+parquet-java 1.18.2 4-7% faster on full scans (parquetJavaColumnar)	1 - ms("pq1.18.2/main", "unpinned", "parquetJavaColumnar") / ms("pq1.17.1/main", "unpinned", "parquetJavaColumnar")	0.04..0.07
+parquet-java 1.18.2 4-7% faster on full scans (avroParquetReaderIndexed)	1 - ms("pq1.18.2/main", "unpinned", "avroParquetReaderIndexed") / ms("pq1.17.1/main", "unpinned", "avroParquetReaderIndexed")	0.04..0.07
+parquet-java 1.18.2 4-7% faster on full scans (avroParquetReaderNamed)	1 - ms("pq1.18.2/main", "unpinned", "avroParquetReaderNamed") / ms("pq1.17.1/main", "unpinned", "avroParquetReaderNamed")	0.04..0.07
+parquet-java 1.18.2 about 40% faster on filtered scans (selective)	1 - ms("pq1.18.2/main", "unpinned", "parquetJava[selective]") / ms("pq1.17.1/main", "unpinned", "parquetJava[selective]")	0.4
+parquet-java 1.18.2 about 40% faster on filtered scans (matchAll)	1 - ms("pq1.18.2/main", "unpinned", "parquetJava[matchAll]") / ms("pq1.17.1/main", "unpinned", "parquetJava[matchAll]")	0.4

@@ -25,5 +25,10 @@ per-benchmark generators (`charts/make-flat-chart.py`, `make-filter-chart.py`,
 versions side by side) and are git-ignored — they rebuild byte-for-byte from
 the archived results.
 
+Before anything from a publication is published, `charts/check-publication.py
+results/<publication>` recomputes every number from the raw JMH logs and checks the
+runs, the gates, the parquet-java version and each claim listed in the publication's
+`claims.tsv`.
+
 Each publication directory carries its own `README.md` with the exact provenance
 (versions, host, dataset, which run is published).
