@@ -316,9 +316,11 @@ bench_build() {
 #             then exit. No JMH, no passes, no results file.
 #   default → benchmark: two timed passes, no gate —
 #               unpinned (all cores): every contender;
-#               taskset -c 0 (single core): only the Hardwood contenders (the
-#                 single-threaded baselines don't change when pinned, so re-timing
-#                 them on the slow single-core pass is wasted).
+#               taskset -c 0 (single core): only the Hardwood contenders. The
+#                 1-core ratio compares Hardwood on one core with parquet-java on
+#                 all cores, its fastest setting: a single-threaded reader still
+#                 gains from the other cores, which run its JVM's GC and JIT
+#                 threads (and a JVM that sees one CPU picks SerialGC over G1).
 # Benchmark mode writes a per-benchmark results file and tags each pass via
 # -Dperf.pass. The bench-managed -D flags go before "${ARGS[@]}" so a user-supplied
 # --include / -D can override them — except the pinned pass's -Dperf.include=hardwood,
@@ -420,7 +422,7 @@ bench_epilogue() {
     echo
     echo "(taskset not found: skipped the single-core pass. It is Linux-only;"
     echo " macOS has no per-process CPU affinity, so run on a Linux host for"
-    echo " engine-for-engine per-core numbers.)"
+    echo " Hardwood's 1-core numbers.)"
   fi
 }
 
@@ -429,9 +431,8 @@ bench_epilogue_throughput() {
     echo
     echo "====================================================================="
     echo "Chart input — throughput by contender (raw TSV: $BENCH_RESULTS)"
-    echo "Only Hardwood is timed pinned. The single-threaded baselines show '-' for"
-    echo "1-core: not separately measured — pinning doesn't change a single-threaded"
-    echo "reader, so use their default value as the per-core number too."
+    echo "Only Hardwood is timed pinned. parquet-java shows '-' for 1-core: compare"
+    echo "Hardwood's 1-core value with parquet-java's all-cores value, its fastest."
     echo "MB/s is on-disk (compressed) bytes / time — a full-scan read rate, not a decode rate."
     echo "====================================================================="
     awk -F'\t' '
@@ -493,7 +494,7 @@ bench_epilogue_msop() {
     echo
     echo "====================================================================="
     echo "Chart input — ms/op by contender (raw TSV: $BENCH_RESULTS) · lower is better"
-    [[ "$has_pinned" == 1 ]] && echo "Only Hardwood is timed pinned; single-threaded baselines show '-' for 1-core."
+    [[ "$has_pinned" == 1 ]] && echo "Only Hardwood is timed pinned; parquet-java shows '-' for 1-core (compare with its all-cores value)."
     echo "====================================================================="
     awk -F'\t' -v pinned="$has_pinned" '
       NR==1 { next }

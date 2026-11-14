@@ -62,8 +62,11 @@ against the reference, and exits. Without it, the script benchmarks. Gate-check 
 any long run.
 
 **Passes.** A benchmark runs two passes: all cores, timing every contender, then one
-core (`taskset -c 0`, Linux only), re-timing the Hardwood contenders only, since pinning
-does not change the single-threaded ones. `--no-pin` skips the single-core pass,
+core (`taskset -c 0`, Linux only), re-timing the Hardwood contenders only. A 1-core
+ratio therefore compares Hardwood on one core with parquet-java on all cores. That is
+parquet-java's fastest setting: its reader is single-threaded, but its JVM runs GC and
+JIT threads on the other cores, and pinned it ran 2–19% slower (see
+`results/2026-11-12-n300-rerun/README.md`). `--no-pin` skips the single-core pass,
 `--pin-only` the all-cores one. `run-fixedlist.sh` and `--regression` run all cores
 only.
 

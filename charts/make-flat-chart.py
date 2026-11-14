@@ -62,7 +62,7 @@ def chart1(data, name):
     subst.update(flat_block("c_hwp", hwp, scale, True))
     subst.update(flat_block("c_pj", pj, scale))
     subst["c_oob"] = "{:.1f}".format(hw["rows"] / pj["rows"])
-    subst["c_efe"] = "{:.1f}".format(hwp["rows"] / pj["rows"])
+    subst["c_1core"] = "{:.1f}".format(hwp["rows"] / pj["rows"])
     return subst
 
 

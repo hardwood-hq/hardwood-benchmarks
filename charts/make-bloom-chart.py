@@ -180,7 +180,7 @@ def chart4(data, name, dataset_label):
     scan the whole column (tall); the bloom bars prune to the matching row group(s),
     and the absent-probe bloom bars drop every row group (a stub). The 1-core bars
     need the pinned pass, so the chart requires a full run (not --no-pin); only
-    Hardwood is timed pinned (parquet-java is single-threaded). Lower is better."""
+    Hardwood is timed pinned (parquet-java runs on all cores). Lower is better."""
     ac = lambda c: cell(data, c, "unpinned", name)["ms"]
     pin = lambda c: cell(data, c, "pinned", name)["ms"]
     ac_bars = [
