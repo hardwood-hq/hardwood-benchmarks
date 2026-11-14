@@ -7,11 +7,13 @@ parquet-java versions: 1.18.2, the latest, and 1.17.1, the version the announcem
 used.
 
 ```
-pq1.18.2/1.0.0.Final/run-1..3, median/   # Hardwood 1.0.0.Final, baselines on parquet-java 1.18.2
-pq1.18.2/main/run-1..3, median/          # Hardwood main b7ffc87, same baselines
-pq1.17.1/1.0.0.Final/run-1..2, median/   # Hardwood 1.0.0.Final, baselines on parquet-java 1.17.1
-pq1.17.1/main/run-1..2, median/          # Hardwood main b7ffc87, same baselines
+pq1.18.2/1.0.0.Final/run-1..3, median/   # Hardwood 1.0.0.Final, parquet-java 1.18.2
+pq1.18.2/main/run-1..3, median/          # Hardwood main b7ffc87, parquet-java 1.18.2
+pq1.17.1/1.0.0.Final/run-1..3, median/   # Hardwood 1.0.0.Final, parquet-java 1.17.1
+pq1.17.1/main/run-1..3, median/          # Hardwood main b7ffc87, parquet-java 1.17.1
 gates/                                   # correctness gates
+pq1.18.2/pinned-parquet-java/            # parquet-java under taskset -c 0, one run, not charted (see below)
+claims.tsv                               # the published post's claims, for charts/check-publication.py
 ```
 
 Each `run-N/` holds both benchmarks' TSVs and `bench-meta` sidecars, plus the JMH
@@ -22,14 +24,14 @@ and `flat-base.log` and `filter-base.log` (parquet-java and AvroParquetReader).
 
 ## Charts
 
-The published charts show both Hardwood versions side by side and take the baselines
-from the newer snapshot. From the repository root:
+The published charts show both Hardwood versions side by side and take parquet-java's
+bars from the newer snapshot. From the repository root:
 
 ```sh
 P=results/2026-11-12-n300-rerun/pq1.18.2
 python3 charts/make-two-version-charts.py $P/1.0.0.Final/median $P/main/median \
     --old-label 1.0.0.Final --new-label b7ffc871 --old-short 1.0 --new-short main \
-    --baseline-label 1.18.2
+    --parquet-java-label 1.18.2
 ```
 
 The charts land in `$P/main/median/charts/two-version/` (git-ignored). Each snapshot
@@ -45,7 +47,7 @@ also renders on its own with `charts/make-flat-chart.py` and
 | JDK | Temurin 25.0.4+7-LTS |
 | JMH | 1.37 |
 | Host | Intel N300 (8 Gracemont cores, no SMT), maximum frequency pinned at 1.5 GHz (performance governor), warm page cache |
-| Date | 2026-11-12 |
+| Date | 2026-11-12 (run 3 of the parquet-java 1.17.1 contenders: 2026-11-13) |
 | Flat dataset | NYC Yellow Taxi 2025-01: 3,475,226 rows, 59 MB |
 | Filter dataset | generated time-clustered event log: 50,000,000 rows, 1,038 MB |
 
@@ -67,15 +69,17 @@ Every invocation uses one fork and 2 s iterations:
 ```
 
 The Hardwood contenders are `hardwoodColumnar$|hardwoodRowReaderIndexed|hardwoodRowReaderNamed`
-(flat) and `hardwoodDefault$` (filter). The baselines are
+(flat) and `hardwoodDefault$` (filter). The parquet-java contenders are
 `parquetJavaColumnar|avroParquetReaderIndexed|avroParquetReaderNamed` (flat) and
 `parquetJava$` (filter). The clock was pinned with `profiling-setup pin` for the whole
 run, so `--no-pin` keeps the scripts from changing it.
 
 The Hardwood contenders do not load parquet-java, so a Hardwood measurement is the same
-under either parquet-java version. Runs 1 and 2 of Hardwood were measured once, with
-parquet-java 1.17.1 on the classpath, and appear in both `pq1.17.1/` and `pq1.18.2/`.
-Run 3 of Hardwood and every `pq1.18.2/` baseline were measured with parquet-java 1.18.2.
+under either parquet-java version. Each Hardwood run was measured once and appears in both
+`pq1.17.1/` and `pq1.18.2/`: runs 1 and 2 with parquet-java 1.17.1 on the classpath,
+run 3 with 1.18.2. Every parquet-java contender was measured with the version its
+directory names; run 3 of the 1.17.1 contenders was measured on 2026-11-13, on the same
+host and pinned clock.
 
 ## Gates
 
@@ -97,3 +101,25 @@ Run 3 of Hardwood and every `pq1.18.2/` baseline were measured with parquet-java
   1.0.0.Final against 370 ms for main.
 - Run 3 of main's single-core match-all scan has two slow iterations (444 and 461 ms
   against 359–367 ms for the other three); the median of the three runs is 370 ms.
+
+## parquet-java on one core
+
+The charts' 1-core ratios compare Hardwood under `taskset -c 0` with parquet-java on all
+cores, its fastest setting. parquet-java's readers are single-threaded, but their JVM
+runs its GC and JIT threads on the other cores, and under `taskset -c 0` it uses SerialGC
+instead of G1. To measure how much that helps parquet-java, `pinned-parquet-java/` times
+its five contenders under `taskset -c 0` (one run, warm-up 5, measured 5, parquet-java
+1.18.2, the same pinned clock; `pinbase.sh` beside it). Each is slower pinned, so a
+1-core ratio against parquet-java on all cores understates Hardwood:
+
+| parquet-java contender | all cores (median of 3) | `taskset -c 0` | main's 1-core ratio: against all cores → against 1 core |
+|---|---|---|---|
+| column API | 2,893 ms | 3,270 ms (+13 %) | 2.8× → 3.2× |
+| AvroParquetReader, indexed | 6,763 ms | 7,869 ms (+16 %) | 6.3× → 7.4× |
+| AvroParquetReader, by name | 7,718 ms | 9,037 ms (+17 %) | 4.2× → 4.9× |
+| filter, selective | 341 ms | 405 ms (+19 %) | 2.5× → 2.9× |
+| filter, match-all | 5,978 ms | 6,119 ms (+2 %) | 16.2× → 16.5× |
+
+The flat contenders settle by the third warm-up iteration. The filter contenders do not:
+the selective iterations spread from 370 to 456 ms and match-all was still falling at
+the end of the run, so their pinned values are indicative only.
