@@ -54,6 +54,7 @@ import dev.hardwood.metadata.CompressionCodec;
 import dev.hardwood.s3.S3Credentials;
 import dev.hardwood.s3.S3Source;
 import dev.hardwood.schema.FileSchema;
+import dev.hardwood.writer.Compression;
 import dev.hardwood.writer.WriterConfig;
 
 /// S3 write benchmark: the taxi-shaped records of [WriteBenchmark] written to a local S3 endpoint
@@ -163,7 +164,7 @@ public class S3WriteBenchmark {
                 .pageTargetBytes(PAGE_TARGET_BYTES)
                 .pageTargetRows(PAGE_TARGET_ROWS)
                 .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES)
-                .codec(CompressionCodec.valueOf(codec))
+                .compression(Compression.of(CompressionCodec.valueOf(codec)))
                 .build();
     }
 
