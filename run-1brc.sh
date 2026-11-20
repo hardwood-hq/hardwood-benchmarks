@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='onebrc'
-BENCH_REGRESSION_PRESET='--rows 100000000'
+BENCH_REGRESSION_PRESET='--rows 100000000 --warmup 4 --meas 3 --time 5'
 BENCH_REGRESSION_INCLUDE='hardwoodColumn'
 BENCH_FLAGS='--rows perf.rows'
 BENCH_USAGE="1BRC-over-Parquet benchmark, regression-only (generated file: 413 stations, a
@@ -20,7 +20,10 @@ Usage: ./run-1brc.sh [options]
   --rows N              rows in the generated file (default 100000000; 1000000000
                         for the full challenge, about 2.4 GB)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --rows 100000000; contenders matching hardwoodColumn
+Regression preset (--regression): --rows 100000000; --warmup 4 --meas 3 --time 5, so
+an iteration spans several operations (hardwoodColumnIds takes about 1.5 s) and warmup
+outlasts the about 18 s C2 can take to compile the aggregating loop again after
+discarding its first compile; contenders matching hardwoodColumn
 
 Contenders: hardwoodColumnIds (column reader, one consumer, by dictionary id),
 hardwoodColumnSplits (the same, one reader and consumer per row-group byte-range

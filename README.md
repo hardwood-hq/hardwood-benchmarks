@@ -96,7 +96,7 @@ for example a release against a local build:
 
 It runs every benchmark under `--regression` for each version in interleaved rounds
 (`--rounds`, default 3), so machine drift spreads over all versions. One round of all
-ten benchmarks takes about 5 min per version on a 1.50 GHz Intel N300. It writes to
+ten benchmarks takes about 6 min per version on a 1.50 GHz Intel N300. It writes to
 `target/regression/`:
 
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
@@ -144,7 +144,8 @@ time are alike:
   only non-Hardwood contender is `run-filter.sh`'s parquet-java scan, a control: its
   version is pinned, so a move in it is the machine drifting, not Hardwood changing.
 - 3 warmup and 3 measurement iterations of 1 s, unless the preset says otherwise
-  (`run-s3.sh` warms up for 5).
+  (`run-s3.sh` warms up for 5; `run-1brc.sh` runs 4 warmup and 3 measurement iterations
+  of 5 s).
 - One pass, on all cores. Pinned to one core, the JIT, the GC and the reader's worker
   threads share the core, and a contender is still about 15 % off its steady state
   after ten iterations; on all cores it settles by the third.
