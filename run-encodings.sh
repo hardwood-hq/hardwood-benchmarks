@@ -33,7 +33,8 @@ under them, hardwoodWrite writes the columns to memory. Before timing, every pai
 read back and checked bit for bit against the source values, and its column chunks must
 declare the encoding named; --gate does only that. Each pair's compressed column-chunk bytes
 are recorded in the meta sidecar (bytes.<ENCODING>_<CODEC>). Needs a Hardwood version with
-ALP; an older one fails to build this benchmark and runs nothing of it."
+ALP, WriterConfig.Builder.compression and FileSchema.Builder.primitive (later than
+1.1.0.Beta3); an older one fails to build this benchmark and runs nothing of it."
 
 bench_parse_args "$@"
 bench_build

@@ -366,8 +366,10 @@ surcharges, two-digit decimals, some nullable), the first 1M rows in row groups 
 written by the first Hardwood version that runs, so every version of a regression run
 reads the same bytes. The gate writes every pair, reads it back bit for bit against the
 source values, and checks that its column chunks declare the encoding named. Each pair's
-compressed column-chunk bytes go into the meta sidecar (`bytes.<ENCODING>_<CODEC>`). A
-Hardwood version without `ALP` fails to build this benchmark and runs nothing of it.
+compressed column-chunk bytes go into the meta sidecar (`bytes.<ENCODING>_<CODEC>`). It needs
+a Hardwood version with `ALP`, `WriterConfig.Builder.compression` and
+`FileSchema.Builder.primitive` (later than 1.1.0.Beta3); an older one fails to build this
+benchmark and runs nothing of it.
 ### 1BRC over Parquet — `run-1brc.sh`
 
 The [One Billion Row Challenge](https://github.com/gunnarmorling/1brc) over Parquet:
@@ -406,7 +408,9 @@ hyperfine and `python3`.
 Hardwood's column writer and row writer, SNAPPY and ZSTD, so the number is encode
 throughput. Each file is read back and checked before timing. The meta sidecar records
 each codec's compressed column-chunk bytes (`bytes.SNAPPY`, `bytes.ZSTD`), so a version that
-writes larger files shows there even where the time does not move.
+writes larger files shows there even where the time does not move. It needs a Hardwood
+version with `WriterConfig.Builder.compression` and `FileSchema.Builder.primitive` (later
+than 1.1.0.Beta3); an older one fails to build this benchmark and runs nothing of it.
 
 ### S3 reads — `run-s3.sh`
 
@@ -477,8 +481,8 @@ adds. Before timing, both objects are read back through Hardwood and every colum
 the fixture, as `run-write.sh` checks its files; the meta sidecar records each object's compressed
 column-chunk bytes (`bytes.hardwood`, `bytes.parquetJava`), the part size and the endpoint's
 latency and bandwidth. The benchmark is in a package of its own, `s3write`, and builds on the
-`write` package's classes, so it needs a Hardwood version with `S3Source.outputFile` while
-`run-write.sh` does not.
+`write` package's classes, so it needs a Hardwood version with `S3Source.outputFile` beside
+the writer API `run-write.sh` needs.
 
 `run-s3-write-python.sh` runs PyArrow and DuckDB beside it, in a virtualenv of pinned versions
 under `target/`: each rewrites the file the gate wrote (`target/s3-write-fixture.parquet`, so every

@@ -44,6 +44,7 @@ import dev.hardwood.reader.ParquetFileReader;
 import dev.hardwood.reader.RowReader;
 import dev.hardwood.schema.FileSchema;
 import dev.hardwood.writer.ColumnWriter;
+import dev.hardwood.writer.Compression;
 import dev.hardwood.writer.ParquetFileWriter;
 import dev.hardwood.writer.RowWriter;
 import dev.hardwood.writer.WriterConfig;
@@ -88,7 +89,7 @@ public class WriteBenchmark {
         return WriterConfig.builder()
                 .pageTargetBytes(PAGE_TARGET_BYTES)
                 .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES)
-                .codec(CompressionCodec.valueOf(codec))
+                .compression(Compression.of(CompressionCodec.valueOf(codec)))
                 .build();
     }
 

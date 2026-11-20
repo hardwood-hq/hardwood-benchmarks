@@ -52,7 +52,9 @@ Contenders: hardwoodS3 (S3Source.outputFile) and parquetJavaS3 (ExampleParquetWr
 each beside the same write to memory (hardwoodMemory, parquetJavaMemory). Both S3 contenders use
 8 MiB parts. The endpoint is S3Proxy behind Toxiproxy, started by ./s3-env.sh unless already
 running (S3_LATENCY_MS, default 30; S3_BANDWIDTH_KBPS, default 81920 per connection, applied to
-uploads on the write port). Before timing, both S3 objects are read back and checked."
+uploads on the write port). Before timing, both S3 objects are read back and checked. Needs a
+Hardwood version with WriterConfig.Builder.compression and FileSchema.Builder.primitive
+(later than 1.1.0.Beta3); an older one fails to build this benchmark."
 
 bench_parse_args "$@"
 if [[ "$(./s3-env.sh status)" != running ]]; then

@@ -117,13 +117,15 @@ public final class WriteFixture {
 
     public static FileSchema schema() {
         return FileSchema.builder("flat")
-                .addColumn("id", PhysicalType.INT64, RepetitionType.REQUIRED)
-                .addColumn("pickup_ts", PhysicalType.INT64, RepetitionType.REQUIRED,
-                        new LogicalType.TimestampType(true, LogicalType.TimeUnit.MICROS))
-                .addColumn("passenger_count", PhysicalType.INT32, RepetitionType.OPTIONAL)
-                .addColumn("fare", PhysicalType.DOUBLE, RepetitionType.REQUIRED)
-                .addColumn("payment_type", PhysicalType.BYTE_ARRAY, RepetitionType.REQUIRED, new LogicalType.StringType())
-                .addColumn("vendor", PhysicalType.BYTE_ARRAY, RepetitionType.OPTIONAL, new LogicalType.StringType())
+                .primitive("id", PhysicalType.INT64, RepetitionType.REQUIRED)
+                .primitive("pickup_ts", PhysicalType.INT64, RepetitionType.REQUIRED,
+                        c -> c.logicalType(new LogicalType.TimestampType(true, LogicalType.TimeUnit.MICROS)))
+                .primitive("passenger_count", PhysicalType.INT32, RepetitionType.OPTIONAL)
+                .primitive("fare", PhysicalType.DOUBLE, RepetitionType.REQUIRED)
+                .primitive("payment_type", PhysicalType.BYTE_ARRAY, RepetitionType.REQUIRED,
+                        c -> c.logicalType(new LogicalType.StringType()))
+                .primitive("vendor", PhysicalType.BYTE_ARRAY, RepetitionType.OPTIONAL,
+                        c -> c.logicalType(new LogicalType.StringType()))
                 .build();
     }
 }

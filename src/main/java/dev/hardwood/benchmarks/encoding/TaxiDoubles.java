@@ -106,7 +106,7 @@ final class TaxiDoubles {
     FileSchema schema() {
         FileSchema.Builder builder = FileSchema.builder("taxi_doubles");
         for (int c = 0; c < names.length; c++) {
-            builder.addColumn(names[c], PhysicalType.DOUBLE, repetition[c]);
+            builder.primitive(names[c], PhysicalType.DOUBLE, repetition[c]);
         }
         return builder.build();
     }
