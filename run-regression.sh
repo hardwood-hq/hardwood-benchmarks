@@ -31,7 +31,7 @@ Usage: ./run-regression.sh [options] VERSION VERSION [VERSION ...]
                     file the write benchmark wrote is larger beyond 1%
 
 Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a
-script's --help for its preset. Per round and version that takes about 5 min for
+script's --help for its preset. Per round and version that takes about 6 min for
 every script but run-binary.sh, which is not timed there, on a 1.50 GHz Intel N300
 (the sum of the scripts' own times; not measured as a whole run), before
 run-nested-columns.sh, which takes about 30 s on an 8-core container and has not been

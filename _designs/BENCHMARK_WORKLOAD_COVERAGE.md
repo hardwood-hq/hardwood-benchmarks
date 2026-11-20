@@ -104,7 +104,9 @@ throws on an older version fails alone under JMH, with the same result in the ch
 regression runs taken at any time are alike: each script's reduced sizes and contender
 subset, 3 warmup and 3 measurement iterations of 1 s, and one pass on all cores. A
 script's preset may override the iteration counts (`run-s3.sh` warms up for 5, since
-requests over the emulated latency take longer to settle). Pinned to one core, the JIT,
+requests over the emulated latency take longer to settle; `run-1brc.sh` runs 4 warmup
+and 3 measurement iterations of 5 s, since one operation takes about 1.5 s and C2 can
+compile the aggregating loop again up to about 18 s into the fork). Pinned to one core, the JIT,
 the GC and the reader's worker threads share the core and a contender does not settle
 within ten iterations; on all cores it settles by the third. Passing a flag the preset
 sets is an error. The meta sidecar records the preset, and the comparator and the
@@ -120,7 +122,7 @@ compared with one measured to a published definition.
 | `run-fixedlist.sh` | 8M values, `k` = 768 | the fast-path arms |
 | `run-window.sh` | `last25pct` | Hardwood |
 | `run-dictfilter.sh` | fixed | Hardwood |
-| `run-1brc.sh` | 100M rows | `hardwoodColumnIds`, `hardwoodColumnSplits` |
+| `run-1brc.sh` | 100M rows | `hardwoodColumnIds`, `hardwoodColumnSplits`, `hardwoodColumnFanOut` |
 | `run-write.sh` | 500,000 rows | Hardwood |
 | `run-encodings.sh` | 1M rows, ZSTD, `BYTE_STREAM_SPLIT` and `ALP` | Hardwood |
 | `run-s3.sh` | fixed | Hardwood, except `hardwoodManySmallFiles` |
@@ -131,7 +133,7 @@ so a move in it is machine drift, not a Hardwood change.
 **The regression run.** `run-regression.sh V1 V2 [V3 ...]` runs every script under
 `--regression` for each version in interleaved rounds (`--rounds`, default 3), so drift
 on the machine spreads over all versions, and starts the emulated S3 endpoint once for
-the whole run. A round of all ten scripts takes about 5 min per version on a 1.50 GHz
+the whole run. A round of all ten scripts takes about 6 min per version on a 1.50 GHz
 Intel N300. It ends in `verdict.txt`, which compares the first version with the last and
 lists per benchmark a tally plus only the contenders that moved beyond the noise band,
 with control drift reported separately; `not-run.txt`, which gives the reason for every
