@@ -172,8 +172,13 @@ CGROUP="$(cat /proc/$$/cgroup)"
 (
   while sleep 15; do
     for p in $(pgrep -x java); do
-      [ "$(cat "/proc/$p/cgroup" 2>/dev/null)" = "$CGROUP" ] && continue
-      echo "$(date +%T) $p $(tr '\0' ' ' < "/proc/$p/cmdline" 2>/dev/null | cut -c1-160)" >> "$RUN/disturbed"
+      # A JVM that ended since pgrep listed it (this job's forks and builds end all the time)
+      # has nothing left to read: it is skipped, not taken for another session's.
+      cg="$(cat "/proc/$p/cgroup" 2>/dev/null)" || continue
+      cmd="$( (tr '\0' ' ' < "/proc/$p/cmdline") 2>/dev/null | cut -c1-160)"
+      [ -n "$cg" ] && [ -n "$cmd" ] || continue
+      [ "$cg" = "$CGROUP" ] && continue
+      echo "$(date +%T) $p $cmd" >> "$RUN/disturbed"
     done
   done
 ) &
