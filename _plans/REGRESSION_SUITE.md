@@ -39,7 +39,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 
 ## Stages
 
-Done: stage 1 (#41); stages 2 to 3, and stage 4 but for the box lock, which comes with the nightly job, in #42. Next: the nightly job (stage 6's code, with alerts off for calibration), then calibration.
+Done: stage 1 (#41); stages 2 to 4 (#42); stage 6's code, the nightly job, the history page and the cloud-boxes timer, in the PR stacked on #42. Next: deploying the timer with `--no-alert` for calibration (stage 5), then the backfill and alerts.
 
 1. **Land what is done.**
    - hardwood-benchmarks #41: the 1BRC preset and the writer API.
