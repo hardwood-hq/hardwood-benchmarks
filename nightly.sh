@@ -31,9 +31,11 @@ it: nothing is recorded, and the night's report says why.
 \$NIGHTLY_SCRIPTS (comma-separated) limits the night's own run to those scripts, to test the
 job in a few minutes.
 
-Pushing and opening issues need a GitHub token in \$NIGHTLY_HOME/token (contents: write on
-hardwood-benchmark-results, issues: write on hardwood). Otava is installed into
-\$NIGHTLY_HOME/venv on first use.
+Pushing needs a GitHub token in \$NIGHTLY_HOME/token-results (Contents: read and write on
+hardwood-benchmark-results only), and opening issues one in \$NIGHTLY_HOME/token-issues
+(Issues: read and write on hardwood only): a fine-grained token grants its permissions on
+every repository it covers, so one token for both would let the job push to hardwood.
+Otava is installed into \$NIGHTLY_HOME/venv on first use.
 EOF
 }
 
@@ -105,11 +107,12 @@ clone() {
   git -C "$dir" fetch -q --tags origin >> "$LOG" 2>&1
 }
 
-TOKEN_FILE="$HOME_DIR/token"
+RESULTS_TOKEN="$HOME_DIR/token-results"
+ISSUES_TOKEN="$HOME_DIR/token-issues"
 # Git over HTTPS with the token as a header, so that it is never written to a config file.
 git_auth() {
   local header
-  header="Authorization: Basic $(printf 'x-access-token:%s' "$(cat "$TOKEN_FILE")" | base64 -w0)"
+  header="Authorization: Basic $(printf 'x-access-token:%s' "$(cat "$RESULTS_TOKEN")" | base64 -w0)"
   git -c http.extraHeader="$header" "$@"
 }
 
@@ -122,7 +125,7 @@ publish() {
   git -C "$RESULTS" -c user.name="Hardwood nightly" -c user.email="nightly@hardwood.invalid" \
     commit -q -m "$message" >> "$LOG" 2>&1 || return 1
   [ -n "$PUSH" ] || { log "not pushed (--no-push)"; return 0; }
-  [ -f "$TOKEN_FILE" ] || { log "not pushed: no $TOKEN_FILE"; return 1; }
+  [ -f "$RESULTS_TOKEN" ] || { log "not pushed: no $RESULTS_TOKEN"; return 1; }
   for i in 1 2 3; do
     git_auth -C "$RESULTS" pull -q --rebase origin main >> "$LOG" 2>&1 \
       && git_auth -C "$RESULTS" push -q origin HEAD:main >> "$LOG" 2>&1 && { log "pushed: $message"; return 0; }
@@ -277,8 +280,8 @@ done
 ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --summary "$SUMMARY" --out "$RUN/night" \
     && python3 charts/nightly.py page "$RESULTS" ) >> "$LOG" 2>&1
 publish "Nightly $DATE: $VERSION"
-if [ -n "$ALERT" ] && [ -n "$PUSH" ] && [ -f "$TOKEN_FILE" ]; then
-  ( cd "$BENCH" && python3 charts/nightly.py issues "$RESULTS" --repo hardwood-hq/hardwood --token-file "$TOKEN_FILE" ) 2>&1 | tee -a "$LOG"
+if [ -n "$ALERT" ] && [ -n "$PUSH" ] && [ -f "$ISSUES_TOKEN" ]; then
+  ( cd "$BENCH" && python3 charts/nightly.py issues "$RESULTS" --repo hardwood-hq/hardwood --token-file "$ISSUES_TOKEN" ) 2>&1 | tee -a "$LOG"
   publish "Nightly $DATE: issues of confirmed regressions"
 fi
 
