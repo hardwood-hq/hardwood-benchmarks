@@ -21,8 +21,13 @@ otava.yaml is written again from every series file, one Otava test per file.
 
 A contender's epoch hashes what it measures: its script's preset and the iteration counts
 every preset shares, its benchmark method's source, its parameters and the size of its
-fixture, to three significant figures. A machine epoch hashes the manifest's description of the machine and JVM. A new
-hash of either starts a new series, so that no series mixes two definitions or machines.
+fixture, to three significant figures. A machine epoch hashes the manifest's description of the
+machine and JVM, MACHINE_KEYS, the kernel left out. A new hash of either starts a new series,
+so that no series mixes two definitions or machines.
+
+Before recording, every machine epoch already in DIR is hashed again under MACHINE_KEYS, and a
+series of one whose hash changed moves to the new one, its rows merged into a series already
+there: a change to MACHINE_KEYS keeps the rows recorded before it.
 """
 import argparse
 import csv
@@ -44,7 +49,10 @@ SCHEMA = 1
 COLUMNS = ["time", "commit", "version", "run", "schema", "verdict", "wall_ms", "wall_spread_pct",
            "wall_forks_ms", "cpu_ms", "jit_ms", "gc_ms", "alloc_bytes", "live_bytes"]
 OTAVA_METRICS = {"wall_ms": -1, "cpu_ms": -1, "alloc_bytes": -1, "live_bytes": -1}
-MACHINE_KEYS = ["cpu", "cores", "microcode", "kernel", "java", "jvm_flags", "governor", "max_freq_khz",
+# The kernel is left out: Fedora ships one every few weeks, and a series that restarted with each
+# would rarely hold enough rows for Otava. Each run's manifest still records it, and a step a
+# kernel causes shows as a change point that the confirmation run, on one kernel, refutes.
+MACHINE_KEYS = ["cpu", "cores", "microcode", "java", "jvm_flags", "governor", "max_freq_khz",
                 "no_turbo"]
 FIXTURE_KEYS = ["rows", "bytes", "window"]
 
@@ -156,6 +164,7 @@ def main():
     parser.add_argument("--summary")
     args = parser.parse_args()
 
+    rekey(args.results)
     with open(os.path.join(args.out, "manifest.json")) as f:
         manifest = json.load(f)
     machine = {k: manifest.get(k) for k in MACHINE_KEYS}
@@ -243,6 +252,51 @@ def main():
                        "run": manifest["started"], "contenders": recorded}, f, indent=2)
     print("recorded {} contenders of {} ({}) at {}, machine {}".format(len(recorded), args.version, commit[:9], time,
                                                                       machine_epoch))
+
+
+def rekey(results):
+    """Moves the series of every machine epoch whose hash under MACHINE_KEYS changed to the new
+    one, merging rows into a series already there, and updates changes.json; the old machine
+    file stays, for the reports that link it."""
+    moved = {}
+    for path in sorted(glob.glob(os.path.join(results, "machines", "*.json"))):
+        old = os.path.basename(path)[:-len(".json")]
+        with open(path) as f:
+            described = json.load(f)
+        machine = {k: described.get(k) for k in MACHINE_KEYS}
+        new = "m" + digest(machine)
+        if new == old:
+            continue
+        target = os.path.join(results, "machines", new + ".json")
+        if not os.path.exists(target):
+            with open(target, "w") as f:
+                json.dump(machine, f, indent=2, sort_keys=True)
+        source = os.path.join(results, "series", old)
+        for series in sorted(glob.glob(os.path.join(source, "*", "*.csv"))):
+            dest = os.path.join(results, "series", new, os.path.relpath(series, source))
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(series, newline="") as f:
+                for row in csv.DictReader(f):
+                    add_row(dest, row)
+            os.remove(series)
+            moved[os.path.relpath(series, results)] = os.path.relpath(dest, results)
+        if os.path.isdir(source):
+            shutil.rmtree(source)
+        if moved:
+            print("record-results: moved the series of machine epoch {} to {}".format(old, new))
+    changes_path = os.path.join(results, "changes.json")
+    if moved and os.path.exists(changes_path):
+        with open(changes_path) as f:
+            changes = json.load(f)
+        for change in changes:
+            if change["file"] in moved:
+                change["file"] = moved[change["file"]]
+                change["machine"] = change["file"].split("/")[1]
+                cls, name = change["file"].split("/")[2:]
+                change["test"] = "{}.{}@{}".format(cls, name[:-len(".csv")], change["machine"])
+        with open(changes_path, "w") as f:
+            json.dump(changes, f, indent=2, sort_keys=True)
+            f.write("\n")
 
 
 def add_row(path, row):

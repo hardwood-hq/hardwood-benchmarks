@@ -206,7 +206,7 @@ async function render(history, machine) {
   for (const [id, m] of machines) {
     const option = document.createElement("option");
     option.value = id;
-    option.textContent = `${m.cpu}, ${(m.max_freq_khz / 1e6).toFixed(2)} GHz, ${(m.java.match(/build ([^,)]+)/) || [, ""])[1]}, kernel ${m.kernel}`;
+    option.textContent = `${m.cpu}, ${(m.max_freq_khz / 1e6).toFixed(2)} GHz, ${(m.java.match(/build ([^,)]+)/) || [, ""])[1]}`;
     select.append(option);
   }
   const report = await fetch("reports/latest.md", {method: "HEAD"}).then(r => r.ok, () => false);

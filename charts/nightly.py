@@ -337,7 +337,11 @@ def page(args):
             meta = series_meta(args.results, settled)
             meta.update(file=None, unsettled=rel)
             series.append(meta)
-    machines = {os.path.basename(p)[:-5]: load(p, {}) for p in glob.glob(os.path.join(args.results, "machines", "*.json"))}
+    # Only machine epochs that hold series: one whose series moved on keeps its file, for the
+    # reports that link it.
+    held = {s["machine"] for s in series}
+    machines = {os.path.basename(p)[:-5]: load(p, {}) for p in glob.glob(os.path.join(args.results, "machines", "*.json"))
+                if os.path.basename(p)[:-5] in held}
     changes = [c for c in load(os.path.join(args.results, "changes.json"), []) if c["status"] != "refuted"]
     save(os.path.join(args.results, "history.json"),
          {"generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
