@@ -17,7 +17,7 @@ otava.yaml is written again from every series file, one Otava test per file.
 
 A contender's epoch hashes what it measures: its script's preset and the iteration counts
 every preset shares, its benchmark method's source, its parameters and the size of its
-fixture. A machine epoch hashes the manifest's description of the machine and JVM. A new
+fixture, to three significant figures. A machine epoch hashes the manifest's description of the machine and JVM. A new
 hash of either starts a new series, so that no series mixes two definitions or machines.
 """
 import argparse
@@ -75,6 +75,15 @@ def method_source(cls, method):
             if depth == 0:
                 return " ".join(text[m.start():j + 1].split())
     raise SystemExit("record-results: no method {} in {}".format(method, cls))
+
+
+def fixture_value(key, value):
+    """A fixture's size to three significant figures: the version that writes a fixture leaves
+    its name in the file's metadata, so its exact size differs by a few hundred bytes with the
+    version that first ran the benchmark, while a change to the data moves it further."""
+    if key != "bytes":
+        return value
+    return "{:.3g}".format(float(value))
 
 
 def scripts_by_file(out):
@@ -177,7 +186,7 @@ def main():
         method = contender.split("[", 1)[0]
         params = sorted({json.dumps(r["params"], sort_keys=True) for r in rows})
         script = script_of(cls, method, files.get("bench-metrics-{}.jsonl".format(cls), []))
-        fixture = {k: metas[cls][k] for k in FIXTURE_KEYS if k in metas[cls]}
+        fixture = {k: fixture_value(k, metas[cls][k]) for k in FIXTURE_KEYS if k in metas[cls]}
         definition = {"script": script, "preset": shell_value("run-{}.sh".format(script), "BENCH_REGRESSION_PRESET"),
                       "common": common, "method": method_source(cls, method), "params": params,
                       "fixture": fixture}

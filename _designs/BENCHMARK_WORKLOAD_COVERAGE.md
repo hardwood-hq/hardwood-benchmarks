@@ -207,7 +207,7 @@ marks it. With forks, the noise band comes from the forks' means, so a single ru
 **Recording.** `charts/record-results.py` appends a version's run to a checkout of
 `hardwood-benchmark-results`, one series per contender, epoch and machine epoch, for Apache
 Otava: a contender's epoch hashes what it measures (its preset, the iteration counts every
-preset shares, its method's source, its parameters and its fixture's size), and a machine
+preset shares, its method's source, its parameters and its fixture's size to three significant figures, since the version that writes a fixture leaves its name in it), and a machine
 epoch the manifest's description of the machine and JVM, so that no series mixes two
 definitions or two machines. A row's time is the measured commit's, so that a backfilled
 release sorts before later commits; rows that did not settle go to a twin file Otava does
