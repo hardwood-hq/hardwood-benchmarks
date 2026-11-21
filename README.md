@@ -341,8 +341,8 @@ compressed bytes in `STRING` columns, which is most of them.
 
 ### Nested column readers — `run-nested-columns.sh`
 
-`run-nested.sh`'s benchmark under a second regression preset: `hardwoodColumnReaders` over
-the whole file. `run-nested.sh`'s preset reads 20,000 rows, where the read is mostly
+`NestedColumnScanBenchmark`: `hardwoodColumnReaders` over the whole file, read as
+`run-nested.sh`'s column readers read it, under a regression preset of its own. `run-nested.sh`'s preset reads 20,000 rows, where the read is mostly
 per-read setup and the typed row reader is bound by its consumer thread, so neither shows
 a change to nested decoding: a 28% faster column-reader read of the whole file left the
 20,000-row read unchanged within its noise. Over the whole file the column readers are
