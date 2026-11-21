@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """Record one Hardwood version's regression run into a results repository for Apache Otava.
 
-Usage: record-results.py OUT VERSION --results DIR --hardwood-repo DIR
+Usage: record-results.py OUT VERSION --results DIR --hardwood-repo DIR [--summary FILE]
 
 OUT is run-regression.sh's output directory, VERSION the version it ran, DIR a checkout of
 hardwood-benchmark-results, and --hardwood-repo a Hardwood clone, where the commit a version
 was built from gives each row its time. Run from the benchmarks checkout that produced OUT.
 
-Per contender one row is appended to series/<machine epoch>/<Benchmark>/<contender>@<epoch>.csv,
+Per contender one row is added to series/<machine epoch>/<Benchmark>/<contender>@<epoch>.csv,
 or to its .unsettled.csv twin when settling.py calls it not settled or bimodal: the commit's
 time, commit, version, when the run began, its verdict, and the metrics RegressionProfiler
 recorded (the median of the forks' mean time and its spread, each fork's mean, and the
 median CPU, JIT, GC and allocation per operation and the largest live-set peak over the
-measurement iterations of every fork). The run's raw results go to runs/<start>-<version>/.
+measurement iterations of every fork). A series is kept in the order of its rows' time, the
+measured commit's, since Otava reads rows in file order: an older version recorded later
+lands before the newer ones. The run's raw results go to runs/<start>-<version>/.
+--summary writes what was recorded as JSON: the commit, the version, the machine epoch, and
+per contender its benchmark, script, series file and whether its series is new.
 otava.yaml is written again from every series file, one Otava test per file.
 
 A contender's epoch hashes what it measures: its script's preset and the iteration counts
@@ -22,6 +26,7 @@ hash of either starts a new series, so that no series mixes two definitions or m
 """
 import argparse
 import csv
+import datetime
 import glob
 import hashlib
 import json
@@ -148,6 +153,7 @@ def main():
     parser.add_argument("version")
     parser.add_argument("--results", required=True)
     parser.add_argument("--hardwood-repo", required=True)
+    parser.add_argument("--summary")
     args = parser.parse_args()
 
     with open(os.path.join(args.out, "manifest.json")) as f:
@@ -181,7 +187,7 @@ def main():
                           capture_output=True, text=True, check=True).stdout.strip()
 
     common = common_preset()
-    recorded = 0
+    recorded = []
     for (cls, contender), rows in sorted(records.items()):
         method = contender.split("[", 1)[0]
         params = sorted({json.dumps(r["params"], sort_keys=True) for r in rows})
@@ -212,14 +218,11 @@ def main():
                "live_bytes": number(max(live) if live else None)}
         series = os.path.join(args.results, "series", machine_epoch, cls)
         os.makedirs(series, exist_ok=True)
-        path = os.path.join(series, "{}@{}{}.csv".format(contender, epoch, ".unsettled" if verdict else ""))
-        new = not os.path.exists(path)
-        with open(path, "a", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=COLUMNS)
-            if new:
-                writer.writeheader()
-            writer.writerow(row)
-        recorded += 1
+        base = os.path.join(series, "{}@{}".format(contender, epoch))
+        new = not os.path.exists(base + ".csv") and not os.path.exists(base + ".unsettled.csv")
+        add_row(base + (".unsettled.csv" if verdict else ".csv"), row)
+        recorded.append({"benchmark": cls, "contender": contender, "script": script, "epoch": epoch,
+                         "file": os.path.relpath(base + ".csv", args.results), "verdict": verdict, "new": new})
 
     raw = os.path.join(args.results, "runs", "{}-{}".format(manifest["started"].replace(":", ""), args.version))
     os.makedirs(raw, exist_ok=True)
@@ -234,8 +237,32 @@ def main():
             shutil.copy(path, dest)
 
     write_otava(args.results)
-    print("recorded {} contenders of {} ({}) at {}, machine {}".format(recorded, args.version, commit[:9], time,
+    if args.summary:
+        with open(args.summary, "w") as f:
+            json.dump({"commit": commit, "version": args.version, "time": time, "machine": machine_epoch,
+                       "run": manifest["started"], "contenders": recorded}, f, indent=2)
+    print("recorded {} contenders of {} ({}) at {}, machine {}".format(len(recorded), args.version, commit[:9], time,
                                                                       machine_epoch))
+
+
+def add_row(path, row):
+    """Adds `row` to the series file `path`, keeping its rows in the order of their time and
+    then of their run; a row of the same run and commit is replaced."""
+    rows = []
+    if os.path.exists(path):
+        with open(path, newline="") as f:
+            rows = [r for r in csv.DictReader(f) if (r["run"], r["commit"]) != (row["run"], row["commit"])]
+    rows.append({k: str(v) for k, v in row.items()})
+    rows.sort(key=lambda r: (instant(r["time"]), r["run"]))
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=COLUMNS, restval="")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def instant(iso):
+    """An ISO 8601 time with offset as UTC seconds, so that offsets sort alike."""
+    return datetime.datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()
 
 
 def write_otava(results):

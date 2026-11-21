@@ -211,7 +211,27 @@ preset shares, its method's source, its parameters and its fixture's size to thr
 epoch the manifest's description of the machine and JVM, so that no series mixes two
 definitions or two machines. A row's time is the measured commit's, so that a backfilled
 release sorts before later commits; rows that did not settle go to a twin file Otava does
-not read.
+not read. A series is kept in the order of its rows' time, since Otava reads rows in file
+order.
+
+**The nightly job.** `nightly.sh` measures `origin/main` once a night on the N300 and
+records it. Otava runs on the box, as the job's last step, because confirming a change
+point needs the box. Otava fits each series' whole history each night, so a change point
+it found before comes back, possibly a row or two away; `changes.json` in the results
+repository keeps every change point found, keyed by series and commit, with its status:
+pending, confirmed, refuted, an improvement, or history. Only a regression whose commit
+after is one the job measured as its own night (`nights.csv`) in the last week is
+confirmed: the commit before and the commit after run interleaved, and the regression is
+confirmed when every fork of the commit after is worse than every fork of the commit before,
+by at least half the change Otava found. A change point that older or backfilled rows bring
+is history and alerts no one. A confirmed regression opens an issue on Hardwood.
+
+A night needs the box to itself: it holds a lock, starts only when no JVM runs and nobody
+else pinned the clock, and is void if a JVM outside its control group runs while it
+measures; a void or skipped night writes a report saying why. When a contender's epoch
+starts, the last release and the previous night's commit are queued for measurement under
+the new definition, so that the new series has comparison points; queued work runs after
+the night's own while time remains.
 `--fail-on-regression` exits non-zero when a Hardwood contender is slower beyond the band.
 
 **The comparator.** `charts/compare-runs.py BASE NEW` takes two snapshots, each a run
