@@ -14,7 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import dev.hardwood.InputFile;
-import dev.hardwood.Validity;
+import dev.hardwood.benchmarks.compat.validity.LeafValidity;
+import dev.hardwood.benchmarks.compat.writer.Writers;
 import dev.hardwood.metadata.PhysicalType;
 import dev.hardwood.metadata.RepetitionType;
 import dev.hardwood.reader.ColumnReader;
@@ -88,7 +89,7 @@ final class TaxiDoubles {
         try (ColumnReader column = reader.columnReader(name)) {
             while (row < into.length && column.nextBatch()) {
                 double[] batch = column.getDoubles();
-                Validity validity = column.getLeafValidity();
+                LeafValidity validity = LeafValidity.of(column);
                 int count = Math.min(column.getValueCount(), into.length - row);
                 for (int i = 0; i < count; i++) {
                     nulls[row] = validity.isNull(i);
@@ -106,7 +107,7 @@ final class TaxiDoubles {
     FileSchema schema() {
         FileSchema.Builder builder = FileSchema.builder("taxi_doubles");
         for (int c = 0; c < names.length; c++) {
-            builder.primitive(names[c], PhysicalType.DOUBLE, repetition[c]);
+            Writers.primitive(builder, names[c], PhysicalType.DOUBLE, repetition[c]);
         }
         return builder.build();
     }

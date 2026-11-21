@@ -9,7 +9,6 @@ package dev.hardwood.benchmarks.nested;
 import dev.hardwood.HardwoodContext;
 import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
-import dev.hardwood.benchmarks.BinaryWindows;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,7 +42,8 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.InputFile;
-import dev.hardwood.Validity;
+import dev.hardwood.benchmarks.compat.binary.BinaryWindows;
+import dev.hardwood.benchmarks.compat.validity.LeafValidity;
 import dev.hardwood.metadata.LogicalType;
 import dev.hardwood.reader.ColumnReader;
 import dev.hardwood.reader.ColumnReaders;
@@ -453,7 +453,7 @@ public class NestedScanBenchmark {
     /// Reads the leaf values of the batch's first `records` records.
     private static long scanColumn(ColumnReader column, int records, Checksum cs) {
         int values = leafValuesOf(column, records);
-        Validity validity = column.getLeafValidity();
+        LeafValidity validity = LeafValidity.of(column);
         long acc = 0;
         switch (column.getColumnSchema().type()) {
             case INT32 -> {

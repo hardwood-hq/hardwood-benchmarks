@@ -8,6 +8,7 @@
 package dev.hardwood.benchmarks.filter;
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.EventFileGenerator;
+import dev.hardwood.benchmarks.Features;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -186,6 +187,11 @@ public class FilterBenchmark {
                 .warmupTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .measurementTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .forks(Integer.getInteger("perf.forks", 1));
+        if (!Features.supported("filter-unprojected")) {
+            // Its filter tests a column outside its projection, which an older row reader refuses.
+            Features.reportUnsupported("hardwoodRowReader", "filter-unprojected");
+            opts.exclude("FilterBenchmark\\.hardwoodRowReader$");
+        }
         if (param != null && !param.isBlank()) {
             opts.param("selectivity", param);
         }
