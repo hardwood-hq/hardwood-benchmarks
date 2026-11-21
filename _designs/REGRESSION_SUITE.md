@@ -151,8 +151,11 @@ check what each version runs. It starts the emulated S3 endpoint once for the wh
 
 With one version a run ends in tables. With several it also writes `verdict.txt`, comparing
 the first version with the last, and one version chart per benchmark; `not-run.txt` gives the
-reason for every benchmark a version could not run. Two scripts that time one benchmark class,
-`run-nested.sh` and `run-nested-columns.sh`, have their results joined.
+reason for every benchmark a version could not run. A benchmark class belongs to one script,
+since its meta sidecar holds the fixture a contender's series is keyed on; a run in which two
+scripts write the same class's results fails. `run-nested-columns.sh` therefore times
+`NestedColumnScanBenchmark`, which reads the Overture file as `run-nested.sh`'s column readers
+do, under a preset of its own.
 
 **The comparator.** `charts/compare-runs.py BASE NEW` prints per contender the base time, the
 new time, the delta and a verdict, calling a delta only when it clears a noise band: from the

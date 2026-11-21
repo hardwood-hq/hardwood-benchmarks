@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -36,7 +37,9 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.results.RunResult;
 import org.openjdk.jmh.runner.Runner;
+import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
@@ -91,7 +94,7 @@ import dev.hardwood.schema.SchemaNode;
 @Fork(1)
 public class NestedScanBenchmark {
 
-    private static final Path FILE = Path.of(System.getProperty(
+    static final Path FILE = Path.of(System.getProperty(
             "perf.file", "target/overture-maps-data/overture_places.zstd.parquet"));
 
     /// Rows each scan reads before stopping; `0` (the default) reads the whole file.
@@ -119,7 +122,7 @@ public class NestedScanBenchmark {
 
     /// Open the nested file. Runs per JMH trial — each forked JVM needs its own
     /// [inputFile] — and once from [main] to prime the standalone correctness gate.
-    private void loadData() throws IOException {
+    void loadData() throws IOException {
         inputFile = InputFile.of(OvertureMapsDownloader.ensure(FILE));
     }
 
@@ -127,7 +130,7 @@ public class NestedScanBenchmark {
     /// timing counts (AvroParquetReader is the reference). Run once from [main],
     /// outside JMH's per-trial dispatch — the checksum is deterministic, so a
     /// single verification covers every fork and benchmark method.
-    private void runGate() throws IOException {
+    void runGate() throws IOException {
         System.out.println("Correctness gate — reconstructing every record, comparing to AvroParquetReader:");
         Checksum ref = avro();
         check("Hardwood row reader, typed", hardwoodRowTyped(), ref);
@@ -417,6 +420,11 @@ public class NestedScanBenchmark {
     /// Timed column scan: every leaf column through [ColumnReaders], each batch's
     /// values touched from their arrays, skipping nulls by the leaf validity.
     private long hardwoodColumnScan() throws IOException {
+        return columnScan(inputFile);
+    }
+
+    /// The timed column scan of `inputFile`, shared with [NestedColumnScanBenchmark].
+    static long columnScan(InputFile inputFile) throws IOException {
         long acc = 0;
         try (HardwoodContext context = BenchContext.create();
              ParquetFileReader reader = ParquetFileReader.open(inputFile, context);
@@ -732,13 +740,23 @@ public class NestedScanBenchmark {
     public static void main(String[] args) throws Exception {
         // Gate-check mode: verify the record pair agrees, then exit — no JMH.
         if (Boolean.getBoolean("perf.gate")) {
-            NestedScanBenchmark gate = new NestedScanBenchmark();
-            gate.loadData();
-            gate.runGate();
+            gate();
             return;
         }
+        report(run(NestedScanBenchmark.class), NestedScanBenchmark.class);
+    }
+
+    /// Runs the correctness gate over [#FILE].
+    static void gate() throws IOException {
+        NestedScanBenchmark gate = new NestedScanBenchmark();
+        gate.loadData();
+        gate.runGate();
+    }
+
+    /// Runs the contenders of `benchmark` that the run's `perf.*` properties select.
+    static Collection<RunResult> run(Class<?> benchmark) throws RunnerException {
         ChainedOptionsBuilder opts = new OptionsBuilder()
-                .include(BenchReport.includePattern(NestedScanBenchmark.class))
+                .include(BenchReport.includePattern(benchmark))
                 .warmupIterations(Integer.getInteger("perf.warmup", 3))
                 .measurementIterations(Integer.getInteger("perf.meas", 5))
                 .warmupTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
@@ -765,8 +783,11 @@ public class NestedScanBenchmark {
                 }
             }
         }
-        java.util.Collection<org.openjdk.jmh.results.RunResult> results = new Runner(opts.build()).run();
+        return new Runner(opts.build()).run();
+    }
 
+    /// Records the dataset `results` of `benchmark` read in the meta sidecar and its throughput.
+    static void report(Collection<RunResult> results, Class<?> benchmark) throws IOException {
         // Derive M rows/s and MB/s over the single Overture file, and record the
         // dataset in the meta sidecar the charts and the archived run read. The
         // release is part of the provenance: the STAC catalog serves only the most
@@ -784,7 +805,7 @@ public class NestedScanBenchmark {
         }
         BenchReport.writeRunParams(rows, bytes, "release", OvertureMapsDownloader.releaseOf(FILE),
                 BenchReport.leafComposition(files));
-        BenchReport.printFullScanThroughput(results, NestedScanBenchmark.class, rows, bytes);
-        BenchReport.appendThroughputTsv(results, NestedScanBenchmark.class, rows, bytes);
+        BenchReport.printFullScanThroughput(results, benchmark, rows, bytes);
+        BenchReport.appendThroughputTsv(results, benchmark, rows, bytes);
     }
 }

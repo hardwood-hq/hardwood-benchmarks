@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Nested column-reader regression: the column readers over the whole Overture Maps
-# places file, which run-nested.sh's regression preset caps at 20,000 rows. See
+# Nested column-reader regression: NestedColumnScanBenchmark, the column readers over the
+# whole Overture Maps places file, which run-nested.sh's regression preset caps at 20,000 rows. See
 # ./run-nested-columns.sh --help.
 #
 set -euo pipefail
@@ -25,12 +25,12 @@ Regression preset (--regression): the whole file, --warmup 8 --meas 5 --time 2 (
 0.7 to 3 s, longer than the common preset's iterations; its contenders settle within it on an Intel N300 at 1.50 GHz); contender hardwoodColumnReaders
 Quick profile (run-regression.sh --profile quick): contenders matching hardwoodColumnReaders
 
-The benchmark is run-nested.sh's (NestedScanBenchmark); this script only gives it a
-second regression preset. run-nested.sh's preset reads 20,000 rows, where the read is
+The benchmark is NestedColumnScanBenchmark, which reads the file as run-nested.sh's
+hardwoodColumnReaders does, under a regression preset of its own. run-nested.sh's preset reads 20,000 rows, where the read is
 mostly per-read setup and its typed row reader is bound by its consumer thread; over the
 whole file the column readers are bound by decoding, so a change to nested decoding or
 to the real-items view shows here."
 
 bench_parse_args "$@"
 bench_build
-bench_run dev.hardwood.benchmarks.nested.NestedScanBenchmark
+bench_run dev.hardwood.benchmarks.nested.NestedColumnScanBenchmark

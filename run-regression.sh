@@ -223,16 +223,17 @@ for s in "${SCRIPTS[@]}"; do
       t=$(date +%s)
       BENCH_LOG=0 BENCH_SMOKE="$SMOKE" BENCH_PROFILE="$PROFILE" ./run-"$s".sh --regression --hardwood-version "$v" > "$dest/$s.log" 2>&1
       rc=$?
-      # Two scripts may time the same benchmark class (run-nested.sh and
-      # run-nested-columns.sh), each its own contenders: their results are joined.
+      # Each benchmark class belongs to one script: its meta sidecar holds that script's
+      # fixture, which recording keys a contender's series on.
       for f in target/bench-throughput-*.tsv target/bench-meta-*.tsv target/bench-metrics-*.jsonl; do
         [ -f "$f" ] || continue
         to="$dest/$(basename "$f")"
-        case "$f" in
-          *bench-throughput-*) if [ -f "$to" ]; then tail -n +2 "$f" >> "$to"; else cp "$f" "$to"; fi ;;
-          *bench-metrics-*) cat "$f" >> "$to" ;;
-          *) [ -f "$to" ] || cp "$f" "$to" ;;
-        esac
+        if [ -f "$to" ]; then
+          echo "run-$s.sh wrote $(basename "$f"), which another script of this run already wrote:" \
+            "a benchmark class must belong to one script" >&2
+          exit 2
+        fi
+        cp "$f" "$to"
         echo "$s $(basename "$f")" >> "$OUT/files.txt"
       done
       line="round $round/$ROUNDS  $v  $s  exit $rc  $(( $(date +%s) - t ))s"
