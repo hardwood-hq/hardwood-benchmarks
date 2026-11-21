@@ -155,6 +155,54 @@ def number(value, digits=6):
     return "" if value is None else "{:.{}g}".format(value, digits)
 
 
+def summarise(out, version):
+    """What a run of `version` in run-regression.sh's output `out` measured, as recording keys and
+    values it: the manifest, the machine epoch and its description, and per contender its
+    benchmark, script, definition, epoch, verdict and values. Reads nothing but `out` and this
+    checkout's scripts and sources."""
+    with open(os.path.join(out, "manifest.json")) as f:
+        manifest = json.load(f)
+    machine = {k: manifest.get(k) for k in MACHINE_KEYS}
+    vdir = os.path.join(out, version)
+    runs = sorted(d for d in glob.glob(os.path.join(vdir, "run-*")) if os.path.isdir(d))
+    if not runs:
+        raise SystemExit("record-results: no runs of {} in {}".format(version, out))
+    verdicts = settling.verdicts(runs)
+    files = scripts_by_file(out)
+    records, metas = {}, {}
+    for run in runs:
+        for key, rows in metric_rows(run).items():
+            records.setdefault(key, []).extend(rows)
+            metas.setdefault(key[0], meta(run, key[0]))
+
+    common = common_preset()
+    contenders = []
+    for (cls, contender), rows in sorted(records.items()):
+        method = contender.split("[", 1)[0]
+        params = sorted({json.dumps(r["params"], sort_keys=True) for r in rows})
+        script = script_of(cls, method, files.get("bench-metrics-{}.jsonl".format(cls), []))
+        fixture = {k: fixture_value(k, metas[cls][k]) for k in FIXTURE_KEYS if k in metas[cls]}
+        definition = {"script": script, "preset": shell_value("run-{}.sh".format(script), "BENCH_REGRESSION_PRESET"),
+                      "common": common, "method": method_source(cls, method), "params": params,
+                      "fixture": fixture}
+        by_fork = {}
+        for r in rows:
+            by_fork.setdefault(r["fork"], []).append(r["score"])
+        fork_means = [statistics.mean(v) for v in by_fork.values()]
+        wall = statistics.median(fork_means)
+        live = [r["liveBytes"] for r in rows if r["liveBytes"] is not None]
+        contenders.append({
+            "benchmark": cls, "contender": contender, "script": script, "definition": definition,
+            "epoch": "e" + digest(definition), "verdict": verdicts.get((cls, contender), ""),
+            "wall_ms": wall,
+            "wall_spread_pct": (max(fork_means) - min(fork_means)) / 2 / wall * 100 if len(fork_means) > 1 else None,
+            "wall_forks_ms": fork_means,
+            "cpu_ms": median_of(rows, "cpuMs"), "jit_ms": median_of(rows, "jitMs"), "gc_ms": median_of(rows, "gcMs"),
+            "alloc_bytes": median_of(rows, "allocBytes"), "live_bytes": max(live) if live else None})
+    return {"manifest": manifest, "machine": machine, "machine_epoch": "m" + digest(machine), "runs": runs,
+            "metas": metas, "contenders": contenders}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("out")
@@ -165,27 +213,14 @@ def main():
     args = parser.parse_args()
 
     rekey(args.results)
-    with open(os.path.join(args.out, "manifest.json")) as f:
-        manifest = json.load(f)
-    machine = {k: manifest.get(k) for k in MACHINE_KEYS}
-    machine_epoch = "m" + digest(machine)
+    summary = summarise(args.out, args.version)
+    manifest, machine_epoch, runs = summary["manifest"], summary["machine_epoch"], summary["runs"]
     machines = os.path.join(args.results, "machines")
     os.makedirs(machines, exist_ok=True)
     with open(os.path.join(machines, machine_epoch + ".json"), "w") as f:
-        json.dump(machine, f, indent=2, sort_keys=True)
+        json.dump(summary["machine"], f, indent=2, sort_keys=True)
 
-    vdir = os.path.join(args.out, args.version)
-    runs = sorted(d for d in glob.glob(os.path.join(vdir, "run-*")) if os.path.isdir(d))
-    if not runs:
-        raise SystemExit("record-results: no runs of {} in {}".format(args.version, args.out))
-    verdicts = settling.verdicts(runs)
-    files = scripts_by_file(args.out)
-    records, metas = {}, {}
-    for run in runs:
-        for key, rows in metric_rows(run).items():
-            records.setdefault(key, []).extend(rows)
-            metas.setdefault(key[0], meta(run, key[0]))
-
+    metas = summary["metas"]
     built = metas[next(iter(metas))].get("hardwood", "")
     m = re.search(r"\(([0-9a-f]{7,40})\)", built)
     if not m:
@@ -195,42 +230,25 @@ def main():
     time = subprocess.run(["git", "-C", args.hardwood_repo, "show", "-s", "--format=%cI", commit],
                           capture_output=True, text=True, check=True).stdout.strip()
 
-    common = common_preset()
     recorded = []
-    for (cls, contender), rows in sorted(records.items()):
-        method = contender.split("[", 1)[0]
-        params = sorted({json.dumps(r["params"], sort_keys=True) for r in rows})
-        script = script_of(cls, method, files.get("bench-metrics-{}.jsonl".format(cls), []))
-        fixture = {k: fixture_value(k, metas[cls][k]) for k in FIXTURE_KEYS if k in metas[cls]}
-        definition = {"script": script, "preset": shell_value("run-{}.sh".format(script), "BENCH_REGRESSION_PRESET"),
-                      "common": common, "method": method_source(cls, method), "params": params,
-                      "fixture": fixture}
-        epoch = "e" + digest(definition)
+    for c in summary["contenders"]:
+        cls, contender, epoch, verdict = c["benchmark"], c["contender"], c["epoch"], c["verdict"]
         epochs = os.path.join(args.results, "epochs", cls, contender)
         os.makedirs(epochs, exist_ok=True)
         with open(os.path.join(epochs, epoch + ".json"), "w") as f:
-            json.dump(definition, f, indent=2, sort_keys=True)
-
-        by_fork = {}
-        for r in rows:
-            by_fork.setdefault(r["fork"], []).append(r["score"])
-        fork_means = [statistics.mean(v) for v in by_fork.values()]
-        wall = statistics.median(fork_means)
-        spread = (max(fork_means) - min(fork_means)) / 2 / wall * 100 if len(fork_means) > 1 else None
-        live = [r["liveBytes"] for r in rows if r["liveBytes"] is not None]
-        verdict = verdicts.get((cls, contender), "")
+            json.dump(c["definition"], f, indent=2, sort_keys=True)
         row = {"time": time, "commit": commit, "version": args.version, "run": manifest["started"],
-               "schema": SCHEMA, "verdict": verdict, "wall_ms": number(wall), "wall_spread_pct": number(spread, 3),
-               "wall_forks_ms": ";".join(number(v) for v in fork_means),
-               "cpu_ms": number(median_of(rows, "cpuMs")), "jit_ms": number(median_of(rows, "jitMs")),
-               "gc_ms": number(median_of(rows, "gcMs")), "alloc_bytes": number(median_of(rows, "allocBytes")),
-               "live_bytes": number(max(live) if live else None)}
+               "schema": SCHEMA, "verdict": verdict, "wall_ms": number(c["wall_ms"]),
+               "wall_spread_pct": number(c["wall_spread_pct"], 3),
+               "wall_forks_ms": ";".join(number(v) for v in c["wall_forks_ms"]),
+               "cpu_ms": number(c["cpu_ms"]), "jit_ms": number(c["jit_ms"]), "gc_ms": number(c["gc_ms"]),
+               "alloc_bytes": number(c["alloc_bytes"]), "live_bytes": number(c["live_bytes"])}
         series = os.path.join(args.results, "series", machine_epoch, cls)
         os.makedirs(series, exist_ok=True)
         base = os.path.join(series, "{}@{}".format(contender, epoch))
         new = not os.path.exists(base + ".csv") and not os.path.exists(base + ".unsettled.csv")
         add_row(base + (".unsettled.csv" if verdict else ".csv"), row)
-        recorded.append({"benchmark": cls, "contender": contender, "script": script, "epoch": epoch,
+        recorded.append({"benchmark": cls, "contender": contender, "script": c["script"], "epoch": epoch,
                          "file": os.path.relpath(base + ".csv", args.results), "verdict": verdict, "new": new})
 
     raw = os.path.join(args.results, "runs", "{}-{}".format(manifest["started"].replace(":", ""), args.version))

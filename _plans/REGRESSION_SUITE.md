@@ -29,9 +29,8 @@ What is built is described in [the regression suite design](../_designs/REGRESSI
 
 1. **Calibration.** The nightly job runs with `--no-alert`, on `origin/main`, for a few nights, to see how often Otava flags change points that the confirmation run refutes, and how often it confirms one with nothing behind it. That sets whether Otava's significance and magnitude thresholds need tightening for the number of series at the target false-alarm rate.
 2. **Alerts on.** Drop `--no-alert` from the timer once the calibration nights show the false-alarm rate is acceptable.
-3. **Quick against history.** A skill that, from a Hardwood branch, installs it on the N300 as a snapshot, runs the `quick` profile there under the box's lock and clock pin, fetches the latest nightly results of the same machine epoch from the results repository, and shows per contender the latest nightly value (with its commit), this run's value, and the delta. The table comes from a script in this repository (`charts/against-history.py`), so it runs without the skill as well. Elsewhere than the N300, `quick` keeps comparing against a baseline version named beside the one under test.
-4. **Reference.** Every night also measures a pinned release on a few contenders; a reference that moves beyond its band marks the night as disturbed, and nothing is recorded.
-5. **Cold start.** One or two paths are also timed as the first operation of a fresh JVM, over many forks, since a library is often used for a single read per process.
+3. **Reference.** Every night also measures a pinned release on a few contenders; a reference that moves beyond its band marks the night as disturbed, and nothing is recorded.
+4. **Cold start.** One or two paths are also timed as the first operation of a fresh JVM, over many forks, since a library is often used for a single read per process.
 
 The backfill of 1.0.0.Final, 1.1.0.Beta1 to Beta3 and selected main commits is under way through the job's queue.
 
@@ -44,5 +43,5 @@ When these are done, their design goes into the design document and this plan is
 - Warmup is time-based per preset, sized on the N300. One operation count per script does not fit contenders whose settle points differ twentyfold; operation counts per contender would need a JMH run per contender in every benchmark.
 - 3 forks of 3 measurement iterations per contender, nightly.
 - Calibration runs on `origin/main` rather than one pinned commit, to get a feel for the noise over a few nights first.
-- `quick` against history compares with the latest nightly value of each contender, shown beside its commit.
+- `quick` against history compares with the latest nightly value of each contender, shown beside its commit; on any other machine than the N300, `quick` compares against a baseline version named beside the one under test.
 - The nightly job pushes straight to the results repository's `main`, as a bot identity with a fine-grained token for that repository only, and alerts by opening an issue on `hardwood-hq/hardwood` with a second token, for issues on that repository only.
