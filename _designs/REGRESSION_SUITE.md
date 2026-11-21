@@ -162,6 +162,17 @@ key or preset, or two snapshots of one Hardwood build, draws a warning before an
 `--control REGEX` marks pinned contenders, whose moves are reported as drift, never as a
 regression.
 
+**Against the history.** `charts/against-history.py OUT VERSION --results DIR` compares one
+run with the latest nightly results of the same machine: per contender, the latest settled
+value of the series the run would be recorded into (same contender, epoch and machine epoch),
+the commit it measured, the run's value and the delta, for wall time, CPU, allocation or the
+live-set peak. It summarises the run as recording does (`record-results.py`'s `summarise`), so
+the series it compares with is the one recording would extend. The latest nightly value is a
+single row, so a delta is called worse or better only beyond a fixed band: a hint, not a
+verdict. A contender whose definition differs from the nightly one has no series to compare
+with, and says so. Hardwood's `hardwood-quick-vs-nightly` skill runs the `quick` profile for
+a branch on the N300 and shows this table.
+
 **The version chart.** `charts/make-version-chart.py` charts each Hardwood contender across
 any number of snapshots in the order given, labelled with the version, and the commit for a
 snapshot build. A version that could not run a contender is drawn as missing.

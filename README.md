@@ -146,6 +146,12 @@ appends a version's run to a checkout of
 series per contender for [Apache Otava](https://otava.apache.org/) to find change points
 in; that repository's README describes its layout.
 
+**Against the nightly history.** `charts/against-history.py OUT VERSION --results DIR` shows
+a run of the N300 against the latest nightly results: per contender the latest nightly value
+and its commit, this run's value and the delta (`--metric wall|cpu|alloc|live`). A delta beyond
+5 % is a hint to look closer, not a verdict. Hardwood's `hardwood-quick-vs-nightly` skill runs
+the quick profile for a branch on the N300 and shows this table.
+
 **Nightly.** `./nightly.sh` is the nightly job of the N300, started by a systemd timer that
 cloud-boxes installs. It builds Hardwood's `origin/main`, runs the nightly profile on the
 pinned clock, records it, lets Otava find change points over the machine's series, confirms
