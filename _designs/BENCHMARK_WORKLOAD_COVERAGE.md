@@ -125,19 +125,45 @@ sets is an error. The meta sidecar records the preset, and the comparator and th
 version chart treat it as part of the dataset key, so a regression number is never
 compared with one measured to a published definition.
 
-| Script | Preset sizes | Contenders |
-| --- | --- | --- |
-| `run-flat.sh` | taxi 2025-01 | `hardwoodColumnar`, `hardwoodRowReaderIndexed` |
-| `run-filter.sh` | 5M rows | `hardwoodDefault`, `hardwoodRowReader` |
-| `run-bloom.sh` | 8M rows, absent-key probe | `hardwoodBloom`, `hardwoodNoBloom` |
-| `run-nested.sh` | 20,000 rows | Hardwood |
-| `run-fixedlist.sh` | 8M values, `k` = 768 | the fast-path arms |
-| `run-window.sh` | `last25pct` | Hardwood |
-| `run-dictfilter.sh` | fixed | Hardwood |
-| `run-1brc.sh` | 100M rows | `hardwoodColumnIds`, `hardwoodColumnSplits`, `hardwoodColumnFanOut` |
-| `run-write.sh` | 500,000 rows | Hardwood |
-| `run-encodings.sh` | 1M rows, ZSTD, `BYTE_STREAM_SPLIT` and `ALP` | Hardwood |
-| `run-s3.sh` | fixed | Hardwood, except `hardwoodManySmallFiles` |
+Every preset contender covers a path no other one does, judged on wall time, CPU,
+allocation and live-set peak; the `quick` profile runs the ones marked so.
+
+| Script | Preset | Contender | Covers alone | `quick` |
+| --- | --- | --- | --- | --- |
+| `run-flat.sh` | taxi 2025-01 | `hardwoodColumnar` | full scan of every flat type through the column readers | yes |
+| | | `hardwoodRowReaderIndexed` | the row reader materialising every column of a flat row | yes |
+| `run-narrow.sh` | taxi 2016-01 | `hardwoodColumnar` | a projection: a few columns fetched and decoded of many | yes |
+| | | `hardwoodRowReaderIndexed` | the row reader over a projection | |
+| `run-nested-columns.sh` | Overture places, whole file | `hardwoodColumnReaders` | nested decoding, decode-bound | yes |
+| `run-nested.sh` | Overture places, 20,000 rows | `hardwoodRowReaderTyped` | nested record assembly through the typed row reader | |
+| `run-binary.sh` | fixed | `hardwoodColumnViews` | `PLAIN` byte arrays through their byte views | |
+| | | `hardwoodRowStrings` | byte arrays materialised as `String`s | |
+| `run-filter.sh` | 5M rows | `hardwoodDefault` | statistics and page-index pruning in the column readers, selective (5 %) and matching every row | `selective` |
+| | | `hardwoodRowReader` | pruning and row matching in the row reader | `selective` |
+| `run-window.sh` | `last25pct` | `hardwoodColumnFiltered` | pruned row groups, the one straddling the bound, and row groups proven to match whose filter column is not read | |
+| | | `hardwoodRowFiltered` | the same through the row reader | |
+| `run-dictfilter.sh` | fixed | `hardwoodRowIn` | membership decided once per dictionary entry | yes |
+| | | `hardwoodRowLtWide` | an ordering decided per entry of a large dictionary | |
+| `run-bloom.sh` | 8M rows, absent-key probe | `hardwoodBloom` | bloom-filter pruning of a point lookup | |
+| `run-1brc.sh` | 100M rows | `hardwoodColumnIds` | an aggregating consumer by dictionary id | |
+| | | `hardwoodColumnSplits` | reading by row-group byte-range splits | |
+| `run-fixedlist.sh` | 8M values, `k` = 768 | `columnFast`, `rowFast` | the fixed-size-list fast path in both readers | |
+| `run-write.sh` | 500,000 rows, ZSTD | `hardwoodColumnar` | the column writer | yes |
+| | | `hardwoodRow` | the row writer | |
+| `run-encodings.sh` | 1M rows, ZSTD, `BYTE_STREAM_SPLIT` and `ALP` | `hardwoodRead` | decoding either encoding | |
+| | | `hardwoodWrite` | `ALP` encoding; `BYTE_STREAM_SPLIT`'s near-trivial encoding comes with it, since JMH selects methods, not parameter values | |
+| `run-s3.sh` | fixed | `hardwoodProjectedScan` | a projected remote fetch | |
+| | | `hardwoodWideFilteredScan` | a read whose page index is large against its data | |
+| | | `hardwoodLargeBloomLookup` | bloom filters of 16 MB read remotely | |
+| | | `hardwoodMultiFileScan` | one reader over twelve remote files | |
+| | | `hardwoodRemoteBesideWideRemote` | a read sharing its context's pool with a wide one | |
+
+`run-filter.sh`'s row reader matching every row stays for the same reason as the
+`BYTE_STREAM_SPLIT` write: a preset selects methods. `run-bloom.sh`'s statistics-only
+twin, `run-window.sh`'s unfiltered reads, `run-dictfilter.sh`'s membership over the large
+dictionary, `run-1brc.sh`'s fan-out, `run-nested.sh`'s column readers over 20,000 rows,
+`run-write.sh`'s SNAPPY codec and `run-s3.sh`'s filtered scan, small bloom lookup and local
+read beside a remote one each repeat a contender above, and run only outside `--regression`.
 
 A preset times Hardwood's contenders only: the suite compares Hardwood with itself, and
 interleaved rounds spread machine drift over every version.
