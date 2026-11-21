@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardwood regression history</title>
+<!-- Written by hardwood-benchmarks' charts/nightly.py page; reads history.json and the series files. -->
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1d1d1b; --muted: #6b6b66; --grid: #e4e4e0; --line: #2f6db5;
+    --fork: rgba(47, 109, 181, 0.28); --regression: #c2412d; --improvement: #2e8b57; --history: #9a9a94;
+    --release: #b0b0aa; --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161615; --fg: #e8e8e4; --muted: #9a9a94; --grid: #2c2c2a; --line: #6ea2e0;
+      --fork: rgba(110, 162, 224, 0.3); --regression: #e46a55; --improvement: #5cbf86; --history: #77776f;
+      --release: #55554f; --card: #1e1e1c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161615; --fg: #e8e8e4; --muted: #9a9a94; --grid: #2c2c2a; --line: #6ea2e0;
+    --fork: rgba(110, 162, 224, 0.3); --regression: #e46a55; --improvement: #5cbf86; --history: #77776f;
+    --release: #55554f; --card: #1e1e1c;
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
+  main { max-width: 1240px; margin: 0 auto; padding-block: 16px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 28px 0 8px; }
+  .meta, .legend, .note { color: var(--muted); font-size: 13px; }
+  .legend span { margin-right: 14px; white-space: nowrap; }
+  select { font: inherit; background: var(--card); color: var(--fg); border: 1px solid var(--grid); padding: 2px 6px; }
+  .row { background: var(--card); border: 1px solid var(--grid); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
+  .row h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; word-break: break-all; }
+  .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 900px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+  .chart .title { font-size: 12px; color: var(--muted); }
+  svg { width: 100%; height: auto; display: block; overflow: visible; }
+  svg text { fill: var(--muted); font-size: 10px; }
+  a { color: var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hardwood regression history</h1>
+  <div class="meta" id="meta">Loading…</div>
+  <p class="legend">
+    <span>● settled</span><span>○ not settled or bimodal</span><span style="color:var(--fork)">● each fork's mean (wall)</span>
+    <span style="color:var(--regression)">┃ confirmed regression</span><span style="color:var(--improvement)">┃ improvement</span>
+    <span style="color:var(--history)">┃ earlier change point</span><span style="color:var(--release)">┆ release</span>
+  </p>
+  <p class="note">Each metric is per operation, lower is better; the live set is the largest heap in use after a collection. Rows are placed at the measured commit's time. A break in a line is a new epoch: what the contender measures changed.
+    Machine: <select id="machine"></select></p>
+  <div id="content"></div>
+</main>
+<script>
+const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Live set", "B"]];
+const W = 280, H = 130, L = 46, R = 6, T = 14, B = 18;
+
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const head = lines.shift().split(",");
+  return lines.filter(l => l).map(l => {
+    const cells = l.split(","), row = {};
+    head.forEach((h, i) => row[h] = cells[i] ?? "");
+    row.t = Date.parse(row.time);
+    return row;
+  });
+}
+
+async function csv(path) {
+  if (!path) return [];
+  const response = await fetch(path);
+  return response.ok ? parseCsv(await response.text()) : [];
+}
+
+function format(value, unit) {
+  if (unit === "B") {
+    for (const [scale, suffix] of [[2 ** 30, "GiB"], [2 ** 20, "MiB"], [2 ** 10, "KiB"]]) {
+      if (Math.abs(value) >= scale) return (value / scale).toFixed(value / scale < 10 ? 1 : 0) + " " + suffix;
+    }
+    return value.toFixed(0) + " B";
+  }
+  return value < 10 ? value.toFixed(2) + " ms" : value < 100 ? value.toFixed(1) + " ms" : Math.round(value).toLocaleString() + " ms";
+}
+
+function el(name, attrs, text) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function chart(epochs, metric, unit, span, releases, changes) {
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img"});
+  const values = [];
+  for (const e of epochs) for (const r of e.rows) {
+    if (r[metric]) values.push(+r[metric]);
+    if (metric === "wall_ms" && r.wall_forks_ms) r.wall_forks_ms.split(";").forEach(v => v && values.push(+v));
+  }
+  if (!values.length) { svg.append(el("text", {x: L, y: H / 2}, "no data")); return svg; }
+  let lo = Math.min(...values), hi = Math.max(...values);
+  const pad = (hi - lo) * 0.08 || hi * 0.05 || 1;
+  lo -= pad; hi += pad;
+  const x = t => span[1] === span[0] ? L + (W - L - R) / 2 : L + (t - span[0]) / (span[1] - span[0]) * (W - L - R);
+  const y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  for (const v of [lo + pad, (lo + hi) / 2, hi - pad]) {
+    svg.append(el("line", {x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "var(--grid)"}));
+    svg.append(el("text", {x: L - 4, y: y(v) + 3, "text-anchor": "end"}, format(v, unit)));
+  }
+  for (const [version, t] of releases) {
+    svg.append(el("line", {x1: x(t), x2: x(t), y1: T, y2: H - B, stroke: "var(--release)", "stroke-dasharray": "2 3"}));
+    if (metric === "wall_ms") svg.append(el("text", {x: x(t) + 2, y: T - 3}, version));
+  }
+  for (const c of changes) {
+    const color = c.status === "confirmed" ? "var(--regression)" : c.kind === "improvement" ? "var(--improvement)" : "var(--history)";
+    const line = el("line", {x1: x(c.t), x2: x(c.t), y1: T, y2: H - B, stroke: color, "stroke-width": 1.5});
+    line.append(el("title", {}, `${c.status}: ${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`));
+    if (c.issue) { const a = el("a", {href: c.issue}); a.append(line); svg.append(a); } else svg.append(line);
+  }
+  for (const e of epochs) {
+    const settled = e.rows.filter(r => !r.verdict && r[metric]);
+    if (settled.length > 1) {
+      svg.append(el("polyline", {points: settled.map(r => `${x(r.t)},${y(+r[metric])}`).join(" "),
+        fill: "none", stroke: "var(--line)", "stroke-width": 1.2}));
+    }
+    for (const r of e.rows) {
+      if (!r[metric]) continue;
+      if (metric === "wall_ms" && r.wall_forks_ms) {
+        for (const v of r.wall_forks_ms.split(";")) if (v) svg.append(el("circle", {cx: x(r.t), cy: y(+v), r: 1.6, fill: "var(--fork)"}));
+      }
+      const dot = el("circle", {cx: x(r.t), cy: y(+r[metric]), r: 2.8,
+        fill: r.verdict ? "var(--card)" : "var(--line)", stroke: "var(--line)", "stroke-width": 1.2});
+      dot.append(el("title", {}, `${format(+r[metric], unit)}\n${r.version} (${r.commit.slice(0, 9)})\n${r.time.slice(0, 10)}${r.verdict ? "\n" + r.verdict : ""}`));
+      svg.append(dot);
+    }
+  }
+  svg.append(el("text", {x: L, y: H - 4}, new Date(span[0]).toISOString().slice(0, 10)));
+  svg.append(el("text", {x: W - R, y: H - 4, "text-anchor": "end"}, new Date(span[1]).toISOString().slice(0, 10)));
+  return svg;
+}
+
+async function render(history, machine) {
+  const content = document.getElementById("content");
+  content.textContent = "Loading…";
+  const series = history.series.filter(s => s.machine === machine);
+  await Promise.all(series.map(async s => {
+    const rows = [...await csv(s.file), ...await csv(s.unsettled)];
+    rows.sort((a, b) => a.t - b.t);
+    s.rows = rows;
+  }));
+  const all = series.flatMap(s => s.rows);
+  const span = [Math.min(...all.map(r => r.t)), Math.max(...all.map(r => r.t))];
+  const releases = [...new Map(all.filter(r => !r.version.includes("SNAPSHOT")).map(r => [r.version, r.t])).entries()];
+  const changes = history.changes.filter(c => c.machine === machine);
+  for (const c of changes) {
+    const s = series.find(s => s.file === c.file);
+    const row = s && s.rows.find(r => r.commit === c.commit);
+    c.t = row ? row.t : NaN;
+  }
+  const groups = new Map();
+  for (const s of series) {
+    const key = s.benchmark + "\u0000" + s.contender;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+  content.textContent = "";
+  let benchmark = null;
+  for (const [key, epochs] of [...groups.entries()].sort()) {
+    const [cls, contender] = key.split("\u0000");
+    if (cls !== benchmark) {
+      benchmark = cls;
+      const h = document.createElement("h2");
+      h.textContent = cls.replace(/Benchmark$/, "");
+      content.append(h);
+    }
+    const row = document.createElement("div");
+    row.className = "row";
+    const h = document.createElement("h3");
+    h.textContent = contender;
+    row.append(h);
+    const charts = document.createElement("div");
+    charts.className = "charts";
+    const files = new Set(epochs.map(e => e.file));
+    const own = changes.filter(c => files.has(c.file) && !isNaN(c.t));
+    for (const [metric, label, unit] of METRICS) {
+      const box = document.createElement("div");
+      box.className = "chart";
+      const title = document.createElement("div");
+      title.className = "title";
+      title.textContent = label;
+      box.append(title, chart(epochs, metric, unit, span, releases, own.filter(c => metric in c.metrics)));
+      charts.append(box);
+    }
+    row.append(charts);
+    content.append(row);
+  }
+}
+
+(async () => {
+  const history = await (await fetch("history.json")).json();
+  const machines = Object.entries(history.machines);
+  const select = document.getElementById("machine");
+  for (const [id, m] of machines) {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = `${m.cpu}, ${(m.max_freq_khz / 1e6).toFixed(2)} GHz, ${(m.java.match(/build ([^,)]+)/) || [, ""])[1]}, kernel ${m.kernel}`;
+    select.append(option);
+  }
+  const report = await fetch("reports/latest.md", {method: "HEAD"}).then(r => r.ok, () => false);
+  document.getElementById("meta").innerHTML =
+    `Nightly regression runs of <a href="https://github.com/hardwood-hq/hardwood">Hardwood</a>; updated ${history.generated}.` +
+    (report ? ` Latest night: <a href="reports/latest.md">report</a>.` : "");
+  select.addEventListener("change", () => render(history, select.value));
+  if (machines.length) render(history, select.value);
+})();
+</script>
+</body>
+</html>

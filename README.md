@@ -145,6 +145,17 @@ appends a version's run to a checkout of
 series per contender for [Apache Otava](https://otava.apache.org/) to find change points
 in; that repository's README describes its layout.
 
+**Nightly.** `./nightly.sh` is the nightly job of the N300, started by a systemd timer that
+cloud-boxes installs. It builds Hardwood's `origin/main`, runs the nightly profile on the
+pinned clock, records it, lets Otava find change points over the machine's series, confirms
+each new regression by running the commit before and the commit after side by side (two
+rounds, six forks each), and pushes the results, the night's report (`reports/`) and the
+history page to the results repository's `main`; a confirmed regression opens an issue on
+Hardwood. It runs only on an idle box whose clock nobody else pinned, and a JVM of another
+session during the run voids the night. `--no-alert` opens no issue, `--commit REF` measures
+another commit, `--enqueue "VERSION SCRIPTS"` and `--backfill` record older versions; see
+`./nightly.sh --help`. Its analysis steps are `charts/nightly.py`.
+
 `./run-gate.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
 benchmark alone:
 
