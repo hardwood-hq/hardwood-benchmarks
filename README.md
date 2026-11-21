@@ -88,7 +88,9 @@ comparison and chart tools read.
 ## Comparing versions
 
 `./run-regression.sh` measures one Hardwood version, or compares several, through the
-benchmarks' `--regression` presets:
+benchmarks' `--regression` presets. [The regression suite](_designs/REGRESSION_SUITE.md)
+describes how it works: the parts and what each writes, runs, series and epochs, the
+verdicts, and how the nightly job finds and confirms regressions.
 
 ```sh
 ./run-regression.sh 1.1.0-SNAPSHOT                          # quick profile, one version
@@ -103,9 +105,8 @@ few minutes: one 1 s iteration per contender in one fork, without warmup, then a
 which contenders ran on which version. `quick` and `nightly` first run a script's gate
 against the last version named, unless a gate passed before for the same sources (kept
 under `~/.cache/hardwood-benchmarks/gates`); a script whose gate fails is not timed. The
-contenders, what each covers alone and which
-the quick profile runs are listed in
-[the coverage design](_designs/BENCHMARK_WORKLOAD_COVERAGE.md#regression-tooling).
+contenders, what each covers alone and which the quick profile runs are listed in
+[the coverage design](_designs/BENCHMARK_WORKLOAD_COVERAGE.md#regression-contenders).
 
 **Measurement.** A preset warms each contender until it settles on the N300, the slowest
 machine the suite runs on, and runs it in three forks on a fixed 4 GB heap with G1. In each
