@@ -72,7 +72,7 @@ Done: stage 1 (#41); stages 2 and 3, but for gate skipping, and stage 4, but for
 
 All four come from standard JVM interfaces, so they are recorded on every machine; `quick` records them too, to compare with the nightly series.
 
-**Confirmation and alerts.** A change point Otava finds is confirmed before an alert: the flagged commit and its parent run interleaved, with more forks, in `run-regression.sh`'s two-version mode. Who receives a confirmed alert, and whether it opens an issue naming the commit range, is decided in stage 6.
+**Confirmation and alerts.** A change point Otava finds is confirmed before an alert: the flagged commit and its parent run interleaved, with more forks, in `run-regression.sh`'s two-version mode. A confirmed change point opens an issue on `hardwood-hq/hardwood` naming the series, the commit range, each metric's change and the night's report.
 
 ## The nightly job
 
@@ -82,8 +82,8 @@ Otava runs on the N300, as the last step of the nightly job, because confirming 
 2. `otava analyze --output json` over every series of the machine epoch. Otava fits the whole history each time and returns every change point, old ones included, which may shift as rows arrive.
 3. The change points are matched against `changes.json` in the results repository, the change points already handled, by series and commit range; the rest are new.
 4. Each new change point is confirmed: its commit and its parent, interleaved, five forks each.
-5. One commit to the results repository: the rows, the run's raw results, `changes.json` with each change point confirmed, refuted or pending, the night's report and the history page.
-6. Each confirmed change point is reported on the channel stage 6 decides.
+5. One commit, pushed straight to the results repository's `main` by a bot identity: the rows, the run's raw results, `changes.json` with each change point confirmed, refuted or pending, the night's report and the history page.
+6. Each confirmed change point opens an issue on `hardwood-hq/hardwood`.
 
 The night's report, `reports/<date>.md` with `reports/latest.md`, lists the contenders run, those not settled or bimodal, each contender against the median of its last nights, and the change points pending confirmation. A failed or skipped night (busy box, failed build) writes a report saying so. A check on the results repository's CI runs `otava validate` on each push.
 
@@ -95,3 +95,4 @@ The night's report, `reports/<date>.md` with `reports/latest.md`, lists the cont
 - Reading a sample of a taxi month to shorten flat and narrow is dropped: it changes their inputs and only halved warmup, since a smaller read makes per-read setup a larger share of each operation and that code needs its own invocations to compile.
 - Warmup is time-based per preset, sized on the N300. One operation count per script does not fit contenders whose settle points differ twentyfold; operation counts per contender would need a JMH run per contender in every benchmark.
 - 3 forks of 3 measurement iterations per contender, nightly.
+- The nightly job pushes straight to the results repository's `main`, as a bot identity with a fine-grained token, and alerts by opening an issue on `hardwood-hq/hardwood`.
