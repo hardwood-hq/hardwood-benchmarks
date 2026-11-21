@@ -95,4 +95,4 @@ The night's report, `reports/<date>.md` with `reports/latest.md`, lists the cont
 - Reading a sample of a taxi month to shorten flat and narrow is dropped: it changes their inputs and only halved warmup, since a smaller read makes per-read setup a larger share of each operation and that code needs its own invocations to compile.
 - Warmup is time-based per preset, sized on the N300. One operation count per script does not fit contenders whose settle points differ twentyfold; operation counts per contender would need a JMH run per contender in every benchmark.
 - 3 forks of 3 measurement iterations per contender, nightly.
-- The nightly job pushes straight to the results repository's `main`, as a bot identity with a fine-grained token, and alerts by opening an issue on `hardwood-hq/hardwood`.
+- The nightly job pushes straight to the results repository's `main`, as a bot identity with a fine-grained token for that repository only, and alerts by opening an issue on `hardwood-hq/hardwood` with a second token, for issues on that repository only.
