@@ -10,7 +10,7 @@ source ./bench-common.sh
 
 BENCH_PACKAGE='onebrc'
 BENCH_REGRESSION_PRESET='--rows 100000000 --warmup 4 --meas 3 --time 5'
-BENCH_REGRESSION_INCLUDE='hardwoodColumn'
+BENCH_REGRESSION_INCLUDE='hardwoodColumnIds|hardwoodColumnSplits'
 BENCH_FLAGS='--rows perf.rows'
 BENCH_USAGE="1BRC-over-Parquet benchmark, regression-only (generated file: 413 stations, a
 dictionary-encoded string column station and a dictionary-encoded double column
@@ -23,15 +23,16 @@ $BENCH_COMMON_USAGE
 Regression preset (--regression): --rows 100000000; --warmup 4 --meas 3 --time 5, so
 an iteration spans several operations (hardwoodColumnIds takes about 1.5 s) and warmup
 outlasts the about 18 s C2 can take to compile the aggregating loop again after
-discarding its first compile; contenders matching hardwoodColumn
+discarding its first compile; contenders matching hardwoodColumnIds|hardwoodColumnSplits
 
 Contenders: hardwoodColumnIds (column reader, one consumer, by dictionary id),
 hardwoodColumnSplits (the same, one reader and consumer per row-group byte-range
 split, one split per available processor), hardwoodColumnFanOut (one column reader
 whose loop hands each batch to one of as many aggregating workers as there are
-available processors), hardwoodRowReader (row reader into a
-HashMap; not in the regression preset, since the per-row HashMap lookup takes most of
-its time). The column contenders need hardwood-core 1.1.0.Beta2 or later. --gate
+available processors; not in the regression preset, since Hardwood's part of it is
+hardwoodColumnIds's), hardwoodRowReader (row reader into a HashMap; not in the regression
+preset, since the per-row HashMap lookup takes most of its time). The column contenders
+need hardwood-core 1.1.0.Beta2 or later. --gate
 checks that every page is dictionary-encoded and that every contender matches the
 aggregate the generator recorded, then exits."
 
