@@ -477,7 +477,8 @@ which adds 30 ms first-byte latency and caps each connection at 80 MB/s
 | `hardwoodManySmallFiles` | every column of 200 files of 100 KiB to 5 MiB through one multi-file reader: one row group each, written by PyArrow (SNAPPY, dictionary, page index on), sizes spread log-uniformly and shuffled |
 | `hardwoodWideFilteredScan` | a range predicate keeping the first page of every row group, projecting 3 of 200 columns, over a generated file of 40 row groups with 20 pages per column chunk (a 5.3 MB page index); each row group's data is under the coalescing gap, so the read fetches it whole |
 | `hardwoodBloomLookup` | an equality probe for a key no row holds and every bloom filter rejects (chosen when the file is generated, and checked on every run), over a generated file of 200 row groups with a unique, unclustered `INT64` key and a bloom filter of tens of KB per row group; statistics keep every row group and its bloom filter drops it |
-| `hardwoodLargeBloomLookup` | the same kind of probe over 6 row groups whose bloom filters are 16 MB each |
+| `hardwoodLargeBloomLookup` | the same kind of probe over 6 row groups of 800,000 rows (about 13 MB of data each) whose bloom filters are 1 MiB each, sized for their keys at 1 % FPP, read under an index-window budget of 1 MiB, so each row group's filter is larger than one window's budget |
+| `hardwoodFixedSizeBloomLookup` | the same kind of probe over 20 row groups of 20,000 rows (about 320 KB of data each) whose bloom filters are 1 MiB each, parquet-java's default size when the writer is given no NDV, so the filters are about three times the size of the data they guard |
 | `hardwoodLocalBesideRemote` | the projected scan of the local copy of the first month, on a context whose pool a remote projected scan of the same month shares, repeated on a thread of its own for the whole iteration |
 | `hardwoodRemoteBesideWideRemote` | the projected scan of the first month, on a context whose pool a remote scan of every column of the same month shares, repeated on a thread of its own for the whole iteration |
 
@@ -487,7 +488,7 @@ plan shows exactly where the time is noisy. For the wide read, the requests
 overlapping the page-index region and their bytes are also recorded apart
 (`indexRequests.*`, `indexBytes.*`), beside the file's page-index size and the
 index bytes the read needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`).
-The two bloom lookups read nothing but the footer and the bloom filters, so their
+The three bloom lookups read nothing but the footer and the bloom filters, so their
 request counts are the footer reads plus the bloom-filter reads. The many-small-files
 read records its requests per file and their distribution (`manySmallFiles.requestsPerFile`,
 `manySmallFiles.requestsPerFileDistribution`, as `requests:files`), and its files,

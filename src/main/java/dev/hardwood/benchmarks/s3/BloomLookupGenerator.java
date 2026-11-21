@@ -37,7 +37,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 
 /// Generates the bloom-lookup fixtures: a unique, unclustered `INT64` `key` and a `DOUBLE`
-/// `value`, in row groups of [#ROWS_PER_GROUP] rows, with a bloom filter on `key`.
+/// `value`, with a bloom filter on `key`.
 ///
 /// Keys come from the SplitMix64 finalizer, a bijection on 64 bits, so every key is distinct and
 /// every row group's `[min, max]` spans nearly the whole range: statistics prune no row group for
@@ -47,13 +47,17 @@ import org.apache.parquet.schema.Types;
 /// group's filter rejects. It and a present probe are stored next to the fixture
 /// ([#probes]), and [#ensure] checks the fixture against them on every run.
 ///
-/// Two shapes, which differ in how the bloom filters compare with Hardwood's page-index window
-/// budget (16 MB):
+/// Three shapes, each a layout writers produce:
 ///
-/// | Fixture | Row groups | Filter per row group |
-/// |---|---|---|
-/// | [#SMALL] | 200 | sized for the row group's 20 000 keys at 1 % FPP (tens of KB) |
-/// | [#LARGE] | 6 | 16 MB, larger than one window's budget |
+/// | Fixture | Row groups | Filter per row group | Data per row group |
+/// |---|---|---|---|
+/// | [#SMALL] | 200 of 20 000 rows | 32 KiB, sized for its keys at 1 % FPP | about 320 KB |
+/// | [#LARGE] | 6 of 800 000 rows | 1 MiB, sized for its keys at 1 % FPP | about 13 MB |
+/// | [#FIXED] | 20 of 20 000 rows | 1 MiB, parquet-java's default size when no NDV is given | about 320 KB |
+///
+/// [#LARGE] is read under an index-window budget of 1 MiB ([Shape#windowBudgetBytes]), so each
+/// row group's filter is larger than one window's budget. [#FIXED] holds filters about three
+/// times the size of the data they guard.
 ///
 /// Written by parquet-java with SNAPPY and its default column and offset indexes. Cached across
 /// runs, keyed on the path only.
@@ -61,17 +65,27 @@ final class BloomLookupGenerator {
 
     static final String KEY_COLUMN = "key";
     static final String VALUE_COLUMN = "value";
-    static final int ROWS_PER_GROUP = 20_000;
     private static final double FPP = 0.01;
+    private static final int MIB = 1024 * 1024;
 
-    /// One fixture shape: its row groups, and the NDV and size cap its bloom filters are written with.
-    record Shape(String name, int rowGroups, long ndv, int maxFilterBytes) {
+    /// One fixture shape.
+    ///
+    /// @param rowGroups the row groups the fixture holds
+    /// @param rowsPerGroup the rows of each row group
+    /// @param ndv the NDV hint the bloom filters are written with, or 0 to give none, which makes
+    ///        parquet-java write each filter at `maxFilterBytes`
+    /// @param maxFilterBytes the largest bloom filter the writer may write
+    /// @param filterBytes the size of each bloom filter's bitset, which [#ensure] checks
+    /// @param windowBudgetBytes the index-window budget a lookup reads the fixture with, or 0 for
+    ///        Hardwood's default
+    record Shape(String name, int rowGroups, int rowsPerGroup, long ndv, int maxFilterBytes, int filterBytes,
+            int windowBudgetBytes) {
 
         /// The fixture's path, naming every parameter it is written with, so a changed parameter
         /// writes a new file rather than reusing an old one.
         Path file() {
             return Path.of(String.format("target/bloom_lookup_%s_%drg_%dr_ndv%d_max%d.parquet", name, rowGroups,
-                    ROWS_PER_GROUP, ndv, maxFilterBytes));
+                    rowsPerGroup, ndv, maxFilterBytes));
         }
 
         private Path probesFile() {
@@ -79,12 +93,13 @@ final class BloomLookupGenerator {
         }
 
         long rows() {
-            return (long) rowGroups * ROWS_PER_GROUP;
+            return (long) rowGroups * rowsPerGroup;
         }
     }
 
-    static final Shape SMALL = new Shape("small", 200, ROWS_PER_GROUP, 1024 * 1024);
-    static final Shape LARGE = new Shape("large", 6, 16L * 1024 * 1024 * 8, 16 * 1024 * 1024);
+    static final Shape SMALL = new Shape("small", 200, 20_000, 20_000, MIB, 32 * 1024, 0);
+    static final Shape LARGE = new Shape("large", 6, 800_000, 800_000, MIB, MIB, MIB);
+    static final Shape FIXED = new Shape("fixed", 20, 20_000, 0, MIB, MIB, 0);
 
     private static final MessageType SCHEMA = Types.buildMessage()
             .required(PrimitiveTypeName.INT64).named(KEY_COLUMN)
@@ -118,8 +133,9 @@ final class BloomLookupGenerator {
     }
 
     /// Writes the fixture of `shape` and its probes if they are not already present, then checks
-    /// the fixture against the probes: no dictionary page and a bloom filter on every `key` chunk,
-    /// the absent probe inside every row group's `[min, max]` and rejected by every filter.
+    /// the fixture against the probes: no dictionary page and a bloom filter of the shape's size
+    /// on every `key` chunk, the absent probe inside every row group's `[min, max]` and rejected
+    /// by every filter.
     ///
     /// @throws IllegalStateException if the fixture does not hold
     static void ensure(Shape shape) throws IOException {
@@ -139,18 +155,20 @@ final class BloomLookupGenerator {
         System.out.printf("Generating %s bloom-lookup fixture (%d row groups) at %s...%n", shape.name(),
                 shape.rowGroups(), file);
         Path partial = file.resolveSibling(file.getFileName() + ".part");
-        try (ParquetWriter<Long> writer = new Builder(new LocalOutputFile(partial))
+        Builder builder = new Builder(new LocalOutputFile(partial))
                 .withCompressionCodec(CompressionCodecName.SNAPPY)
-                .withRowGroupRowCountLimit(ROWS_PER_GROUP)
+                .withRowGroupRowCountLimit(shape.rowsPerGroup())
                 .withRowGroupSize(1L << 30)
                 .withDictionaryEncoding(KEY_COLUMN, false)
                 .withBloomFilterEnabled(KEY_COLUMN, true)
-                .withBloomFilterNDV(KEY_COLUMN, shape.ndv())
                 .withBloomFilterFPP(KEY_COLUMN, FPP)
                 .withMaxBloomFilterBytes(shape.maxFilterBytes())
                 .withPageWriteChecksumEnabled(false)
-                .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-                .build()) {
+                .withWriteMode(ParquetFileWriter.Mode.OVERWRITE);
+        if (shape.ndv() > 0) {
+            builder.withBloomFilterNDV(KEY_COLUMN, shape.ndv());
+        }
+        try (ParquetWriter<Long> writer = builder.build()) {
             for (long row = 0; row < shape.rows(); row++) {
                 writer.write(row);
             }
@@ -197,7 +215,14 @@ final class BloomLookupGenerator {
                             + " has a dictionary on key or does not cover the absent probe in its bounds");
                 }
             }
-            if (!rejectedByAll(filters(reader), probes.absent())) {
+            List<BloomFilter> filters = filters(reader);
+            for (int rg = 0; rg < filters.size(); rg++) {
+                if (filters.get(rg).getBitsetSize() != shape.filterBytes()) {
+                    throw new IllegalStateException(shape.file() + ": row group " + rg + " has a bloom filter of "
+                            + filters.get(rg).getBitsetSize() + " bytes, expected " + shape.filterBytes());
+                }
+            }
+            if (!rejectedByAll(filters, probes.absent())) {
                 throw new IllegalStateException(shape.file() + ": a bloom filter accepts the absent probe "
                         + probes.absent());
             }

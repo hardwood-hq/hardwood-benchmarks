@@ -38,7 +38,7 @@ SMALL_FILES_SEED=1663
 BENCH_REGRESSION_PRESET='--warmup 12'
 # hardwoodManySmallFiles stays out: one read of it takes about 8 s at 30 ms, longer than another
 # contender's whole preset.
-BENCH_REGRESSION_INCLUDE='hardwoodProjectedScan|hardwoodWideFilteredScan|hardwoodLargeBloomLookup|hardwoodMultiFileScan|hardwoodRemoteBesideWideRemote'
+BENCH_REGRESSION_INCLUDE='hardwoodProjectedScan|hardwoodWideFilteredScan|hardwoodLargeBloomLookup|hardwoodFixedSizeBloomLookup|hardwoodMultiFileScan|hardwoodRemoteBesideWideRemote'
 # Every contender is Hardwood, and the benchmark already runs on all but the endpoint's core.
 BENCH_SINGLE_CORE=0
 BENCH_FLAGS=''
@@ -48,9 +48,9 @@ Usage: ./run-s3.sh [options]
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --warmup 12 (requests over the emulated latency take
 longer to settle; the multi-file scan is still getting faster after 5); contenders matching
-hardwoodProjectedScan|hardwoodWideFilteredScan|hardwoodLargeBloomLookup|hardwoodMultiFileScan|hardwoodRemoteBesideWideRemote,
+hardwoodProjectedScan|hardwoodWideFilteredScan|hardwoodLargeBloomLookup|hardwoodFixedSizeBloomLookup|hardwoodMultiFileScan|hardwoodRemoteBesideWideRemote,
 one read per scenario the others do not cover: not hardwoodFilteredScan, hardwoodBloomLookup
-and hardwoodLocalBesideRemote, which repeat the wide filtered scan, the large bloom lookup and
+and hardwoodLocalBesideRemote, which repeat the wide filtered scan, the two other bloom lookups and
 the read beside a wide one, nor hardwoodManySmallFiles, whose single read takes longer than
 another contender's whole preset (--include hardwoodManySmallFiles times it); the dataset has
 one size
