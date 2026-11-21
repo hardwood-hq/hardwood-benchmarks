@@ -67,7 +67,8 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodManySmallFiles` | every column of 200 files of 100 KiB to 5 MiB, one row group each, written by PyArrow ([SmallFileSet]), one multi-file reader | the requests each file costs, opening the next file, and how a file's size compares with the tail its open fetches |
 /// | `hardwoodWideFilteredScan` | selective range predicate projecting 3 of 200 columns, 40 row groups with a large page index | page-index reads across many row groups; each row group's data is under the coalescing gap, so it is fetched whole |
 /// | `hardwoodBloomLookup` | equality probe for an absent unique key that every bloom filter rejects, 200 row groups with small bloom filters | bloom-filter reads across many row groups, each of which its filter drops |
-/// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups with 16 MB bloom filters | bloom-filter reads each larger than one page-index window |
+/// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups of 13 MB with 1 MiB bloom filters, read under a 1 MiB index-window budget | bloom-filter reads each larger than one page-index window |
+/// | `hardwoodFixedSizeBloomLookup` | the same kind of probe, 20 row groups of 320 KB with parquet-java's default 1 MiB bloom filters | bloom-filter reads larger than the data they guard |
 /// | `hardwoodLocalBesideRemote` | the projected scan of the local file, on a context a remote projected scan reads with throughout | whether a remote read's requests hold threads of the shared context's pool that a local read needs |
 /// | `hardwoodRemoteBesideWideRemote` | the projected scan, on a context a remote scan of every column of the same file reads with throughout | whether a read with a request in flight for each of its columns holds the shared context's pool from another remote read |
 ///
@@ -107,11 +108,14 @@ public class S3ScanBenchmark {
     private static final long[] SMALL_FILE_BANDS = { 64L << 10, 256L << 10, 1L << 20 };
     private static final YearMonth FIRST_MONTH = YearMonth.of(2025, 1);
     private static final YearMonth LAST_MONTH = YearMonth.of(2025, 12);
+    /// The internal property that bounds the bytes one page-index window fetches.
+    private static final String WINDOW_BUDGET_PROPERTY = "hardwood.internal.indexWindowBytes";
 
     private S3Source source;
     private List<String> monthKeys;
     private long smallBloomProbe;
     private long largeBloomProbe;
+    private long fixedSizeBloomProbe;
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
@@ -119,6 +123,7 @@ public class S3ScanBenchmark {
         monthKeys = monthKeys();
         smallBloomProbe = BloomLookupGenerator.probes(BloomLookupGenerator.SMALL).absent();
         largeBloomProbe = BloomLookupGenerator.probes(BloomLookupGenerator.LARGE).absent();
+        fixedSizeBloomProbe = BloomLookupGenerator.probes(BloomLookupGenerator.FIXED).absent();
     }
 
     @TearDown(Level.Trial)
@@ -143,14 +148,17 @@ public class S3ScanBenchmark {
 
     @Benchmark
     public double hardwoodBloomLookup() throws IOException {
-        return bloomLookup(source.inputFile(BUCKET, BloomLookupGenerator.SMALL.file().getFileName().toString()),
-                smallBloomProbe).sum();
+        return bloomLookup(source, BloomLookupGenerator.SMALL, smallBloomProbe).sum();
     }
 
     @Benchmark
     public double hardwoodLargeBloomLookup() throws IOException {
-        return bloomLookup(source.inputFile(BUCKET, BloomLookupGenerator.LARGE.file().getFileName().toString()),
-                largeBloomProbe).sum();
+        return bloomLookup(source, BloomLookupGenerator.LARGE, largeBloomProbe).sum();
+    }
+
+    @Benchmark
+    public double hardwoodFixedSizeBloomLookup() throws IOException {
+        return bloomLookup(source, BloomLookupGenerator.FIXED, fixedSizeBloomProbe).sum();
     }
 
     /// A context shared by the scan a contender times and a remote scan of the first month that
@@ -335,7 +343,35 @@ public class S3ScanBenchmark {
     record Lookup(long rows, double sum) {
     }
 
-    static Lookup bloomLookup(InputFile file, long probe) throws IOException {
+    /// The lookup of `probe` in the S3 copy of the fixture of `shape`, as [#bloomLookup(InputFile,
+    /// BloomLookupGenerator.Shape,long)].
+    private static Lookup bloomLookup(S3Source source, BloomLookupGenerator.Shape shape, long probe)
+            throws IOException {
+        return bloomLookup(source.inputFile(BUCKET, shape.file().getFileName().toString()), shape, probe);
+    }
+
+    /// The rows of `file`, the fixture of `shape`, whose key is `probe`, read under the shape's
+    /// index-window budget. The budget is a system property, set for the read only; a version
+    /// without index windows ignores it.
+    static Lookup bloomLookup(InputFile file, BloomLookupGenerator.Shape shape, long probe) throws IOException {
+        if (shape.windowBudgetBytes() == 0) {
+            return bloomLookup(file, probe);
+        }
+        String previous = System.setProperty(WINDOW_BUDGET_PROPERTY, Integer.toString(shape.windowBudgetBytes()));
+        try {
+            return bloomLookup(file, probe);
+        }
+        finally {
+            if (previous == null) {
+                System.clearProperty(WINDOW_BUDGET_PROPERTY);
+            }
+            else {
+                System.setProperty(WINDOW_BUDGET_PROPERTY, previous);
+            }
+        }
+    }
+
+    private static Lookup bloomLookup(InputFile file, long probe) throws IOException {
         long rows = 0;
         double sum = 0;
         try (HardwoodContext context = BenchContext.create();
@@ -484,15 +520,15 @@ public class S3ScanBenchmark {
         List<Supplier<InputFile>> files = List.of(() -> source.inputFile(BUCKET, key),
                 () -> InputFile.of(localPath(key)));
         for (Supplier<InputFile> file : files) {
-            Lookup absent = bloomLookup(file.get(), probes.absent());
-            Lookup present = bloomLookup(file.get(), probes.present());
+            Lookup absent = bloomLookup(file.get(), shape, probes.absent());
+            Lookup present = bloomLookup(file.get(), shape, probes.present());
             if (absent.rows() != 0 || present.rows() != 1 || present.sum() != probes.presentValue()) {
                 throw new IllegalStateException(String.format(
                         "[%s] absent probe matched %d rows, present probe %d rows with value %f (expected %f)",
                         name, absent.rows(), present.rows(), present.sum(), probes.presentValue()));
             }
         }
-        return gate(name, source, key, PageIndexLayout.NONE, unchecked(in -> bloomLookup(in, probes.absent()).sum()));
+        return gate(name, source, key, PageIndexLayout.NONE, unchecked(in -> bloomLookup(in, shape, probes.absent()).sum()));
     }
 
     private static void check(String name, double s3, double local) {
@@ -646,6 +682,7 @@ public class S3ScanBenchmark {
         WideTableGenerator.ensure(WIDE_FILE);
         BloomLookupGenerator.ensure(BloomLookupGenerator.SMALL);
         BloomLookupGenerator.ensure(BloomLookupGenerator.LARGE);
+        BloomLookupGenerator.ensure(BloomLookupGenerator.FIXED);
         for (Path month : months) {
             publish(month, bucketDir);
         }
@@ -653,6 +690,7 @@ public class S3ScanBenchmark {
         publish(WIDE_FILE, bucketDir);
         publish(BloomLookupGenerator.SMALL.file(), bucketDir);
         publish(BloomLookupGenerator.LARGE.file(), bucketDir);
+        publish(BloomLookupGenerator.FIXED.file(), bucketDir);
         SmallFileSet smallFiles = included("hardwoodManySmallFiles") ? SmallFileSet.load() : null;
         if (smallFiles != null) {
             for (SmallFileSet.Entry entry : smallFiles.files()) {
@@ -672,6 +710,7 @@ public class S3ScanBenchmark {
         Fetches wideFiltered;
         Fetches bloomLookup;
         Fetches largeBloomLookup;
+        Fetches fixedSizeBloomLookup;
         long[] multiFile;
         List<String> smallFilesMeta = List.of();
         try (S3Source source = source()) {
@@ -685,6 +724,7 @@ public class S3ScanBenchmark {
                     unchecked(S3ScanBenchmark::wideFilteredScan));
             bloomLookup = gateLookup("bloom lookup", source, BloomLookupGenerator.SMALL);
             largeBloomLookup = gateLookup("large bloom lookup", source, BloomLookupGenerator.LARGE);
+            fixedSizeBloomLookup = gateLookup("fixed-size bloom lookup", source, BloomLookupGenerator.FIXED);
             multiFile = gateAll("multi-file scan", source, keys);
             if (smallFiles != null) {
                 smallFilesMeta = gateSmallFiles(source, smallFiles);
@@ -705,6 +745,7 @@ public class S3ScanBenchmark {
         meta.addAll(List.of(wideFiltered.indexMetaPairs("wideFilteredScan")));
         meta.addAll(List.of(bloomLookup.metaPairs("bloomLookup")));
         meta.addAll(List.of(largeBloomLookup.metaPairs("largeBloomLookup")));
+        meta.addAll(List.of(fixedSizeBloomLookup.metaPairs("fixedSizeBloomLookup")));
         meta.addAll(List.of("requests.multiFileScan", Long.toString(multiFile[0]),
                 "bytes.multiFileScan", Long.toString(multiFile[1]),
                 "wide.indexRegionBytes", Long.toString(wideLayout.regionBytes()),
