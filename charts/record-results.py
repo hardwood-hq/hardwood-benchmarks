@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record one Hardwood version's regression run into a results repository for Apache Otava.
 
-Usage: record-results.py OUT VERSION --results DIR --hardwood-repo DIR [--summary FILE]
+Usage: record-results.py OUT VERSION --results DIR --hardwood-repo DIR [--summary FILE] [--backfill]
 
 OUT is run-regression.sh's output directory, VERSION the version it ran, DIR a checkout of
 hardwood-benchmark-results, and --hardwood-repo a Hardwood clone, where the commit a version
@@ -15,7 +15,10 @@ median CPU, JIT, GC and allocation per operation and the largest live-set peak o
 measurement iterations of every fork). A series is kept in the order of its rows' time, the
 measured commit's, since Otava reads rows in file order: an older version recorded later
 lands before the newer ones. The run's raw results go to runs/<start>-<version>/.
---summary writes what was recorded as JSON: the commit, the version, the machine epoch, and
+--backfill records a contender only if its series holds no settled row of the commit yet, so
+that a backfill of one script adds no second row to the series of the commit's other
+contenders, while a commit whose row did not settle can be measured again; a night's own run
+of a commit already recorded adds its row. --summary writes what was recorded as JSON: the commit, the version, the machine epoch, and
 per contender its benchmark, script, series file and whether its series is new.
 otava.yaml is written again from every series file, one Otava test per file.
 
@@ -210,6 +213,7 @@ def main():
     parser.add_argument("--results", required=True)
     parser.add_argument("--hardwood-repo", required=True)
     parser.add_argument("--summary")
+    parser.add_argument("--backfill", action="store_true")
     args = parser.parse_args()
 
     rekey(args.results)
@@ -233,6 +237,11 @@ def main():
     recorded = []
     for c in summary["contenders"]:
         cls, contender, epoch, verdict = c["benchmark"], c["contender"], c["epoch"], c["verdict"]
+        series = os.path.join(args.results, "series", machine_epoch, cls)
+        base = os.path.join(series, "{}@{}".format(contender, epoch))
+        if args.backfill and holds_settled(base, commit):
+            print("record-results: {}.{} already holds a settled row of {}; not recorded".format(cls, contender, commit[:9]))
+            continue
         epochs = os.path.join(args.results, "epochs", cls, contender)
         os.makedirs(epochs, exist_ok=True)
         with open(os.path.join(epochs, epoch + ".json"), "w") as f:
@@ -243,9 +252,7 @@ def main():
                "wall_forks_ms": ";".join(number(v) for v in c["wall_forks_ms"]),
                "cpu_ms": number(c["cpu_ms"]), "jit_ms": number(c["jit_ms"]), "gc_ms": number(c["gc_ms"]),
                "alloc_bytes": number(c["alloc_bytes"]), "live_bytes": number(c["live_bytes"])}
-        series = os.path.join(args.results, "series", machine_epoch, cls)
         os.makedirs(series, exist_ok=True)
-        base = os.path.join(series, "{}@{}".format(contender, epoch))
         new = not os.path.exists(base + ".csv") and not os.path.exists(base + ".unsettled.csv")
         add_row(base + (".unsettled.csv" if verdict else ".csv"), row)
         recorded.append({"benchmark": cls, "contender": contender, "script": c["script"], "epoch": epoch,
@@ -315,6 +322,14 @@ def rekey(results):
         with open(changes_path, "w") as f:
             json.dump(changes, f, indent=2, sort_keys=True)
             f.write("\n")
+
+
+def holds_settled(base, commit):
+    """Whether the series `base` holds a settled row of `commit`."""
+    if not os.path.exists(base + ".csv"):
+        return False
+    with open(base + ".csv", newline="") as f:
+        return any(r["commit"] == commit for r in csv.DictReader(f))
 
 
 def add_row(path, row):

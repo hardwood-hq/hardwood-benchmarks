@@ -14,7 +14,8 @@ Usage: ./nightly.sh [options]
   --commit REF      measure this Hardwood commit instead of origin/main (the same commit
                     night after night calibrates the false-alarm rate)
   --enqueue ITEM    add "VERSION-OR-COMMIT SCRIPT[,SCRIPT...]|all" to the backfill queue and
-                    exit; queued items run after the night's own work while time remains
+                    exit; queued items run after the night's own work while time remains,
+                    and record no contender whose series already holds a settled row of the commit
   --backfill        work through the backfill queue only, without the deadline, and without
                     measuring the night's commit
   --no-alert        record, analyse and confirm, but open no issue
@@ -217,15 +218,16 @@ version_of() {
 # Measures version $1 with the scripts $2 (comma-separated, or all) into $RUN/$3 and records it;
 # returns 2, recording nothing, when another JVM ran meanwhile.
 measure() {
-  local v="$1" scripts="$2" name="$3" only=()
+  local v="$1" scripts="$2" name="$3" only=() backfill=()
   [ "$scripts" = all ] || only=(--only "$scripts")
+  [[ "$name" == backfill-* ]] && backfill=(--backfill)
   log "measuring $v ($scripts)"
   ( cd "$BENCH" && bash ./run-regression.sh --profile nightly "${only[@]}" --out "$RUN/$name" "$v" ) > "$RUN/$name.out" 2>&1
   log "measured $v: exit $?, $(tail -1 "$RUN/$name/progress.log" 2>/dev/null)"
   disturbed && return 2
   [ -s "$RUN/$name/manifest.json" ] || return 1
   ( cd "$BENCH" && python3 charts/record-results.py "$RUN/$name" "$v" --results "$RESULTS" --hardwood-repo "$HW" \
-      --summary "$RUN/$name.summary.json" ) >> "$LOG" 2>&1
+      --summary "$RUN/$name.summary.json" "${backfill[@]}" ) >> "$LOG" 2>&1
 }
 
 if [ -n "$BACKFILL" ]; then
