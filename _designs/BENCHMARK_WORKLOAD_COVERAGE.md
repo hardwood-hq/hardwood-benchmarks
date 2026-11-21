@@ -174,7 +174,12 @@ runs the profile's scripts under `--regression`, one benchmark at a time over al
 (`--rounds`, default 1), with the versions interleaved within each round, so drift on the
 machine spreads over all versions and each benchmark's table (`tables.md`) is in before the
 next starts. `quick` times the contenders marked so above, `nightly` all of them, and
-`smoke` all of them once, without warmup, to check what each version runs. It starts the
+`smoke` all of them once, without warmup, to check what each version runs. Before a script is timed, its gate checks
+that its contenders agree, against the last version, when no gate passed before for the
+hash of its sources: the script, what every script shares, and the packages of its
+benchmarks. Fixtures are generated or downloaded by those sources, so the hash covers them;
+a change in Hardwood alone does not run a gate again, since Hardwood's own tests cover its
+results. A script whose gate fails is not timed. It starts the
 emulated S3 endpoint once for the whole run when `run-s3.sh` is among them, and records the
 machine and JVM in `manifest.json`. With several versions it ends in `verdict.txt`, which
 compares the first version with the last and lists per benchmark a tally plus only the
