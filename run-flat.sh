@@ -12,6 +12,7 @@ source ./bench-common.sh
 BENCH_PACKAGE='flat'
 BENCH_REGRESSION_PRESET='--start 2025-01 --end 2025-01 --warmup 30'
 BENCH_REGRESSION_INCLUDE='hardwoodColumnar|hardwoodRowReaderIndexed'
+BENCH_QUICK_INCLUDE='hardwoodColumnar'
 BENCH_FLAGS='--start perf.start
 --end perf.end
 --data-dir data.dir
@@ -27,6 +28,7 @@ Usage: ./run-flat.sh [options]
                     it (e.g. 4096) to probe single-core columnar cache behaviour
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --start 2025-01 --end 2025-01 --warmup 30; contenders matching hardwoodColumnar|hardwoodRowReaderIndexed
+Quick profile (run-regression.sh --profile quick): contenders matching hardwoodColumnar
 
 Two modes: --gate verifies every contender folds to the same checksum as
 parquet-java and exits (no JMH, printing a per-contender confirmation; fails fast

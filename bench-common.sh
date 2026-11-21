@@ -7,6 +7,11 @@
 # in BENCH_USAGE, then calls: bench_parse_args "$@"; bench_build; bench_run <class>;
 # bench_epilogue.
 
+# The heap and collector every benchmark JVM of a regression run uses (bench_run), recorded in
+# a regression run's manifest.
+BENCH_HEAP_FLAGS="-Xms4g -Xmx4g -XX:+UseG1GC"
+export BENCH_HEAP_FLAGS
+
 # Per-benchmark JVM flags, the single source of truth for the run-*.sh scripts.
 # Only the flat scan's cross-engine Arrow Dataset contender
 # reaches Arrow C++ over JNI, so only it needs java.nio opened, native access
@@ -209,9 +214,15 @@ bench_exit() {
 # regression run, so it is an error rather than an override. A benchmark with one
 # size (a regression-only one) declares an empty preset.
 bench_apply_regression_preset() {
-  # The iteration counts every benchmark shares, unless the script's own preset sets one: a
-  # benchmark whose operations need longer to settle (run-s3.sh) raises its warmup there.
-  local common=(--warmup 3 --meas 3 --time 1) own=(${BENCH_REGRESSION_PRESET:-}) preset=() i j prop a overridden
+  # The iteration counts and forks every benchmark shares, unless the script's own preset sets
+  # one: each script warms its contenders for as long as they took to settle on an Intel N300
+  # at 1.50 GHz. Three forks show a JIT decision that differs between JVMs instead of averaging
+  # it away. The `quick` profile (run-regression.sh --profile quick) adds the script's
+  # BENCH_QUICK_PRESET and times its BENCH_QUICK_INCLUDE contenders only.
+  local common=(--warmup 3 --meas 3 --time 1 --forks 3) own=(${BENCH_REGRESSION_PRESET:-}) preset=() i j prop a overridden
+  if [[ "${BENCH_PROFILE:-}" == quick ]]; then
+    own+=(${BENCH_QUICK_PRESET:-})
+  fi
   for (( i = 0; i < ${#common[@]}; i += 2 )); do
     overridden=""
     for (( j = 0; j < ${#own[@]}; j += 2 )); do
@@ -235,24 +246,29 @@ bench_apply_regression_preset() {
     # A smoke run (run-regression.sh --smoke) checks that each contender runs, not its time.
     case "${BENCH_SMOKE:-}:${preset[i]}" in
       1:--warmup) ARGS+=("-D$prop=0") ;;
-      1:--meas|1:--time) ARGS+=("-D$prop=1") ;;
+      1:--meas|1:--time|1:--forks) ARGS+=("-D$prop=1") ;;
       *) ARGS+=("-D$prop=${preset[i+1]}") ;;
     esac
   done
-  # The contenders: the script's BENCH_REGRESSION_INCLUDE, its Hardwood paths plus
-  # at most one control (a contender pinned in the pom, whose drift says the machine
-  # moved), so no path is timed twice under different parameters.
+  # The contenders: the script's BENCH_REGRESSION_INCLUDE, or in the quick profile its
+  # BENCH_QUICK_INCLUDE, each a path no other contender covers.
+  local include="${BENCH_REGRESSION_INCLUDE:-hardwood}"
+  [[ "${BENCH_PROFILE:-}" == quick ]] && include="${BENCH_QUICK_INCLUDE:?run-${0##*/} has no quick contenders}"
   for a in "${ARGS[@]+"${ARGS[@]}"}"; do
-    if [[ "$a" == -Dperf.include=* ]]; then
-      echo "--regression fixes the contenders (to '${BENCH_REGRESSION_INCLUDE:-hardwood}'); drop --include or --regression" >&2
-      exit 2
-    fi
+    case "$a" in
+      -Dperf.include=*|-Dperf.prof=*)
+        echo "--regression fixes the contenders and profiler; drop --include, --prof or --regression" >&2
+        exit 2 ;;
+    esac
   done
+  # Each fork records what RegressionProfiler measures besides time; bench_run names its file
+  # and fixes the benchmark JVMs' heap.
+  ARGS+=("-Dperf.prof=dev.hardwood.benchmarks.RegressionProfiler")
   # One pass, on all cores. Pinned to one core, the JIT, the GC and the reader's
   # worker threads share that core, and a contender is still ~15% off its steady
   # state after ten 1 s iterations; on all cores it settles by the third.
   PERF_PIN=0
-  ARGS+=("-Dperf.include=${BENCH_REGRESSION_INCLUDE:-hardwood}")
+  ARGS+=("-Dperf.include=$include")
 }
 
 # Per-benchmark machine-readable throughput. In benchmark mode bench_run writes
@@ -508,6 +524,14 @@ bench_run() {
   else
     BENCH_RESULTS="target/bench-throughput-$name.tsv"
     printf 'pass\tbenchmark\tcontender\tms_per_op\tm_rows_per_s\tmb_per_s\n' > "$BENCH_RESULTS"
+    if [[ -n "${BENCH_REGRESSION:-}" ]]; then
+      rm -f "target/bench-metrics-$name.jsonl"
+      ARGS+=("-Dperf.metrics=$PWD/target/bench-metrics-$name.jsonl")
+      # A heap of fixed size and collector in the benchmark JVMs (the main and its forks, which
+      # inherit the environment), so that the live-set peak is measured alike in every run and
+      # a retention regression meets a collection.
+      export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }$BENCH_HEAP_FLAGS"
+    fi
 
     if [[ -z "${BENCH_PIN_ONLY:-}" ]]; then
       echo "---- Out-of-the-box (all cores) ----"

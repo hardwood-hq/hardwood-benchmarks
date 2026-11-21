@@ -11,6 +11,7 @@ source ./bench-common.sh
 BENCH_PACKAGE='nested'
 BENCH_REGRESSION_PRESET='--warmup 8 --meas 5 --time 2'
 BENCH_REGRESSION_INCLUDE='hardwoodColumnReaders'
+BENCH_QUICK_INCLUDE='hardwoodColumnReaders'
 BENCH_FLAGS='--file perf.file
 --rows perf.rows'
 BENCH_USAGE="Nested column-reader regression (Overture Maps places, every leaf column, whole file).
@@ -22,6 +23,7 @@ Usage: ./run-nested-columns.sh [options]
 $BENCH_COMMON_USAGE
 Regression preset (--regression): the whole file, --warmup 8 --meas 5 --time 2 (a read takes about
 0.7 to 3 s, longer than the common preset's iterations; its contenders settle within it on an Intel N300 at 1.50 GHz); contender hardwoodColumnReaders
+Quick profile (run-regression.sh --profile quick): contenders matching hardwoodColumnReaders
 
 The benchmark is run-nested.sh's (NestedScanBenchmark); this script only gives it a
 second regression preset. run-nested.sh's preset reads 20,000 rows, where the read is

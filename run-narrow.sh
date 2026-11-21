@@ -11,6 +11,7 @@ source ./bench-common.sh
 BENCH_PACKAGE='narrow'
 BENCH_REGRESSION_PRESET='--warmup 18'
 BENCH_REGRESSION_INCLUDE='hardwood'
+BENCH_QUICK_INCLUDE='hardwoodColumnar'
 BENCH_FLAGS='--start perf.start
 --end perf.end
 --data-dir data.dir'
@@ -24,6 +25,7 @@ Usage: ./run-narrow.sh [options]
   --data-dir PATH   taxi data cache (default target/tlc-trip-record-data)
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --warmup 18; contenders matching hardwood
+Quick profile (run-regression.sh --profile quick): contenders matching hardwoodColumnar
 
 --gate checks that both Hardwood readers fold to parquet-java's checksum, then exits."
 

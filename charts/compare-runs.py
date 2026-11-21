@@ -105,10 +105,8 @@ def load(path):
                         if len(cols) >= 2:
                             fields[cols[0]] = cols[1]
                 meta[name] = fields
-    warming = set()
-    for run in runs:
-        warming |= settling.still_warming(settling.run_logs(run))
-    return {"runs": runs, "samples": samples, "order": order, "meta": meta, "warming": warming}
+    return {"runs": runs, "samples": samples, "order": order, "meta": meta,
+            "verdicts": settling.verdicts(runs), "forks": settling.fork_means(runs)}
 
 
 # --- statistics ------------------------------------------------------------
@@ -169,11 +167,21 @@ def compare_benchmark(base, new, benchmark, threshold, min_band, pattern=None, c
         if key not in new_bench:
             only_base.append(key)
             continue
+        # Each fork's mean where the runs recorded forks: three JVMs give a measured band even
+        # from a single run.
+        fork_key = (benchmark, contender)
+        base_values = base["forks"].get(fork_key, base_bench[key])
+        new_values = new["forks"].get(fork_key, new_bench[key])
+        if len(base_values) < 2 or len(new_values) < 2:
+            base_values, new_values = base_bench[key], new_bench[key]
         base_ms, new_ms, delta, band, verdict, measured = compare(
-            base_bench[key], new_bench[key], threshold, min_band)
-        # A time measured before the contender settled supports no verdict either way.
-        if (benchmark, contender) in base["warming"] or (benchmark, contender) in new["warming"]:
-            verdict = "not settled"
+            base_values, new_values, threshold, min_band)
+        # A time measured before the contender settled, or split between forks that took
+        # different JIT decisions, supports no verdict either way.
+        for side in (base, new):
+            if side["verdicts"].get(fork_key) == "not settled" or (
+                    side["verdicts"].get(fork_key) == "bimodal" and verdict != "not settled"):
+                verdict = side["verdicts"][fork_key]
         row = {"pass": pass_, "contender": contender, "base_ms": base_ms,
                "new_ms": new_ms, "delta": delta, "band": band,
                "verdict": verdict, "measured": measured}
@@ -263,11 +271,11 @@ def report_text(rows, base, new, benchmark, only_base, only_new, out, changes_on
 
     if changes_only:
         moved = [r for r in rows if r["verdict"] != "~same"]
-        print("  {} compared: {} slower, {} faster, {} within noise, {} not settled".format(
+        print("  {} compared: {} slower, {} faster, {} within noise, {} not settled or bimodal".format(
             len(rows), sum(r["verdict"] == "slower" for r in rows),
             sum(r["verdict"] == "faster" for r in rows),
             sum(r["verdict"] == "~same" for r in rows),
-            sum(r["verdict"] == "not settled" for r in rows)), file=out)
+            sum(r["verdict"] in ("not settled", "bimodal") for r in rows)), file=out)
         rows = moved
         if not rows:
             rows = None

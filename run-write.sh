@@ -10,6 +10,7 @@ source ./bench-common.sh
 BENCH_PACKAGE='write'
 BENCH_REGRESSION_PRESET='--rows 500000 --codec ZSTD --warmup 6'
 BENCH_REGRESSION_INCLUDE='hardwood'
+BENCH_QUICK_INCLUDE='hardwoodColumnar'
 BENCH_FLAGS='--rows perf.rows
 --codec perf.param'
 BENCH_USAGE="Write benchmark, regression-only (generated taxi-shaped records, written to memory).
@@ -19,6 +20,7 @@ Usage: ./run-write.sh [options]
   --codec VALUE         restrict to one codec: SNAPPY | ZSTD (default: both)
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --rows 500000 --codec ZSTD --warmup 6; contenders matching hardwood
+Quick profile (run-regression.sh --profile quick): contenders matching hardwoodColumnar
 
 Every contender is Hardwood. Before timing, each API's file is read back and its row count
 and fare sum checked; --gate does only that. The produced compressed column-chunk bytes of
