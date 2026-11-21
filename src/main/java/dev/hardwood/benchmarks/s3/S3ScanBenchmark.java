@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.ToLongFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -65,6 +66,8 @@ import dev.hardwood.schema.ColumnProjection;
 /// | `hardwoodFilteredScan` | selective range predicate with a page index | index slices, surviving pages only, dictionary reads |
 /// | `hardwoodMultiFileScan` | one column across 12 files, one multi-file reader | planning each file as the read reaches it, footers, moving between files |
 /// | `hardwoodManySmallFiles` | every column of 200 files of 100 KiB to 5 MiB, one row group each, written by PyArrow ([SmallFileSet]), one multi-file reader | the requests each file costs, opening the next file, and how a file's size compares with the tail its open fetches |
+/// | `hardwoodManySmallFilesEarlyClose` | the many-small-files read, its consumer closing the reader after the first 20 files | what a read has fetched past the file its consumer stopped in: footers and data opened ahead |
+/// | `hardwoodMultiFileEarlyClose` | the multi-file scan, its consumer closing the reader after the first file | the same, for files larger than what the read fetches ahead |
 /// | `hardwoodWideFilteredScan` | selective range predicate projecting 3 of 200 columns, 40 row groups with a large page index | page-index reads across many row groups; each row group's data is under the coalescing gap, so it is fetched whole |
 /// | `hardwoodBloomLookup` | equality probe for an absent unique key that every bloom filter rejects, 200 row groups with small bloom filters | bloom-filter reads across many row groups, each of which its filter drops |
 /// | `hardwoodLargeBloomLookup` | the same kind of probe, 6 row groups with 16 MB bloom filters | bloom-filter reads each larger than one page-index window |
@@ -79,7 +82,12 @@ import dev.hardwood.schema.ColumnProjection;
 /// needs (`wide.indexRegionBytes`, `wide.neededIndexBytes`). The many-small-files read records
 /// its requests per file and, per band of file size, its files, requests and bytes
 /// (`manySmallFiles.*`). It is gated and timed only when the run includes it, which
-/// `--regression` does not. Run with `run-s3.sh`.
+/// `--regression` does not. The two early-close reads record their requests and bytes split
+/// into the files the consumer reached and those past them, the requests counted once the
+/// reader had closed, and the time to the consumer's last batch and the close's time
+/// (`earlyClose.<read>.*`). Each multi-file read records the requests it
+/// had in flight, at most and on average over the read (`inFlight.<read>.*`). Run with
+/// `run-s3.sh`.
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -105,6 +113,14 @@ public class S3ScanBenchmark {
     /// The upper bounds of the file-size bands the many-small-files read's counts are recorded in:
     /// the tail `S3InputFile` fetches on open today (64 KiB) and two larger candidates.
     private static final long[] SMALL_FILE_BANDS = { 64L << 10, 256L << 10, 1L << 20 };
+    /// The files of the many-small-files fixture the early-close read takes before closing.
+    private static final int SMALL_FILES_REACHED = 20;
+    /// How long an early-close gate read waits after closing before it counts again, so that
+    /// requests the read had in flight are counted.
+    private static final long SETTLE_MS = 2_000;
+    /// The reads an early-close gate makes before the one it counts, so that the counted read's
+    /// consumer runs warm: a cold consumer is slower, and lets the fetching run further ahead.
+    private static final int EARLY_CLOSE_WARMUP = Integer.getInteger("perf.s3.earlyCloseWarmup", 0);
     private static final YearMonth FIRST_MONTH = YearMonth.of(2025, 1);
     private static final YearMonth LAST_MONTH = YearMonth.of(2025, 12);
 
@@ -242,10 +258,14 @@ public class S3ScanBenchmark {
     public static class SmallFiles {
 
         List<String> keys;
+        /// the rows of the files the early-close read takes
+        long reachedRows;
 
         @Setup(Level.Trial)
         public void load() throws IOException {
-            keys = SmallFileSet.load().keys();
+            SmallFileSet set = SmallFileSet.load();
+            keys = set.keys();
+            reachedRows = set.rows(SMALL_FILES_REACHED);
         }
     }
 
@@ -255,7 +275,16 @@ public class S3ScanBenchmark {
         for (String key : smallFiles.keys) {
             files.add(source.inputFile(BUCKET, key));
         }
-        return smallFilesScan(files);
+        return smallFilesScan(files, Long.MAX_VALUE);
+    }
+
+    @Benchmark
+    public SmallFileSums hardwoodManySmallFilesEarlyClose(SmallFiles smallFiles) throws IOException {
+        List<InputFile> files = new ArrayList<>();
+        for (String key : smallFiles.keys) {
+            files.add(source.inputFile(BUCKET, key));
+        }
+        return smallFilesScan(files, smallFiles.reachedRows);
     }
 
     @Benchmark
@@ -264,7 +293,28 @@ public class S3ScanBenchmark {
         for (String key : monthKeys) {
             files.add(source.inputFile(BUCKET, key));
         }
-        return multiFileScan(files);
+        return multiFileScan(files, Long.MAX_VALUE).sum();
+    }
+
+    /// The rows of the first month, after which the early-close multi-file read closes.
+    @State(Scope.Benchmark)
+    public static class FirstMonth {
+
+        long rows;
+
+        @Setup(Level.Trial)
+        public void count() throws IOException {
+            rows = BenchReport.totalRows(List.of(localPath(monthKeys().get(0))));
+        }
+    }
+
+    @Benchmark
+    public double hardwoodMultiFileEarlyClose(FirstMonth firstMonth) throws IOException {
+        List<InputFile> files = new ArrayList<>();
+        for (String key : monthKeys) {
+            files.add(source.inputFile(BUCKET, key));
+        }
+        return multiFileScan(files, firstMonth.rows).sum();
     }
 
     static double projectedScan(InputFile file) throws IOException {
@@ -354,20 +404,38 @@ public class S3ScanBenchmark {
         return new Lookup(rows, sum);
     }
 
-    static double multiFileScan(List<InputFile> files) throws IOException {
+    /// The rows a scan took and the sum of their values.
+    record Scanned(long rows, double sum) {
+    }
+
+    /// How long the last scan on this thread took from opening its reader to its consumer's last
+    /// batch, and from then until the reader and its context had closed, in nanoseconds; read by
+    /// the early-close gate.
+    private static long lastConsumedNanos;
+    private static long lastCloseNanos;
+
+    /// `fare_amount` of `files`, summed, the consumer closing the reader once it has taken
+    /// `stopRows` rows; a batch ends at a file, so a stop at a file's end is exact.
+    static Scanned multiFileScan(List<InputFile> files, long stopRows) throws IOException {
+        long rows = 0;
         double sum = 0;
+        long start = System.nanoTime();
+        long consumed = start;
         try (HardwoodContext context = BenchContext.create();
              ParquetFileReader reader = ParquetFileReader.openAll(files, context);
              ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns("fare_amount")).build()) {
             ColumnReader fare = cols.getColumnReader(0);
-            while (cols.nextBatch()) {
+            while (rows < stopRows && cols.nextBatch()) {
                 double[] values = fare.getDoubles();
                 for (int i = 0; i < fare.getRecordCount(); i++) {
                     sum += values[i];
                 }
+                rows += fare.getRecordCount();
             }
+            consumed = System.nanoTime();
         }
-        return sum;
+        timed(start, consumed);
+        return new Scanned(rows, sum);
     }
 
     /// The rows of the many-small-files read and a sum per column: exact for the integer columns,
@@ -376,8 +444,9 @@ public class S3ScanBenchmark {
             double fares) {
     }
 
-    /// Every column of `files`, summed per column.
-    static SmallFileSums smallFilesScan(List<InputFile> files) throws IOException {
+    /// Every column of `files`, summed per column, the consumer closing the reader once it has
+    /// taken `stopRows` rows.
+    static SmallFileSums smallFilesScan(List<InputFile> files, long stopRows) throws IOException {
         long rows = 0;
         long idSum = 0;
         long pickupSum = 0;
@@ -385,6 +454,8 @@ public class S3ScanBenchmark {
         long zoneSum = 0;
         double distanceSum = 0;
         double fareSum = 0;
+        long start = System.nanoTime();
+        long consumed = start;
         try (HardwoodContext context = BenchContext.create();
              ParquetFileReader reader = ParquetFileReader.openAll(files, context);
              ColumnReaders cols = reader.buildColumnReaders(ColumnProjection.columns(SMALL_FILE_COLUMNS)).build()) {
@@ -394,7 +465,7 @@ public class S3ScanBenchmark {
             ColumnReader zone = cols.getColumnReader(3);
             ColumnReader distance = cols.getColumnReader(4);
             ColumnReader fare = cols.getColumnReader(5);
-            while (cols.nextBatch()) {
+            while (rows < stopRows && cols.nextBatch()) {
                 long[] ids = id.getLongs();
                 long[] pickups = pickup.getLongs();
                 int[] passengerCounts = passengers.getInts();
@@ -412,8 +483,15 @@ public class S3ScanBenchmark {
                 }
                 rows += count;
             }
+            consumed = System.nanoTime();
         }
+        timed(start, consumed);
         return new SmallFileSums(rows, idSum, pickupSum, passengerSum, zoneSum, distanceSum, fareSum);
+    }
+
+    private static void timed(long start, long consumed) {
+        lastConsumedNanos = consumed - start;
+        lastCloseNanos = System.nanoTime() - consumed;
     }
 
     static S3Source source() {
@@ -505,16 +583,22 @@ public class S3ScanBenchmark {
         return Path.of(System.getProperty("perf.s3.dataDir"), BUCKET, key);
     }
 
-    /// As [#gate], for a read over all of `keys` at once.
-    private static long[] gateAll(String name, S3Source source, List<String> keys) throws IOException {
+    /// As [#gate], for a read over all of `keys` at once; also returns the requests it had in
+    /// flight, at most and on average ([#inFlight]).
+    private static long[] gateAll(String name, S3Source source, List<String> keys, List<String> meta)
+            throws IOException {
         List<S3InputFile> s3Files = new ArrayList<>();
         List<InputFile> localFiles = new ArrayList<>();
         for (String key : keys) {
             s3Files.add(source.inputFile(BUCKET, key));
             localFiles.add(InputFile.of(localPath(key)));
         }
-        double s3 = multiFileScan(new ArrayList<>(s3Files));
-        double local = multiFileScan(localFiles);
+        RequestRecorder recorder = new RequestRecorder();
+        List<InputFile> recorded = s3Files.stream().map(recorder::wrap).toList();
+        recorder.started();
+        double s3 = multiFileScan(recorded, Long.MAX_VALUE).sum();
+        recorder.ended();
+        double local = multiFileScan(localFiles, Long.MAX_VALUE).sum();
         long requests = 0;
         long bytes = 0;
         for (S3InputFile in : s3Files) {
@@ -524,7 +608,110 @@ public class S3ScanBenchmark {
         check(name, s3, local);
         System.out.printf("Gate passed [%s] — S3 and local reads agree (%d files, %,d requests, %,d bytes).%n", name,
                 keys.size(), requests, bytes);
+        meta.addAll(inFlight(name, "multiFileScan", recorder));
         return new long[] { requests, bytes };
+    }
+
+    /// Prints the requests `recorder` saw in flight, at most and on average over the read, and
+    /// returns them as sidecar pairs under `inFlight.<metaName>`.
+    private static List<String> inFlight(String name, String metaName, RequestRecorder recorder) {
+        System.out.printf("In flight [%s] — at most %d requests, %.1f on average over the read.%n", name,
+                recorder.peak(), recorder.mean());
+        return List.of("inFlight." + metaName + ".peak", Integer.toString(recorder.peak()),
+                "inFlight." + metaName + ".mean", String.format("%.1f", recorder.mean()));
+    }
+
+    /// A multi-file read over the files given, in order.
+    @FunctionalInterface
+    private interface FilesRead<T> {
+        T apply(List<InputFile> files) throws IOException;
+    }
+
+    /// As [#gate], for a read over all of `keys` whose consumer closes the reader once it has
+    /// taken the rows of the first `reached` files, `stopRows`: checks it against the same read
+    /// of the local files and that it took exactly those rows, and returns its sidecar pairs
+    /// under `earlyClose.<metaName>`: its requests and bytes over the files it reached and over
+    /// those past them, and the requests counted only once the reader had closed, waiting
+    /// [#SETTLE_MS] for those in flight. The counted read follows [#EARLY_CLOSE_WARMUP] reads of
+    /// the same files, each over files of its own.
+    private static <T> List<String> gateEarlyClose(String name, String metaName, S3Source source, List<String> keys,
+            int reached, long stopRows, FilesRead<T> read, ToLongFunction<T> rows)
+            throws IOException, InterruptedException {
+        List<S3InputFile> s3Files = new ArrayList<>();
+        List<InputFile> localFiles = new ArrayList<>();
+        for (String key : keys) {
+            s3Files.add(source.inputFile(BUCKET, key));
+            localFiles.add(InputFile.of(localPath(key)));
+        }
+        StringBuilder warmupTimes = new StringBuilder();
+        for (int i = 0; i < EARLY_CLOSE_WARMUP; i++) {
+            List<InputFile> warmup = new ArrayList<>();
+            for (String key : keys) {
+                warmup.add(source.inputFile(BUCKET, key));
+            }
+            read.apply(warmup);
+            warmupTimes.append(warmupTimes.isEmpty() ? "" : ", ").append(consumedAndClose());
+        }
+        RequestRecorder recorder = new RequestRecorder();
+        List<InputFile> recorded = s3Files.stream().map(recorder::wrap).toList();
+        recorder.started();
+        T s3 = read.apply(recorded);
+        recorder.ended();
+        String times = consumedAndClose();
+        long consumedNanos = lastConsumedNanos;
+        long closeNanos = lastCloseNanos;
+        long atClose = s3Files.stream().mapToLong(S3InputFile::networkRequestCount).sum();
+        Thread.sleep(SETTLE_MS);
+        T local = read.apply(localFiles);
+        if (!s3.equals(local) || rows.applyAsLong(s3) != stopRows) {
+            throw new IllegalStateException(String.format("[%s] S3 read %s, local read %s, expected %d rows", name,
+                    s3, local, stopRows));
+        }
+        long reachedRequests = 0;
+        long reachedBytes = 0;
+        long pastRequests = 0;
+        long pastBytes = 0;
+        int pastFiles = 0;
+        for (int i = 0; i < s3Files.size(); i++) {
+            long requests = s3Files.get(i).networkRequestCount();
+            long bytes = s3Files.get(i).networkBytesFetched();
+            if (i < reached) {
+                reachedRequests += requests;
+                reachedBytes += bytes;
+            }
+            else {
+                pastRequests += requests;
+                pastBytes += bytes;
+                pastFiles += requests > 0 ? 1 : 0;
+            }
+        }
+        long requests = reachedRequests + pastRequests;
+        System.out.printf("Gate passed [%s] — S3 and local reads agree (%d files, %,d requests, %,d bytes; "
+                + "%d files reached: %,d requests, %,d bytes; past them %d files opened: %,d requests, %,d bytes; "
+                + "%,d requests counted after close).%n", name, keys.size(), requests, reachedBytes + pastBytes,
+                reached, reachedRequests, reachedBytes, pastFiles, pastRequests, pastBytes, requests - atClose);
+        String prefix = "earlyClose." + metaName + ".";
+        List<String> meta = new ArrayList<>(List.of(
+                prefix + "reachedFiles", Integer.toString(reached),
+                prefix + "reachedRequests", Long.toString(reachedRequests),
+                prefix + "reachedBytes", Long.toString(reachedBytes),
+                prefix + "pastFilesOpened", Integer.toString(pastFiles),
+                prefix + "pastRequests", Long.toString(pastRequests),
+                prefix + "pastBytes", Long.toString(pastBytes),
+                prefix + "requestsAfterClose", Long.toString(requests - atClose)));
+        System.out.printf("Close [%s] — consumed + closed in %s ms%s.%n", name, times,
+                warmupTimes.isEmpty() ? "" : "; warm-up reads " + warmupTimes);
+        meta.add(prefix + "consumedMs");
+        meta.add(String.format("%.0f", consumedNanos / 1e6));
+        meta.add(prefix + "closeMs");
+        meta.add(String.format("%.0f", closeNanos / 1e6));
+        meta.addAll(inFlight(name, metaName + "EarlyClose", recorder));
+        return meta;
+    }
+
+    /// The last scan's two times, as `consumed + close` in milliseconds.
+    private static String consumedAndClose() {
+        return String.format("%.0f + %.0f", lastConsumedNanos / 1e6, lastCloseNanos / 1e6);
     }
 
     /// As [#gate], for the many-small-files read: checks it against the local files and returns
@@ -537,8 +724,12 @@ public class S3ScanBenchmark {
             s3Files.add(source.inputFile(BUCKET, set.key(entry)));
             localFiles.add(InputFile.of(localPath(set.key(entry))));
         }
-        SmallFileSums s3 = smallFilesScan(new ArrayList<>(s3Files));
-        SmallFileSums local = smallFilesScan(localFiles);
+        RequestRecorder recorder = new RequestRecorder();
+        List<InputFile> recorded = s3Files.stream().map(recorder::wrap).toList();
+        recorder.started();
+        SmallFileSums s3 = smallFilesScan(recorded, Long.MAX_VALUE);
+        recorder.ended();
+        SmallFileSums local = smallFilesScan(localFiles, Long.MAX_VALUE);
         if (!s3.equals(local) || s3.rows() != set.totalRows()) {
             throw new IllegalStateException(String.format("[many small files] S3 read %s, local read %s, manifest %d rows",
                     s3, local, set.totalRows()));
@@ -581,6 +772,7 @@ public class S3ScanBenchmark {
                     name + ".requests", Long.toString(bandRequests[b]),
                     name + ".bytes", Long.toString(bandBytes[b])));
         }
+        meta.addAll(inFlight("many small files", "manySmallFiles", recorder));
         return meta;
     }
 
@@ -653,7 +845,8 @@ public class S3ScanBenchmark {
         publish(WIDE_FILE, bucketDir);
         publish(BloomLookupGenerator.SMALL.file(), bucketDir);
         publish(BloomLookupGenerator.LARGE.file(), bucketDir);
-        SmallFileSet smallFiles = included("hardwoodManySmallFiles") ? SmallFileSet.load() : null;
+        SmallFileSet smallFiles = included("hardwoodManySmallFiles") || included("hardwoodManySmallFilesEarlyClose")
+                ? SmallFileSet.load() : null;
         if (smallFiles != null) {
             for (SmallFileSet.Entry entry : smallFiles.files()) {
                 publish(smallFiles.dir().resolve(entry.name()), bucketDir, smallFiles.key(entry));
@@ -673,7 +866,8 @@ public class S3ScanBenchmark {
         Fetches bloomLookup;
         Fetches largeBloomLookup;
         long[] multiFile;
-        List<String> smallFilesMeta = List.of();
+        List<String> smallFilesMeta = new ArrayList<>();
+        List<String> multiFileMeta = new ArrayList<>();
         try (S3Source source = source()) {
             // The taxi files carry no page index, and the event file's lies in the footer tail
             // S3InputFile.open() fetches, so only the wide read's index requests are attributed.
@@ -685,9 +879,20 @@ public class S3ScanBenchmark {
                     unchecked(S3ScanBenchmark::wideFilteredScan));
             bloomLookup = gateLookup("bloom lookup", source, BloomLookupGenerator.SMALL);
             largeBloomLookup = gateLookup("large bloom lookup", source, BloomLookupGenerator.LARGE);
-            multiFile = gateAll("multi-file scan", source, keys);
+            multiFile = gateAll("multi-file scan", source, keys, multiFileMeta);
+            long firstMonthRows = BenchReport.totalRows(months.subList(0, 1));
+            multiFileMeta.addAll(gateEarlyClose("multi-file scan, early close", "multiFileScan", source, keys, 1,
+                    firstMonthRows, files -> multiFileScan(files, firstMonthRows), Scanned::rows));
             if (smallFiles != null) {
-                smallFilesMeta = gateSmallFiles(source, smallFiles);
+                if (included("hardwoodManySmallFiles")) {
+                    smallFilesMeta.addAll(gateSmallFiles(source, smallFiles));
+                }
+                if (included("hardwoodManySmallFilesEarlyClose")) {
+                    long reachedRows = smallFiles.rows(SMALL_FILES_REACHED);
+                    smallFilesMeta.addAll(gateEarlyClose("many small files, early close", "manySmallFiles", source,
+                            smallFiles.keys(), SMALL_FILES_REACHED, reachedRows,
+                            files -> smallFilesScan(files, reachedRows), SmallFileSums::rows));
+                }
             }
             Path local = localPath(keys.get(0));
             try (HardwoodContext context = BenchContext.create()) {
@@ -711,6 +916,7 @@ public class S3ScanBenchmark {
                 "wide.neededIndexBytes", Long.toString(wideLayout.neededBytes()),
                 "latencyMs", System.getProperty("perf.s3.latencyMs", "?"),
                 "bandwidthKBps", System.getProperty("perf.s3.bandwidthKBps", "?")));
+        meta.addAll(multiFileMeta);
         meta.addAll(smallFilesMeta);
         BenchReport.writeRunParams(BenchReport.totalRows(months.subList(0, 1)), Files.size(months.get(0)),
                 null, null, meta.toArray(String[]::new));

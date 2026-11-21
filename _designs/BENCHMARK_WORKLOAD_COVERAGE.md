@@ -123,7 +123,7 @@ compared with one measured to a published definition.
 | `run-1brc.sh` | 100M rows | `hardwoodColumnIds`, `hardwoodColumnSplits` |
 | `run-write.sh` | 500,000 rows | Hardwood |
 | `run-encodings.sh` | 1M rows, ZSTD, `BYTE_STREAM_SPLIT` and `ALP` | Hardwood |
-| `run-s3.sh` | fixed | Hardwood, except `hardwoodManySmallFiles` |
+| `run-s3.sh` | fixed | Hardwood, except `hardwoodManySmallFiles` and `hardwoodManySmallFilesEarlyClose` |
 
 `run-filter.sh`'s `parquetJava` is the suite's control: its version is pinned in the pom,
 so a move in it is machine drift, not a Hardwood change.

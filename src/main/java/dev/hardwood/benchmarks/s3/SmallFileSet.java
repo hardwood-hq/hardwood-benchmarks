@@ -62,6 +62,11 @@ record SmallFileSet(Path dir, List<Entry> files) {
     }
 
     long totalRows() {
-        return files.stream().mapToLong(Entry::rows).sum();
+        return rows(files.size());
+    }
+
+    /// The rows of the first `count` files.
+    long rows(int count) {
+        return files.subList(0, count).stream().mapToLong(Entry::rows).sum();
     }
 }
