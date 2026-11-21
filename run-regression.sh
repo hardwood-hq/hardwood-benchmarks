@@ -41,7 +41,13 @@ Usage: ./run-regression.sh [options] VERSION [VERSION ...]
                     file the write benchmark wrote is larger beyond 1%
 
 Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a script's
---help for its preset. A preset warms its contenders until they settle on a 1.50 GHz
+--help for its preset. Before a script is timed, its gate (--gate) checks that its
+contenders agree, against the last VERSION, unless a gate already passed for the same
+sources: the script, bench-common.sh, pom.xml, src/compat, the shared classes and the
+packages of the benchmarks it runs. Its fixtures are generated or downloaded by those
+sources, so they are covered by the same hash. Passed gates are kept in
+\${XDG_CACHE_HOME:-~/.cache}/hardwood-benchmarks/gates. A script whose gate fails is not
+timed, and the run exits 1. A preset warms its contenders until they settle on a 1.50 GHz
 Intel N300 and runs each in three forks, with RegressionProfiler recording CPU, JIT and GC
 time, allocation and the live-set peak beside each iteration's time. A contender that had
 not settled, or whose forks disagree, gets that as its verdict. progress.log records each
@@ -158,6 +164,41 @@ progress="$OUT/progress.log"
 : > "$OUT/files.txt"
 : > "$OUT/tables.md"
 started=$(date +%s)
+GATES="${XDG_CACHE_HOME:-$HOME/.cache}/hardwood-benchmarks/gates"
+mkdir -p "$GATES"
+
+# The hash of what a script's gate checks: the script and what it shares with every
+# script, and the packages of the benchmark classes it runs.
+gate_key() {
+  local s="$1" pkg files
+  files=("run-$s.sh" bench-common.sh pom.xml src/main/java/dev/hardwood/benchmarks/*.java)
+  for pkg in $(sed -n 's/^ *bench_run dev\.hardwood\.benchmarks\.\([a-z0-9]*\)\..*/\1/p' "run-$s.sh" | sort -u); do
+    files+=("src/main/java/dev/hardwood/benchmarks/$pkg")
+  done
+  files+=(src/compat)
+  find "${files[@]}" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16
+}
+
+# Whether script $1's gate passed for its current sources; runs the gate against version $2
+# when none did, and records a pass.
+gate() {
+  local s="$1" v="$2" key log
+  key="$(gate_key "$s")"
+  if [ -f "$GATES/$s-$key" ]; then
+    echo "gate $s: passed before for these sources ($(cat "$GATES/$s-$key"))" | tee -a "$progress"
+    return 0
+  fi
+  log="$OUT/gate-$s.log"
+  t=$(date +%s)
+  if BENCH_LOG=0 ./run-"$s".sh --gate --hardwood-version "$v" > "$log" 2>&1; then
+    echo "$v $(date +%F)" > "$GATES/$s-$key"
+    echo "gate $s: passed against $v  $(( $(date +%s) - t ))s" | tee -a "$progress"
+    return 0
+  fi
+  echo "gate $s: FAILED against $v  $(( $(date +%s) - t ))s, see $log" | tee -a "$progress"
+  return 1
+}
+
 for v in "${VERSIONS[@]}"; do
   for round in $(seq 1 "$ROUNDS"); do
     rm -rf "$OUT/$v/run-$round"
@@ -167,7 +208,12 @@ done
 # One benchmark at a time, all its rounds and versions, so its result is in before the next
 # starts; within a round the versions alternate, so drift on the machine spreads over all
 # of them.
+gate_failed=()
 for s in "${SCRIPTS[@]}"; do
+  if [ -z "$SMOKE" ] && ! gate "$s" "${VERSIONS[${#VERSIONS[@]}-1]}"; then
+    gate_failed+=("$s")
+    continue
+  fi
   for round in $(seq 1 "$ROUNDS"); do
     for v in "${VERSIONS[@]}"; do
       dest="$OUT/$v/run-$round"
@@ -205,8 +251,12 @@ echo "total $(( $(date +%s) - started ))s" | tee -a "$progress"
 # reason next to it: a script or parameter value needing a feature the version predates, a
 # build that failed, or a contender that threw.
 {
+  for s in "${gate_failed[@]+"${gate_failed[@]}"}"; do
+    echo "  all  $s: its gate failed (gate-$s.log)"
+  done
   for v in "${VERSIONS[@]}"; do
     for log in "$OUT/$v"/run-1/*.log; do
+      [ -f "$log" ] || continue
       s=$(basename "$log" .log)
       grep -h "^Not supported by" "$log" | sed "s/^/  $v  $s: /"
       if grep -q "BUILD FAILURE\|COMPILATION ERROR\|^No adapter in src/compat" "$log"; then
@@ -224,7 +274,7 @@ echo "total $(( $(date +%s) - started ))s" | tee -a "$progress"
   done
 } > "$OUT/not-run.txt"
 broken=0
-grep -q "does not build" "$OUT/not-run.txt" && broken=1
+grep -q "does not build\|its gate failed" "$OUT/not-run.txt" && broken=1
 
 if [ -n "$SMOKE" ]; then
   echo
