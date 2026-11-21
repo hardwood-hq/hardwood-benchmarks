@@ -209,7 +209,11 @@ marks it. With forks, the noise band comes from the forks' means, so a single ru
 Otava: a contender's epoch hashes what it measures (its preset, the iteration counts every
 preset shares, its method's source, its parameters and its fixture's size to three significant figures, since the version that writes a fixture leaves its name in it), and a machine
 epoch the manifest's description of the machine and JVM, so that no series mixes two
-definitions or two machines. A row's time is the measured commit's, so that a backfilled
+definitions or two machines. The kernel is not part of a machine epoch: Fedora ships one every
+few weeks, and series that restarted with each would rarely hold enough rows for Otava; a step
+a kernel causes shows as a change point the confirmation, run on one kernel, refutes. When the
+key of a machine epoch changes, recording moves its series to the new key, so their rows are
+kept. A row's time is the measured commit's, so that a backfilled
 release sorts before later commits; rows that did not settle go to a twin file Otava does
 not read. A series is kept in the order of its rows' time, since Otava reads rows in file
 order.

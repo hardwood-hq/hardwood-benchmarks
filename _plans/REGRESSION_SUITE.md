@@ -57,7 +57,7 @@ Done: stage 1 (#41); stages 2 to 4 (#42); stage 6's code, the nightly job, the h
 
 **Epochs.** What a contender measures (its preset's parameters, its fixture's checksum and its benchmark method's body) is hashed; a new hash starts a new epoch, and so a new series. When an epoch starts, the nightly run also measures the last release and the previous nightly commit under it, so the new series has comparison points from its first row.
 
-**Environment.** Each run records the JDK build, JVM flags, kernel, microcode, governor and pinned clock, heap settings and the load before it started. The machine and its configuration form a machine epoch, kept apart from the contender's: a replaced box or a new JDK starts a new one, the old and new run side by side for a few nights, and their series are never joined.
+**Environment.** Each run records the JDK build, JVM flags, kernel, microcode, governor and pinned clock, heap settings and the load before it started. The machine and its configuration, but for the kernel, form a machine epoch, kept apart from the contender's: a replaced box or a new JDK starts a new one, whose new series get the last release and the previous night's commit queued as comparison points, and their series are never joined. The kernel is left out because Fedora ships one every few weeks; a step one causes shows as a change point that the confirmation, run on one kernel, refutes.
 
 **Exclusive box.** A nightly run takes a lock on the N300 and starts only when no other JVM runs and the clock pin is in place; otherwise it records nothing.
 
