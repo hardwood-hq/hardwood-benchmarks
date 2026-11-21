@@ -15,7 +15,7 @@ source ./bench-common.sh
 
 BENCH_PACKAGE='bloom'
 BENCH_REGRESSION_PRESET='--rows 8000000 --probe absent --warmup 18'
-BENCH_REGRESSION_INCLUDE='hardwoodBloom|hardwoodNoBloom'
+BENCH_REGRESSION_INCLUDE='hardwoodBloom$'
 BENCH_FLAGS='--rows perf.rows
 --probe perf.param'
 BENCH_USAGE="Bloom-filter point-lookup benchmark on a generated unique-key corpus
@@ -31,7 +31,7 @@ Usage: ./run-bloom.sh [options]
                    (default: run both)
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --rows 8000000 --probe absent --warmup 18 (its contenders settle within it on an Intel N300 at 1.50 GHz);
-contenders matching hardwoodBloom|hardwoodNoBloom
+contenders matching hardwoodBloom$
 
 The corpus is generated on first run (no download): keys come from a 64-bit
 bijection of the row index, so they are exactly unique, pseudorandomly ordered, and
