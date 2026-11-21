@@ -15,14 +15,16 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
-    <bench.include>dev/hardwood/benchmarks/**/*.java</bench.include>
-    <!-- A second package a benchmark builds on (bench_build sets it from BENCH_EXTRA_PACKAGE);
-         the default matches nothing. -->
-    <bench.include.extra>dev/hardwood/benchmarks/none/**/*.java</bench.include.extra>
-    <!-- bench_build points these at a directory per Hardwood version and package
-         set, so switching between them reuses a build instead of redoing it. -->
+    <!-- The sources to compile: all of them by default; bench_build points this at a tree of
+         the shared classes and the packages the Hardwood version it builds against supports. -->
+    <bench.sources>${project.basedir}/src/main/java</bench.sources>
+    <!-- bench_build points these at a directory per Hardwood version, so switching between
+         versions reuses a build instead of redoing it. -->
     <bench.outputDirectory>${project.build.directory}/classes</bench.outputDirectory>
     <bench.generatedSources>${project.build.directory}/generated-sources/annotations</bench.generatedSources>
+    <!-- The version adapters (src/compat): those for the current Hardwood API by default;
+         bench_build points this at the set it assembled for the version it builds against. -->
+    <bench.compat.sources>${project.basedir}/src/compat/current</bench.compat.sources>
     <hardwood.version>1.1.0-SNAPSHOT</hardwood.version>
     <parquet.version>1.18.2</parquet.version>
     <hadoop.version>3.4.3</hadoop.version>
@@ -151,23 +153,14 @@
   </dependencies>
 
   <build>
+    <sourceDirectory>${bench.sources}</sourceDirectory>
     <outputDirectory>${bench.outputDirectory}</outputDirectory>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <!-- The shared classes plus the package of the benchmark being run
-               (bench_build sets bench.include from the script's BENCH_PACKAGE),
-               so a benchmark whose source does not compile against the requested
-               Hardwood version never blocks another. Without it, everything
-               compiles. -->
           <generatedSourcesDirectory>${bench.generatedSources}</generatedSourcesDirectory>
-          <includes>
-            <include>dev/hardwood/benchmarks/*.java</include>
-            <include>${bench.include}</include>
-            <include>${bench.include.extra}</include>
-          </includes>
           <annotationProcessorPaths>
             <path>
               <groupId>org.openjdk.jmh</groupId>
@@ -176,6 +169,25 @@
             </path>
           </annotationProcessorPaths>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>compat-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${bench.compat.sources}</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>

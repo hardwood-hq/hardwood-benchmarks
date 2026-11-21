@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Random;
 
+import dev.hardwood.benchmarks.compat.writer.Writers;
 import dev.hardwood.metadata.LogicalType;
 import dev.hardwood.metadata.PhysicalType;
 import dev.hardwood.metadata.RepetitionType;
@@ -116,16 +117,16 @@ public final class WriteFixture {
     }
 
     public static FileSchema schema() {
-        return FileSchema.builder("flat")
-                .primitive("id", PhysicalType.INT64, RepetitionType.REQUIRED)
-                .primitive("pickup_ts", PhysicalType.INT64, RepetitionType.REQUIRED,
-                        c -> c.logicalType(new LogicalType.TimestampType(true, LogicalType.TimeUnit.MICROS)))
-                .primitive("passenger_count", PhysicalType.INT32, RepetitionType.OPTIONAL)
-                .primitive("fare", PhysicalType.DOUBLE, RepetitionType.REQUIRED)
-                .primitive("payment_type", PhysicalType.BYTE_ARRAY, RepetitionType.REQUIRED,
-                        c -> c.logicalType(new LogicalType.StringType()))
-                .primitive("vendor", PhysicalType.BYTE_ARRAY, RepetitionType.OPTIONAL,
-                        c -> c.logicalType(new LogicalType.StringType()))
-                .build();
+        FileSchema.Builder schema = FileSchema.builder("flat");
+        Writers.primitive(schema, "id", PhysicalType.INT64, RepetitionType.REQUIRED);
+        Writers.primitive(schema, "pickup_ts", PhysicalType.INT64, RepetitionType.REQUIRED,
+                new LogicalType.TimestampType(true, LogicalType.TimeUnit.MICROS));
+        Writers.primitive(schema, "passenger_count", PhysicalType.INT32, RepetitionType.OPTIONAL);
+        Writers.primitive(schema, "fare", PhysicalType.DOUBLE, RepetitionType.REQUIRED);
+        Writers.primitive(schema, "payment_type", PhysicalType.BYTE_ARRAY, RepetitionType.REQUIRED,
+                new LogicalType.StringType());
+        Writers.primitive(schema, "vendor", PhysicalType.BYTE_ARRAY, RepetitionType.OPTIONAL,
+                new LogicalType.StringType());
+        return schema.build();
     }
 }

@@ -23,9 +23,8 @@ Regression preset (--regression): --rows 500000; contenders matching hardwood
 Every contender is Hardwood. Before timing, each API's file is read back and its row count
 and fare sum checked; --gate does only that. The produced compressed column-chunk bytes of
 each codec's file are recorded in the meta sidecar (bytes.SNAPPY, bytes.ZSTD), so a version that
-writes larger files shows there even where the time does not move. Needs a Hardwood version
-with WriterConfig.Builder.compression and FileSchema.Builder.primitive (later than
-1.1.0.Beta3); an older one fails to build this benchmark and runs nothing of it."
+writes larger files shows there even where the time does not move. Needs Hardwood's writer
+(1.1.0.Beta1 and later)."
 
 bench_parse_args "$@"
 bench_build

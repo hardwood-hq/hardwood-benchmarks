@@ -232,7 +232,12 @@ bench_apply_regression_preset() {
         exit 2
       fi
     done
-    ARGS+=("-D$prop=${preset[i+1]}")
+    # A smoke run (run-regression.sh --smoke) checks that each contender runs, not its time.
+    case "${BENCH_SMOKE:-}:${preset[i]}" in
+      1:--warmup) ARGS+=("-D$prop=0") ;;
+      1:--meas|1:--time) ARGS+=("-D$prop=1") ;;
+      *) ARGS+=("-D$prop=${preset[i+1]}") ;;
+    esac
   done
   # The contenders: the script's BENCH_REGRESSION_INCLUDE, its Hardwood paths plus
   # at most one control (a contender pinned in the pom, whose drift says the machine
@@ -262,53 +267,191 @@ BENCH_RESULTS=""
 # pom property, so it has to be set on these two invocations rather than passed
 # through to the JVM like the -Dperf.* flags. A -D on the run script's own command
 # line lands on `java`, where nothing reads it.
+#
+# Each Hardwood version builds once, into target/build/<version>/, and every script run
+# against it reuses that build: its classpath, the version adapters bench_compat picked for
+# it, and the classes of the shared code and of every package whose REQUIRES the version
+# meets (see src/compat/README.md). A build is reused while no source file or the pom is
+# newer than it, and while the resolved hardwood-core jar is not either: reinstalling a
+# -SNAPSHOT at another commit rebuilds. The generated fixtures and downloaded corpora under
+# target/ are untouched. A script whose package (BENCH_PACKAGE) requires a feature the
+# version predates prints that it is not supported and exits 0.
 bench_build() {
-  local mvn_args=()
-  [ -n "${BENCH_HARDWOOD_VERSION:-}" ] && mvn_args+=("-Dhardwood.version=$BENCH_HARDWOOD_VERSION")
-
-  # Compile only the shared classes plus the caller's package (BENCH_PACKAGE), so
-  # a benchmark using API the requested version lacks fails its own build and no
-  # other.
   local package=${BENCH_PACKAGE:?"BENCH_PACKAGE must name the script's source package"}
-  mvn_args+=("-Dbench.include=dev/hardwood/benchmarks/$package/**/*.java")
-  # A benchmark that builds on another package's classes names it in BENCH_EXTRA_PACKAGE; that
-  # package compiles with it, and never the other way round.
-  [ -n "${BENCH_EXTRA_PACKAGE:-}" ] && mvn_args+=("-Dbench.include.extra=dev/hardwood/benchmarks/$BENCH_EXTRA_PACKAGE/**/*.java")
-
-  # Each Hardwood version and package builds into a directory of its own under
-  # target/build/, so classes compiled against one version never mix with another's,
-  # and a run that switches back to a version reuses its build instead of redoing
-  # it (two Maven invocations, the bulk of a short run's overhead). A build is
-  # reused while no source file or the pom is newer than it, and while the resolved
-  # hardwood-core jar is not either: reinstalling a -SNAPSHOT at another commit
-  # rebuilds. The generated fixtures and downloaded corpora under target/ are
-  # untouched.
   local version="${BENCH_HARDWOOD_VERSION:-$(sed -n 's:.*<hardwood.version>\(.*\)</hardwood.version>.*:\1:p' pom.xml | head -1)}"
-  local dir="target/build/${version}_$package"
   local jar="$HOME/.m2/repository/dev/hardwood/hardwood-core/$version/hardwood-core-$version.jar"
-  if [ -f "$dir/cp.txt" ] && [ -f "$dir/.built" ] \
-      && [ -z "$(find src pom.xml -newer "$dir/.built" -print -quit)" ] \
-      && ! { [ -f "$jar" ] && [ "$jar" -nt "$dir/.built" ]; }; then
-    CP="$dir/classes:$(cat "$dir/cp.txt")"
-    return
-  fi
-  rm -rf "$dir"
-  mvn_args+=("-Dbench.outputDirectory=$PWD/$dir/classes" "-Dbench.generatedSources=$PWD/$dir/generated-sources")
-
-  if ! ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" compile; then
-    if [ -n "${BENCH_HARDWOOD_VERSION:-}" ]; then
+  local dir="target/build/$version"
+  if ! bench_build_current "$dir/.built" "$jar"; then
+    local mvn_args=()
+    [ -n "${BENCH_HARDWOOD_VERSION:-}" ] && mvn_args+=("-Dhardwood.version=$BENCH_HARDWOOD_VERSION")
+    rm -rf "$dir"
+    mkdir -p "$dir"
+    ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" dependency:build-classpath -Dmdep.outputFile="$PWD/$dir/cp.txt" \
+      || { rm -rf "$dir"; exit 1; }
+    bench_compat "$version" "$dir" "$(cat "$dir/cp.txt")"
+    printf '%s' "$BENCH_UNSUPPORTED" > "$dir/unsupported.txt"
+    bench_sources "$dir"
+    mvn_args+=("-Dbench.sources=$PWD/$dir/src" "-Dbench.compat.sources=$PWD/$dir/compat/src"
+               "-Dbench.outputDirectory=$PWD/$dir/classes" "-Dbench.generatedSources=$PWD/$dir/generated-sources")
+    if ! ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" compile; then
       echo >&2
-      echo "Build failed against hardwood-core $BENCH_HARDWOOD_VERSION." >&2
-      echo "The benchmark sources track the current API, so a benchmark using something" >&2
-      echo "that version does not have will not compile — see the errors above for which." >&2
-      echo "Only this benchmark is affected; the others build their own packages." >&2
+      echo "Build failed against hardwood-core $version." >&2
+      echo "A benchmark reaches API that differs between Hardwood versions through an adapter" >&2
+      echo "in src/compat, and names a feature older versions lack in its package's REQUIRES;" >&2
+      echo "see src/compat/README.md and the errors above." >&2
+      rm -rf "$dir"
+      exit 1
     fi
+    touch "$dir/.built"
+  fi
+  BENCH_UNSUPPORTED="$(cat "$dir/unsupported.txt")"
+  bench_check_requires "$version" "$package" || exit 0
+  CP="$dir/classes:$(cat "$dir/cp.txt")"
+}
+
+# Whether the build stamped by marker $1 is current: it exists, and neither a source file,
+# the pom nor the resolved hardwood-core jar $2 is newer.
+bench_build_current() {
+  [ -f "$1" ] \
+    && [ -z "$(find src pom.xml -newer "$1" -print -quit)" ] \
+    && ! { [ -f "$2" ] && [ "$2" -nt "$1" ]; }
+}
+
+# The features package $1 cannot run without, from its REQUIRES file (none without one).
+bench_requires() {
+  local file="src/main/java/dev/hardwood/benchmarks/$1/REQUIRES"
+  [ -f "$file" ] && cat "$file"
+  return 0
+}
+
+# Echoes the first feature package $1 requires that the version predates, as
+# `<feature>@<since>` from BENCH_UNSUPPORTED; returns 1 when there is none.
+bench_package_unsupported() {
+  local feature entry
+  for feature in $(bench_requires "$1"); do
+    for entry in ${BENCH_UNSUPPORTED//,/ }; do
+      if [[ "${entry%@*}" == "$feature" ]]; then
+        printf '%s' "$entry"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+# Assemble $1/src, the tree the version's build compiles: the shared classes, and every
+# package whose REQUIRES the version meets.
+bench_sources() {
+  local root="src/main/java/dev/hardwood/benchmarks" out="$1/src/dev/hardwood/benchmarks" pkg
+  mkdir -p "$out"
+  cp "$root"/*.java "$out/"
+  for pkg in "$root"/*/; do
+    pkg="$(basename "$pkg")"
+    bench_package_unsupported "$pkg" > /dev/null || cp -R "$root/$pkg" "$out/"
+  done
+}
+
+# Return 1, after saying so, when package $2 requires a feature Hardwood $1 predates;
+# otherwise pass the unsupported features to the JVM, where Features lets a benchmark leave
+# out the contenders or parameter values that need them.
+bench_check_requires() {
+  local entry
+  if entry="$(bench_package_unsupported "$2")"; then
+    echo "Not supported by hardwood-core $1: ${0##*/} needs ${entry%@*} (from ${entry#*@})"
+    return 1
+  fi
+  [ -n "$BENCH_UNSUPPORTED" ] && ARGS+=("-Dbench.unsupported=$BENCH_UNSUPPORTED")
+  return 0
+}
+
+# Pick the version adapters for Hardwood $1 into $2/compat/src, given its classpath $3, and
+# set BENCH_UNSUPPORTED to the features it predates (`<feature>@<since>`, comma-separated).
+# Each directory src/compat/<concern> but `current` is a concern: its candidates, tried in
+# order with javac, are the adapter for the current API (src/compat/current/.../compat/<concern>),
+# its numbered directories (adapters for older APIs, newest first) and its probe/ (a feature
+# with no adapter). The first that compiles is the one the version has. When none does and
+# the concern has a `since` the version predates, the feature is unsupported; otherwise the
+# version has an API no adapter covers, and the build stops.
+bench_compat() {
+  local version="$1" dir="$2" cp="$3" out="$2/compat" javac="${JAVA_HOME:+$JAVA_HOME/bin/}javac"
+  local concern name candidate chosen since missing=()
+  mkdir -p "$out/src" "$out/probe"
+  BENCH_UNSUPPORTED=""
+  for concern in src/compat/*/; do
+    name="$(basename "$concern")"
+    [ "$name" = current ] && continue
+    local candidates=()
+    [ -d "src/compat/current/dev/hardwood/benchmarks/compat/$name" ] \
+      && candidates+=("src/compat/current/dev/hardwood/benchmarks/compat/$name")
+    for candidate in "$concern"[0-9]*/ "$concern"probe/; do
+      [ -d "$candidate" ] && candidates+=("${candidate%/}")
+    done
+    # A concern with no candidate is behaviour no compile can detect: its `since` alone decides it.
+    if (( ${#candidates[@]} == 0 )); then
+      if bench_version_before "$version" "$(cat "${concern}since")"; then
+        BENCH_UNSUPPORTED+="${BENCH_UNSUPPORTED:+,}$name@$(cat "${concern}since")"
+      fi
+      continue
+    fi
+    chosen=""
+    for candidate in "${candidates[@]+"${candidates[@]}"}"; do
+      if "$javac" --release 21 -proc:none -nowarn -d "$out/probe/$name" -cp "$cp" "$candidate"/*.java \
+          > "$out/probe/$name-$(basename "$candidate").log" 2>&1; then
+        chosen="$candidate"
+        break
+      fi
+    done
+    if [ -n "$chosen" ]; then
+      if [ "$(basename "$chosen")" != probe ]; then
+        mkdir -p "$out/src/dev/hardwood/benchmarks/compat/$name"
+        cp "$chosen"/*.java "$out/src/dev/hardwood/benchmarks/compat/$name/"
+      fi
+    elif [ -f "${concern}since" ] && bench_version_before "$version" "$(cat "${concern}since")"; then
+      since="$(cat "${concern}since")"
+      BENCH_UNSUPPORTED+="${BENCH_UNSUPPORTED:+,}$name@$since"
+    else
+      missing+=("$name")
+    fi
+  done
+  if (( ${#missing[@]} )); then
+    echo "No adapter in src/compat matches hardwood-core $version for: ${missing[*]}." >&2
+    echo "Either the version has an API none of the adapters covers (add one), or it predates" >&2
+    echo "a feature whose src/compat/<concern>/since says otherwise. javac's output per" >&2
+    echo "candidate is in $out/probe/." >&2
     rm -rf "$dir"
     exit 1
   fi
-  ./mvnw -q -ntp "${mvn_args[@]+"${mvn_args[@]}"}" dependency:build-classpath -Dmdep.outputFile="$PWD/$dir/cp.txt"
-  touch "$dir/.built"
-  CP="$dir/classes:$(cat "$dir/cp.txt")"
+}
+
+# Order key of a Hardwood version: X.Y.Z, then Alpha < Beta < CR < any -SNAPSHOT of X.Y.Z
+# < Final, then the qualifier's number. A -SNAPSHOT sorts after every pre-release of its
+# version, so it counts as having each feature released before X.Y.Z.Final.
+bench_version_key() {
+  local v="$1" rank num
+  if [[ "$v" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-(.+-)?SNAPSHOT$ ]]; then
+    rank=4
+    num=0
+  elif [[ "$v" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.(Alpha|Beta|CR|Final)([0-9]*)$ ]]; then
+    case "${BASH_REMATCH[4]}" in
+      Alpha) rank=1 ;;
+      Beta) rank=2 ;;
+      CR) rank=3 ;;
+      Final) rank=5 ;;
+    esac
+    num="${BASH_REMATCH[5]:-0}"
+  else
+    echo "Cannot order Hardwood version '$v'" >&2
+    exit 2
+  fi
+  printf '%05d%05d%05d%d%05d' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}" "$rank" "$num"
+}
+
+# Whether Hardwood version $1 is older than $2.
+bench_version_before() {
+  local a b
+  a="$(bench_version_key "$1")" || exit 2
+  b="$(bench_version_key "$2")" || exit 2
+  [[ "$a" < "$b" ]]
 }
 
 # Run one benchmark main class. Two modes:

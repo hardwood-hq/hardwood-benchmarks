@@ -30,7 +30,6 @@ source ./bench-common.sh
 BENCH_PACKAGE='s3write'
 # It reuses the write benchmark's fixture and read-back check; the write package never depends
 # on it, so run-write.sh still builds against Hardwood versions without S3 output.
-BENCH_EXTRA_PACKAGE='write'
 BENCH_REGRESSION_PRESET=''
 BENCH_REGRESSION_INCLUDE='hardwood'
 # The S3 contenders' upload pools want more than one core, and the benchmark already runs on all
@@ -52,9 +51,8 @@ Contenders: hardwoodS3 (S3Source.outputFile) and parquetJavaS3 (ExampleParquetWr
 each beside the same write to memory (hardwoodMemory, parquetJavaMemory). Both S3 contenders use
 8 MiB parts. The endpoint is S3Proxy behind Toxiproxy, started by ./s3-env.sh unless already
 running (S3_LATENCY_MS, default 30; S3_BANDWIDTH_KBPS, default 81920 per connection, applied to
-uploads on the write port). Before timing, both S3 objects are read back and checked. Needs a
-Hardwood version with WriterConfig.Builder.compression and FileSchema.Builder.primitive
-(later than 1.1.0.Beta3); an older one fails to build this benchmark."
+uploads on the write port). Before timing, both S3 objects are read back and checked. Needs
+S3Source.outputFile (1.1.0.CR1 and later)."
 
 bench_parse_args "$@"
 if [[ "$(./s3-env.sh status)" != running ]]; then

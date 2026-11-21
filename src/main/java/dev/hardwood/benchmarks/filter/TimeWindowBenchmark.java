@@ -33,6 +33,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.benchmarks.BenchReport;
 import dev.hardwood.benchmarks.EventFileGenerator;
+import dev.hardwood.benchmarks.Features;
 import dev.hardwood.reader.FilterPredicate;
 
 /// Recent-time-window benchmark: `SELECT amount WHERE event_time >= T` over a
@@ -172,6 +173,11 @@ public class TimeWindowBenchmark {
                 .warmupTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .measurementTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .forks(Integer.getInteger("perf.forks", 1));
+        if (!Features.supported("filter-unprojected")) {
+            // Its filter tests a column outside its projection, which an older row reader refuses.
+            Features.reportUnsupported("hardwoodRowFiltered", "filter-unprojected");
+            opts.exclude("TimeWindowBenchmark\\.hardwoodRowFiltered$");
+        }
         if (param != null && !param.isBlank()) {
             WindowScans.windowStart(param, ROWS); // fail early on a malformed --window
             opts.param("window", param);

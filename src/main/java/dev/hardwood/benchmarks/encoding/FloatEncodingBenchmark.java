@@ -38,12 +38,13 @@ import org.openjdk.jmh.runner.options.TimeValue;
 import dev.hardwood.HardwoodContext;
 import dev.hardwood.InputFile;
 import dev.hardwood.OutputFile;
-import dev.hardwood.Validity;
 import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.Features;
 import dev.hardwood.benchmarks.TaxiDataDownloader;
+import dev.hardwood.benchmarks.compat.validity.LeafValidity;
+import dev.hardwood.benchmarks.compat.writer.Writers;
 import dev.hardwood.metadata.ColumnChunk;
-import dev.hardwood.metadata.CompressionCodec;
 import dev.hardwood.metadata.Encoding;
 import dev.hardwood.metadata.FileMetaData;
 import dev.hardwood.metadata.RowGroup;
@@ -52,7 +53,6 @@ import dev.hardwood.reader.ParquetFileReader;
 import dev.hardwood.schema.FileSchema;
 import dev.hardwood.writer.ColumnEncoding;
 import dev.hardwood.writer.ColumnWriter;
-import dev.hardwood.writer.Compression;
 import dev.hardwood.writer.ParquetFileWriter;
 import dev.hardwood.writer.WriterConfig;
 
@@ -81,11 +81,8 @@ public class FloatEncodingBenchmark {
     private static final int ROWS = Integer.getInteger("perf.rows", 1_000_000);
     private static final YearMonth MONTH = YearMonth.of(2025, 1);
     private static final Path DIR = Path.of("target/float-encodings");
-    /// Named as constants rather than strings, so a Hardwood version without `ALP` fails to
-    /// compile this package, which `run-regression.sh` records as not run, rather than failing
-    /// at runtime.
-    private static final ColumnEncoding[] ENCODINGS = {
-            ColumnEncoding.AUTO, ColumnEncoding.PLAIN, ColumnEncoding.BYTE_STREAM_SPLIT, ColumnEncoding.ALP };
+    /// Every encoding the benchmark knows; `ALP` needs a Hardwood version with it.
+    private static final List<String> ENCODINGS = List.of("AUTO", "PLAIN", "BYTE_STREAM_SPLIT", "ALP");
     private static final String[] CODECS = { "UNCOMPRESSED", "ZSTD" };
     /// As `run-write.sh`: several row groups per file, so no column chunk holds the whole run.
     private static final long ROW_GROUP_TARGET_BYTES = 16L << 20;
@@ -130,11 +127,10 @@ public class FloatEncodingBenchmark {
     }
 
     private static WriterConfig config(String encoding, String codec) {
-        return WriterConfig.builder()
+        WriterConfig.Builder config = WriterConfig.builder()
                 .encoding(ColumnEncoding.valueOf(encoding))
-                .compression(Compression.of(CompressionCodec.valueOf(codec)))
-                .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES)
-                .build();
+                .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES);
+        return Writers.codec(config, codec).build();
     }
 
     private static Path ensureFile(TaxiDoubles data, String encoding, String codec) throws IOException {
@@ -151,7 +147,7 @@ public class FloatEncodingBenchmark {
 
     static void write(OutputFile out, TaxiDoubles data, FileSchema schema, WriterConfig config) throws IOException {
         try (HardwoodContext context = BenchContext.create();
-             ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config, context)) {
+             ParquetFileWriter writer = Writers.create(out, schema, config, context)) {
             ColumnWriter columns = writer.columnWriter();
             for (int b = 0; b < data.batchCount(); b++) {
                 int batchIndex = b;
@@ -182,7 +178,7 @@ public class FloatEncodingBenchmark {
             try (ColumnReader column = reader.columnReader(names[c])) {
                 while (column.nextBatch()) {
                     double[] values = column.getDoubles();
-                    Validity validity = column.getLeafValidity();
+                    LeafValidity validity = LeafValidity.of(column);
                     int count = column.getValueCount();
                     for (int i = 0; i < count; i++) {
                         sum.add(c, validity.isNull(i), values[i]);
@@ -209,11 +205,11 @@ public class FloatEncodingBenchmark {
     /// raw bits and null count per column, and a named encoding on every column chunk.
     /// Returns the compressed column-chunk bytes of each pair, as `bytes.<ENCODING>_<CODEC>`
     /// key/value pairs.
-    private static List<String> gate(TaxiDoubles data) throws IOException {
+    private static List<String> gate(TaxiDoubles data, List<String> encodings) throws IOException {
         TaxiDoubles.Checksum expected = data.checksum();
         List<String> sizes = new ArrayList<>();
-        for (ColumnEncoding policy : ENCODINGS) {
-            String encoding = policy.name();
+        for (String encoding : encodings) {
+            ColumnEncoding policy = ColumnEncoding.valueOf(encoding);
             for (String codec : CODECS) {
                 MemoryOutputFile out = new MemoryOutputFile();
                 write(out, data, data.schema(), config(encoding, codec));
@@ -247,10 +243,31 @@ public class FloatEncodingBenchmark {
         return sizes;
     }
 
+    /// `encodings` less those the Hardwood version on the classpath lacks, each reported.
+    private static List<String> supported(List<String> encodings) {
+        List<String> supported = new ArrayList<>();
+        for (String encoding : encodings) {
+            if (encoding.equals("ALP") && !Features.supported("alp")) {
+                Features.reportUnsupported("encoding ALP", "alp");
+            }
+            else {
+                supported.add(encoding);
+            }
+        }
+        return supported;
+    }
+
     public static void main(String[] args) throws Exception {
         TaxiDoubles data = load();
         System.out.printf("Dataset: %,d rows of %d DOUBLE columns from %s%n", data.rows, data.names.length, MONTH);
-        List<String> sizes = gate(data);
+        String requested = System.getProperty("perf.encoding");
+        List<String> encodings = supported(requested == null || requested.isBlank()
+                ? ENCODINGS
+                : List.of(requested.split(",")));
+        if (encodings.isEmpty()) {
+            return;
+        }
+        List<String> sizes = gate(data, encodings);
         System.out.println("Gate passed: every pair reads back bit for bit, under the encoding it names.");
         if (Boolean.getBoolean("perf.gate")) {
             return;
@@ -265,10 +282,7 @@ public class FloatEncodingBenchmark {
                 .warmupTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .measurementTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .forks(Integer.getInteger("perf.forks", 1));
-        String encodings = System.getProperty("perf.encoding");
-        if (encodings != null && !encodings.isBlank()) {
-            opts.param("encoding", encodings.split(","));
-        }
+        opts.param("encoding", encodings.toArray(new String[0]));
         String codecs = System.getProperty("perf.codec");
         if (codecs != null && !codecs.isBlank()) {
             opts.param("codec", codecs.split(","));

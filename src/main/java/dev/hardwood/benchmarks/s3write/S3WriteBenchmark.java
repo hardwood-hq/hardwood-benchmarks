@@ -47,14 +47,13 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.compat.writer.Writers;
 import dev.hardwood.benchmarks.write.MemoryOutputFile;
 import dev.hardwood.benchmarks.write.WriteBenchmark;
 import dev.hardwood.benchmarks.write.WriteFixture;
-import dev.hardwood.metadata.CompressionCodec;
 import dev.hardwood.s3.S3Credentials;
 import dev.hardwood.s3.S3Source;
 import dev.hardwood.schema.FileSchema;
-import dev.hardwood.writer.Compression;
 import dev.hardwood.writer.WriterConfig;
 
 /// S3 write benchmark: the taxi-shaped records of [WriteBenchmark] written to a local S3 endpoint
@@ -160,12 +159,11 @@ public class S3WriteBenchmark {
     }
 
     private static WriterConfig hardwoodConfig(String codec) {
-        return WriterConfig.builder()
+        WriterConfig.Builder config = WriterConfig.builder()
                 .pageTargetBytes(PAGE_TARGET_BYTES)
                 .pageTargetRows(PAGE_TARGET_ROWS)
-                .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES)
-                .compression(Compression.of(CompressionCodec.valueOf(codec)))
-                .build();
+                .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES);
+        return Writers.codec(config, codec).build();
     }
 
     private static S3Source source() {

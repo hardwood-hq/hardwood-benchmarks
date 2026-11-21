@@ -32,9 +32,8 @@ Two contenders per encoding and codec: hardwoodRead scans every column of a file
 under them, hardwoodWrite writes the columns to memory. Before timing, every pair is written,
 read back and checked bit for bit against the source values, and its column chunks must
 declare the encoding named; --gate does only that. Each pair's compressed column-chunk bytes
-are recorded in the meta sidecar (bytes.<ENCODING>_<CODEC>). Needs a Hardwood version with
-ALP, WriterConfig.Builder.compression and FileSchema.Builder.primitive (later than
-1.1.0.Beta3); an older one fails to build this benchmark and runs nothing of it."
+are recorded in the meta sidecar (bytes.<ENCODING>_<CODEC>). Needs Hardwood's writer
+(1.1.0.Beta1 and later); ALP runs from 1.1.0.CR1 on, and is left out on an older version."
 
 bench_parse_args "$@"
 bench_build

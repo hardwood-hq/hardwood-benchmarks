@@ -36,15 +36,14 @@ import dev.hardwood.InputFile;
 import dev.hardwood.OutputFile;
 import dev.hardwood.benchmarks.BenchContext;
 import dev.hardwood.benchmarks.BenchReport;
+import dev.hardwood.benchmarks.compat.writer.Writers;
 import dev.hardwood.metadata.ColumnChunk;
-import dev.hardwood.metadata.CompressionCodec;
 import dev.hardwood.metadata.FileMetaData;
 import dev.hardwood.metadata.RowGroup;
 import dev.hardwood.reader.ParquetFileReader;
 import dev.hardwood.reader.RowReader;
 import dev.hardwood.schema.FileSchema;
 import dev.hardwood.writer.ColumnWriter;
-import dev.hardwood.writer.Compression;
 import dev.hardwood.writer.ParquetFileWriter;
 import dev.hardwood.writer.RowWriter;
 import dev.hardwood.writer.WriterConfig;
@@ -86,11 +85,10 @@ public class WriteBenchmark {
     }
 
     private static WriterConfig config(String codec) {
-        return WriterConfig.builder()
+        WriterConfig.Builder config = WriterConfig.builder()
                 .pageTargetBytes(PAGE_TARGET_BYTES)
-                .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES)
-                .compression(Compression.of(CompressionCodec.valueOf(codec)))
-                .build();
+                .rowGroupBufferTargetBytes(ROW_GROUP_TARGET_BYTES);
+        return Writers.codec(config, codec).build();
     }
 
     /// Column writer: each batch's arrays as they are.
@@ -109,7 +107,7 @@ public class WriteBenchmark {
 
     public static void writeColumnar(OutputFile out, WriteFixture f, FileSchema schema, WriterConfig config) throws IOException {
         try (HardwoodContext context = BenchContext.create();
-             ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config, context)) {
+             ParquetFileWriter writer = Writers.create(out, schema, config, context)) {
             ColumnWriter columns = writer.columnWriter();
             for (int b = 0; b < f.batchCount(); b++) {
                 int i = b;
@@ -126,7 +124,7 @@ public class WriteBenchmark {
 
     static void writeRows(OutputFile out, WriteFixture f, FileSchema schema, WriterConfig config) throws IOException {
         try (HardwoodContext context = BenchContext.create();
-             ParquetFileWriter writer = ParquetFileWriter.create(out, schema, config, context)) {
+             ParquetFileWriter writer = Writers.create(out, schema, config, context)) {
             RowWriter rows = writer.rowWriter();
             for (int b = 0; b < f.batchCount(); b++) {
                 long[] ids = f.id[b];
