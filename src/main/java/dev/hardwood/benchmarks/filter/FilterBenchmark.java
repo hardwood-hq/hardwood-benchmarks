@@ -78,10 +78,13 @@ public class FilterBenchmark {
         long threshold = "selective".equals(selectivity) ? ROWS / 20 : ROWS;
         Scans.Result pj = Scans.parquetJavaFiltered(FILE, threshold);
         Scans.Result hw = Scans.hardwoodFiltered(FILE, threshold);
-        Scans.Result hwRows = Scans.hardwoodRowReaderFiltered(FILE, threshold);
         Scans.Result avro = Scans.avroParquetFiltered(FILE, threshold);
         assertMatches(selectivity, "Hardwood (filtered column reader)", hw, pj);
-        assertMatches(selectivity, "Hardwood (filtered row reader)", hwRows, pj);
+        // The row reader filters on a column it does not project, which a version before
+        // filter-unprojected rejects; the timed run leaves it out there too.
+        if (Features.supported("filter-unprojected")) {
+            assertMatches(selectivity, "Hardwood (filtered row reader)", Scans.hardwoodRowReaderFiltered(FILE, threshold), pj);
+        }
         assertMatches(selectivity, "AvroParquetReader.withFilter", avro, pj);
         System.out.printf("Gate passed [%s] — Hardwood and AvroParquetReader agree with parquet-java (%d rows, sum %.3f).%n",
                 selectivity, hw.count(), hw.sum());

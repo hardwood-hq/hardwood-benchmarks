@@ -121,8 +121,12 @@ public class TimeWindowBenchmark {
         }
         FilterPredicate filter = WindowScans.predicate(from);
         assertMatches(window, "Hardwood column reader (filtered)", Scans.hardwoodFiltered(FILE, filter), ref);
-        assertMatches(window, "Hardwood row reader (filtered)", Scans.hardwoodRowReaderFiltered(FILE, filter), ref);
-        System.out.printf("Gate passed [%s] — both filtered Hardwood readers agree with parquet-java "
+        // The row reader filters on a column it does not project, which a version before
+        // filter-unprojected rejects; the timed run leaves it out there too.
+        if (Features.supported("filter-unprojected")) {
+            assertMatches(window, "Hardwood row reader (filtered)", Scans.hardwoodRowReaderFiltered(FILE, filter), ref);
+        }
+        System.out.printf("Gate passed [%s] — the filtered Hardwood readers this version supports agree with parquet-java "
                 + "(event_time >= %d: %d rows, sum %.3f).%n", window, from, ref.count(), ref.sum());
     }
 
