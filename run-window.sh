@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='filter'
-BENCH_REGRESSION_PRESET='--window last25pct'
+BENCH_REGRESSION_PRESET='--window last25pct --warmup 13'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--window perf.param'
 BENCH_USAGE="Time-window benchmark, regression-only (generated time-sorted event log of
@@ -19,7 +19,7 @@ Usage: ./run-window.sh [options]
   --window VALUE        restrict to one window: last5pct | last25pct | last75pct
                         (default: run all three)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --window last25pct; contenders matching hardwood
+Regression preset (--regression): --window last25pct --warmup 13; contenders matching hardwood
 
 Every contender is Hardwood, so the pinned single-core pass times them all. The
 dataset has one size, so runs of any two versions read the same file.

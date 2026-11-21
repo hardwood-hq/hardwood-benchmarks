@@ -96,9 +96,21 @@ property on the build, so a run measures any released or locally installed
 `hardwood-core`. A script compiles the shared classes in `dev.hardwood.benchmarks` plus
 its own package (`BENCH_PACKAGE`), into `target/build/<version>_<package>`. A build is
 reused until a source file, the pom or the resolved `hardwood-core` jar is newer than it.
-A benchmark using API the requested version lacks fails its own build and no other, and
-the version chart shows it as not run for that version. A contender that compiles but
-throws on an older version fails alone under JMH, with the same result in the chart.
+
+**Versions a benchmark runs on.** Every benchmark builds against every Hardwood version
+from 1.0.0.Final on. Where the API differs between versions (a rename, a moved type, a
+changed signature), a benchmark calls an adapter in `dev.hardwood.benchmarks.compat`, of
+which `src/compat` holds one implementation per API form. Before compiling, the build tries
+each form against the requested version with `javac` and takes the first that compiles, so
+the choice follows the API the version has, also for a snapshot, whose version string says
+nothing about it. An adapter on a timed path delegates directly, and the JIT inlines it.
+A feature an older version lacks carries the first release that has it: a script that needs
+it (its package's `REQUIRES`) does not build on an older version and says it is not supported; a
+benchmark that can run without some of its contenders or parameter values leaves those
+out and says so (`Features`). Where no form compiles against a version that should have the
+feature, the build stops: a missing adapter is a defect, never a skip. `src/compat/README.md`
+lists the concerns and how to add one. A contender that compiles but throws on an older
+version fails alone under JMH, and the version chart shows it as not run.
 
 **The regression preset.** `--regression` fixes a run's whole configuration so that
 regression runs taken at any time are alike: each script's reduced sizes and contender
@@ -116,7 +128,7 @@ compared with one measured to a published definition.
 | Script | Preset sizes | Contenders |
 | --- | --- | --- |
 | `run-flat.sh` | taxi 2025-01 | `hardwoodColumnar`, `hardwoodRowReaderIndexed` |
-| `run-filter.sh` | 5M rows | `hardwoodDefault`, `hardwoodRowReader`, `parquetJava` |
+| `run-filter.sh` | 5M rows | `hardwoodDefault`, `hardwoodRowReader` |
 | `run-bloom.sh` | 8M rows, absent-key probe | `hardwoodBloom`, `hardwoodNoBloom` |
 | `run-nested.sh` | 20,000 rows | Hardwood |
 | `run-fixedlist.sh` | 8M values, `k` = 768 | the fast-path arms |
@@ -127,17 +139,23 @@ compared with one measured to a published definition.
 | `run-encodings.sh` | 1M rows, ZSTD, `BYTE_STREAM_SPLIT` and `ALP` | Hardwood |
 | `run-s3.sh` | fixed | Hardwood, except `hardwoodManySmallFiles` |
 
-`run-filter.sh`'s `parquetJava` is the suite's control: its version is pinned in the pom,
-so a move in it is machine drift, not a Hardwood change.
+A preset times Hardwood's contenders only: the suite compares Hardwood with itself, and
+interleaved rounds spread machine drift over every version.
 
 **The regression run.** `run-regression.sh V1 V2 [V3 ...]` runs every script under
-`--regression` for each version in interleaved rounds (`--rounds`, default 3), so drift
-on the machine spreads over all versions, and starts the emulated S3 endpoint once for
-the whole run. A round of all ten scripts takes about 6 min per version on a 1.50 GHz
-Intel N300. It ends in `verdict.txt`, which compares the first version with the last and
-lists per benchmark a tally plus only the contenders that moved beyond the noise band,
-with control drift reported separately; `not-run.txt`, which gives the reason for every
+`--regression`, one benchmark at a time over all its rounds (`--rounds`, default 3), with the
+versions interleaved within each round, so drift on the machine spreads over all versions and
+each benchmark's table (`tables.md`) is in before the next starts. It starts the emulated S3
+endpoint once for the whole run when `run-s3.sh` is among them. It ends in `verdict.txt`,
+which compares the first version with the last and lists per benchmark a tally plus only the
+contenders that moved beyond the noise band; `not-run.txt`, which gives the reason for every
 benchmark a version could not run; and one version chart per benchmark.
+
+**Settled or not.** A contender whose measurement iterations still fell one after another,
+by more than 5 % in all, was measured before it reached steady state: the comparator calls
+it "not settled" rather than faster or slower, and the version table marks it
+(`charts/settling.py`). A preset's warmup is sized so that its contenders settle on a
+1.50 GHz Intel N300, the slowest machine the suite runs on.
 `--fail-on-regression` exits non-zero when a Hardwood contender is slower beyond the band.
 
 **The comparator.** `charts/compare-runs.py BASE NEW` takes two snapshots, each a run

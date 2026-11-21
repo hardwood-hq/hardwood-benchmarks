@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='dictionary'
-BENCH_REGRESSION_PRESET=''
+BENCH_REGRESSION_PRESET='--warmup 16'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS=''
 BENCH_USAGE="Dictionary-space filter benchmark, regression-only (generated files of 5M rows,
@@ -20,7 +20,7 @@ about 2 % of its rows sort below.
 
 Usage: ./run-dictfilter.sh [options]
 $BENCH_COMMON_USAGE
-Regression preset (--regression): contenders matching hardwood
+Regression preset (--regression): --warmup 16; contenders matching hardwood
 
 Every contender is Hardwood's row reader. --gate checks that every page of url is
 dictionary-encoded and that each filtered read agrees with parquet-java, then exits."

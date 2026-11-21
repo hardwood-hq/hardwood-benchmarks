@@ -42,6 +42,8 @@ import glob
 import os
 import re
 import statistics
+
+import settling
 import sys
 
 
@@ -103,7 +105,10 @@ def load(path):
                         if len(cols) >= 2:
                             fields[cols[0]] = cols[1]
                 meta[name] = fields
-    return {"runs": runs, "samples": samples, "order": order, "meta": meta}
+    warming = set()
+    for run in runs:
+        warming |= settling.still_warming(settling.run_logs(run))
+    return {"runs": runs, "samples": samples, "order": order, "meta": meta, "warming": warming}
 
 
 # --- statistics ------------------------------------------------------------
@@ -166,6 +171,9 @@ def compare_benchmark(base, new, benchmark, threshold, min_band, pattern=None, c
             continue
         base_ms, new_ms, delta, band, verdict, measured = compare(
             base_bench[key], new_bench[key], threshold, min_band)
+        # A time measured before the contender settled supports no verdict either way.
+        if (benchmark, contender) in base["warming"] or (benchmark, contender) in new["warming"]:
+            verdict = "not settled"
         row = {"pass": pass_, "contender": contender, "base_ms": base_ms,
                "new_ms": new_ms, "delta": delta, "band": band,
                "verdict": verdict, "measured": measured}
@@ -255,10 +263,11 @@ def report_text(rows, base, new, benchmark, only_base, only_new, out, changes_on
 
     if changes_only:
         moved = [r for r in rows if r["verdict"] != "~same"]
-        print("  {} compared: {} slower, {} faster, {} within noise".format(
+        print("  {} compared: {} slower, {} faster, {} within noise, {} not settled".format(
             len(rows), sum(r["verdict"] == "slower" for r in rows),
             sum(r["verdict"] == "faster" for r in rows),
-            sum(r["verdict"] == "~same" for r in rows)), file=out)
+            sum(r["verdict"] == "~same" for r in rows),
+            sum(r["verdict"] == "not settled" for r in rows)), file=out)
         rows = moved
         if not rows:
             rows = None

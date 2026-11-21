@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='encoding'
-BENCH_REGRESSION_PRESET='--codec ZSTD --encoding BYTE_STREAM_SPLIT,ALP'
+BENCH_REGRESSION_PRESET='--codec ZSTD --encoding BYTE_STREAM_SPLIT,ALP --warmup 16'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--rows perf.rows
 --data-dir data.dir
@@ -25,7 +25,7 @@ Usage: ./run-encodings.sh [options]
                         (default: all)
   --codec LIST          comma-separated codecs: UNCOMPRESSED, ZSTD (default: both)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --codec ZSTD --encoding BYTE_STREAM_SPLIT,ALP;
+Regression preset (--regression): --codec ZSTD --encoding BYTE_STREAM_SPLIT,ALP --warmup 16;
 contenders matching hardwood
 
 Two contenders per encoding and codec: hardwoodRead scans every column of a file written
