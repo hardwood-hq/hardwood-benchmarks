@@ -232,6 +232,11 @@ it is within its window; an item that starts runs to completion, and the rest wa
 next night. When a contender's epoch or machine epoch starts, the night queues the highest
 release and the previous night's commit for the scripts concerned, so the new series has
 comparison points. `--backfill` works through the queue at once, without measuring a night.
+A backfill records a contender only where its series holds no settled row of the commit yet: a
+script backfilled for one new contender runs its other contenders too, and they would otherwise
+get a second row for a commit they already hold. A commit whose row did not settle can be
+backfilled again. A night's own run of a commit already recorded adds
+its row, since measuring the same commit night after night is how calibration reads the noise.
 
 **The report and the page.** `reports/<date>.md` lists what the night measured, each
 contender's metrics against the median of its series' last nights, what did not run, and the
