@@ -48,12 +48,12 @@ Done: stage 1 (#41); stages 2 and 3, but for gate skipping, and stage 4, but for
 3. **Metrics, then warmups.** The metrics profiler, the fixed heap and GC per preset, and the forks; then per-preset warmups from the N300's settle data for the remaining contenders, measured with all of that in place; the settle and bimodality checks; gate skipping by source and fixture hash. Timed validation runs of both profiles.
 4. **Results and Otava.** See [Recording](#recording); the environment manifest; the lock that keeps a nightly run off a busy box.
 5. **Calibration.** The same commit nightly for about a week (an A/A run), to set Otava's thresholds for the number of series at the target false-alarm rate. Nothing is backfilled or alerted before.
-6. **Nightly on the N300.** A systemd timer, deployed through cloud-boxes; the backfill; confirmation and alerting.
+6. **Nightly on the N300.** The nightly job of [The nightly job](#the-nightly-job) as a systemd timer, deployed through cloud-boxes; the backfill; confirmation and alerting; the history page.
 7. **Quick against history.** `quick` compares with the median of the last nightly results from the same machine; user docs for both profiles.
 
 ## Recording
 
-**Series.** One series per contender: `series/<Benchmark>/<contender>@<machine epoch>@<epoch>.csv` in `hardwood-benchmark-results`, one row per nightly run with time, commit, version, the schema version, whether the contender settled, each fork's score, and its metrics. A metric added later is a new column, empty in older rows. `runs/<date>-<commit>/` keeps each run's raw JMH results, so history can be derived again. `otava.yaml`, generated from the series files, gives Otava one test per file; rows that did not settle are kept but left out of the analysis.
+**Series.** One series per contender: `series/<machine epoch>/<Benchmark>/<contender>@<epoch>.csv` in `hardwood-benchmark-results`, one row per nightly run with the commit's time, commit, version, when the run began, the schema version, each fork's mean, and its metrics. The files are plain CSV that any tool reads; only `otava.yaml` is Otava's, and it is generated. A metric added later is a new column, empty in older rows. `runs/<date>-<commit>/` keeps each run's raw JMH results, so history can be derived again. `otava.yaml`, generated from the series files, gives Otava one test per file; rows that did not settle or whose forks disagree go to an `.unsettled.csv` twin, which Otava does not read.
 
 **Epochs.** What a contender measures (its preset's parameters, its fixture's checksum and its benchmark method's body) is hashed; a new hash starts a new epoch, and so a new series. When an epoch starts, the nightly run also measures the last release and the previous nightly commit under it, so the new series has comparison points from its first row.
 
@@ -73,6 +73,21 @@ Done: stage 1 (#41); stages 2 and 3, but for gate skipping, and stage 4, but for
 All four come from standard JVM interfaces, so they are recorded on every machine; `quick` records them too, to compare with the nightly series.
 
 **Confirmation and alerts.** A change point Otava finds is confirmed before an alert: the flagged commit and its parent run interleaved, with more forks, in `run-regression.sh`'s two-version mode. Who receives a confirmed alert, and whether it opens an issue naming the commit range, is decided in stage 6.
+
+## The nightly job
+
+Otava runs on the N300, as the last step of the nightly job, because confirming a change point needs the box: run in CI on the results repository, it would hand each change point back to the box through a queue.
+
+1. `run-regression.sh --profile nightly` on `origin/main`, recorded with `record-results.py`.
+2. `otava analyze --output json` over every series of the machine epoch. Otava fits the whole history each time and returns every change point, old ones included, which may shift as rows arrive.
+3. The change points are matched against `changes.json` in the results repository, the change points already handled, by series and commit range; the rest are new.
+4. Each new change point is confirmed: its commit and its parent, interleaved, five forks each.
+5. One commit to the results repository: the rows, the run's raw results, `changes.json` with each change point confirmed, refuted or pending, the night's report and the history page.
+6. Each confirmed change point is reported on the channel stage 6 decides.
+
+The night's report, `reports/<date>.md` with `reports/latest.md`, lists the contenders run, those not settled or bimodal, each contender against the median of its last nights, and the change points pending confirmation. A failed or skipped night (busy box, failed build) writes a report saying so. A check on the results repository's CI runs `otava validate` on each push.
+
+**History page.** One static page in the results repository, served by GitHub Pages and rewritten each night, reads the series CSVs in the browser. Per benchmark, one row per contender of four charts (wall, CPU, allocation, live-set peak) against commit time: settled rows filled, unsettled and bimodal ones hollow, each fork's mean faint, releases labelled, confirmed change points as lines linking their report. An epoch boundary breaks the line.
 
 ## Settled decisions
 
