@@ -1,13 +1,14 @@
 # Benchmark workload coverage
 
-**Status: in progress.** Tracking issue: hardwood-hq/hardwood#1173. Related issues in
-hardwood-hq/hardwood: #25, #30, #631, #708, #763, #827, #837, #1015, #1045.
+Tracking issue: hardwood-hq/hardwood#1173. Related issues in hardwood-hq/hardwood: #25, #30,
+#631, #708, #763, #827, #837, #1015, #1045.
 
 The standalone `hardwood-benchmarks` repository holds Hardwood's benchmark suite. The
 suite has two jobs: backing published results with cross-engine numbers, and comparing
 one Hardwood version against another to find regressions. This document lists the
-benchmarks the suite consists of, the tooling they share, and the workload axes they
-cover. Issues are disabled in this repository, so its work is tracked in
+benchmarks the suite consists of, the contenders the regression presets time, and the
+workload axes they cover; [the regression suite](REGRESSION_SUITE.md) describes the tooling
+that builds, measures and records them. Issues are disabled in this repository, so its work is tracked in
 hardwood-hq/hardwood, and issue numbers in this document refer to that repository.
 
 ## Benchmarks
@@ -87,47 +88,12 @@ What the planned benchmarks are for:
 - `run-mixed.sh` adds the contender and the chart to the shape
   `MixedSchemaReadBenchmark` covers in-repo.
 
-## Regression tooling
+## Regression contenders
 
-All benchmarks of both kinds share the following.
-
-**Version as a run parameter.** `--hardwood-version V` sets the `hardwood.version` pom
-property on the build, so a run measures any released or locally installed
-`hardwood-core`. A script compiles the shared classes in `dev.hardwood.benchmarks` plus
-its own package (`BENCH_PACKAGE`), into `target/build/<version>_<package>`. A build is
-reused until a source file, the pom or the resolved `hardwood-core` jar is newer than it.
-
-**Versions a benchmark runs on.** Every benchmark builds against every Hardwood version
-from 1.0.0.Final on. Where the API differs between versions (a rename, a moved type, a
-changed signature), a benchmark calls an adapter in `dev.hardwood.benchmarks.compat`, of
-which `src/compat` holds one implementation per API form. Before compiling, the build tries
-each form against the requested version with `javac` and takes the first that compiles, so
-the choice follows the API the version has, also for a snapshot, whose version string says
-nothing about it. An adapter on a timed path delegates directly, and the JIT inlines it.
-A feature an older version lacks carries the first release that has it: a script that needs
-it (its package's `REQUIRES`) does not build on an older version and says it is not supported; a
-benchmark that can run without some of its contenders or parameter values leaves those
-out and says so (`Features`). Where no form compiles against a version that should have the
-feature, the build stops: a missing adapter is a defect, never a skip. `src/compat/README.md`
-lists the concerns and how to add one. A contender that compiles but throws on an older
-version fails alone under JMH, and the version chart shows it as not run.
-
-**The regression preset.** `--regression` fixes a run's whole configuration so that
-regression runs taken at any time are alike: each script's reduced sizes and contender
-subset, its warmup, 3 measurement iterations of 1 s in each of 3 forks, a 4 GB heap with
-G1 in every benchmark JVM, `RegressionProfiler` in every fork, and one pass on all cores.
-A script's warmup is as long as its contenders took to settle on a 1.50 GHz Intel N300,
-from 6 s to 30 s; time-based, it covers more operations on a faster machine. `run-1brc.sh`
-runs iterations of 5 s, since one operation takes about 1.5 s and C2 can compile the
-aggregating loop again up to about 18 s into the fork. Three forks show a JIT decision that
-differs between JVMs instead of averaging it away. Pinned to one core, the JIT, the GC and
-the reader's worker threads share the core and a contender settles far later, so a preset
-runs on all cores. Passing a flag the preset sets is an error. The meta sidecar records the preset, and the comparator and the
-version chart treat it as part of the dataset key, so a regression number is never
-compared with one measured to a published definition.
-
-Every preset contender covers a path no other one does, judged on wall time, CPU,
-allocation and live-set peak; the `quick` profile runs the ones marked so.
+The regression presets time Hardwood's contenders only: the suite compares Hardwood with itself.
+Each contender covers a path no other one does, judged on wall time, CPU, allocation and
+live-set peak, and the `quick` profile runs the ones marked so. [The regression
+suite](REGRESSION_SUITE.md) describes how they are measured, recorded and analysed.
 
 | Script | Preset | Contender | Covers alone | `quick` |
 | --- | --- | --- | --- | --- |
@@ -166,100 +132,10 @@ dictionary, `run-1brc.sh`'s fan-out, `run-nested.sh`'s column readers over 20,00
 `run-write.sh`'s SNAPPY codec and `run-s3.sh`'s filtered scan, small bloom lookup and local
 read beside a remote one each repeat a contender above, and run only outside `--regression`.
 
-A preset times Hardwood's contenders only: the suite compares Hardwood with itself, and
-interleaved rounds spread machine drift over every version.
 
-**The regression run.** `run-regression.sh [--profile quick|nightly|smoke] V1 [V2 ...]`
-runs the profile's scripts under `--regression`, one benchmark at a time over all its rounds
-(`--rounds`, default 1), with the versions interleaved within each round, so drift on the
-machine spreads over all versions and each benchmark's table (`tables.md`) is in before the
-next starts. `quick` times the contenders marked so above, `nightly` all of them, and
-`smoke` all of them once, without warmup, to check what each version runs. Before a script is timed, its gate checks
-that its contenders agree, against the last version, when no gate passed before for the
-hash of its sources: the script, what every script shares, and the packages of its
-benchmarks. Fixtures are generated or downloaded by those sources, so the hash covers them;
-a change in Hardwood alone does not run a gate again, since Hardwood's own tests cover its
-results. A script whose gate fails is not timed. It starts the
-emulated S3 endpoint once for the whole run when `run-s3.sh` is among them, and records the
-machine and JVM in `manifest.json`. With several versions it ends in `verdict.txt`, which
-compares the first version with the last and lists per benchmark a tally plus only the
-contenders that moved beyond the noise band, and one version chart per benchmark;
-`not-run.txt` gives the reason for every benchmark a version could not run. Two scripts
-that time one benchmark class, `run-nested.sh` and `run-nested-columns.sh`, each with its own
-contenders, have their results joined.
+## Fixture durability
 
-**What a fork records.** `RegressionProfiler`, a JMH profiler of the suite's own, appends one
-line per iteration of each fork to the run's `bench-metrics-<Benchmark>.jsonl`: the score,
-the process's CPU time per operation with the JIT compiler's and the collector's apart, the
-bytes allocated per operation by every thread (`getTotalThreadAllocatedBytes`, so threads
-that have ended count), and the live-set peak, the most heap in use right after a
-collection during the iteration. Wall time alone hides more work spread over more cores, and
-memory held longer than it should be.
-
-**Settled, bimodal.** From the forks' measurement iterations (`charts/settling.py`): a
-contender whose last iteration, averaged over its forks, is more than 3 % below its first,
-falling in at least two forks, was measured before it reached steady state, and is "not
-settled"; one whose forks' means split into groups further apart than 5 % of their median
-and three times the spread within a fork took different JIT decisions in different JVMs, and
-is "bimodal". The comparator gives either instead of faster or slower, and the version table
-marks it. With forks, the noise band comes from the forks' means, so a single run has one.
-
-**Recording.** `charts/record-results.py` appends a version's run to a checkout of
-`hardwood-benchmark-results`, one series per contender, epoch and machine epoch, for Apache
-Otava: a contender's epoch hashes what it measures (its preset, the iteration counts every
-preset shares, its method's source, its parameters and its fixture's size to three significant figures, since the version that writes a fixture leaves its name in it), and a machine
-epoch the manifest's description of the machine and JVM, so that no series mixes two
-definitions or two machines. The kernel is not part of a machine epoch: Fedora ships one every
-few weeks, and series that restarted with each would rarely hold enough rows for Otava; a step
-a kernel causes shows as a change point the confirmation, run on one kernel, refutes. When the
-key of a machine epoch changes, recording moves its series to the new key, so their rows are
-kept. A row's time is the measured commit's, so that a backfilled
-release sorts before later commits; rows that did not settle go to a twin file Otava does
-not read. A series is kept in the order of its rows' time, since Otava reads rows in file
-order.
-
-**The nightly job.** `nightly.sh` measures `origin/main` once a night on the N300 and
-records it. Otava runs on the box, as the job's last step, because confirming a change
-point needs the box. Otava fits each series' whole history each night, so a change point
-it found before comes back, possibly a row or two away; `changes.json` in the results
-repository keeps every change point found, keyed by series and commit, with its status:
-pending, confirmed, refuted, an improvement, or history. Only a regression whose commit
-after is one the job measured as its own night (`nights.csv`) in the last week is
-confirmed: the commit before and the commit after run interleaved, and the regression is
-confirmed when every fork of the commit after is worse than every fork of the commit before,
-by at least half the change Otava found. A change point that older or backfilled rows bring
-is history and alerts no one. A confirmed regression opens an issue on Hardwood.
-
-A night needs the box to itself: it holds a lock, starts only when no JVM runs and nobody
-else pinned the clock, and is void if a JVM outside its control group runs while it
-measures; a void or skipped night writes a report saying why. When a contender's epoch
-starts, the last release and the previous night's commit are queued for measurement under
-the new definition, so that the new series has comparison points; queued work runs after
-the night's own while time remains.
-`--fail-on-regression` exits non-zero when a Hardwood contender is slower beyond the band.
-
-**The comparator.** `charts/compare-runs.py BASE NEW` takes two snapshots, each a run
-directory or a directory of `run-*` repeats, and prints per contender the base time, new
-time, delta and verdict. A delta is called only when it clears a noise band. With repeats
-on both sides the band is half of each side's observed spread, `(max - min) / median`,
-added together and floored at `--min-band` (default 3 %); with a single run on either
-side it is `--threshold` (default 5 %), and the report says which it used. Contenders and
-benchmarks on one side only are listed. A differing `machine`, `java`, dataset key or
-preset, or two snapshots of the same Hardwood build, draws a warning before any number.
-`--control REGEX` marks pinned contenders, whose moves are reported as drift and never as
-a regression; `--changes-only`, `--include`, `--format tsv` and `--fail-on-regression`
-serve scripts, including the check #25 needs.
-
-**The version chart.** `charts/make-version-chart.py` charts each Hardwood contender
-across any number of snapshots in the order given: two for a before/after of a branch,
-several for a progression such as 1.0 → 1.1 → 1.2. Each snapshot is labelled with the
-Hardwood version its meta sidecar records, and with the commit for a snapshot build;
-repeats are drawn as whiskers, and a version that could not run a contender is drawn as
-missing. It checks snapshots as the comparator does. Control contenders are not charted;
-the chart warns when one moves beyond its noise band. A mixed-use benchmark's publication
-chart stays with its own generator.
-
-**Fixture durability.** Every fixture is generated, and therefore pinned by
+Every fixture is generated, and therefore pinned by
 construction, except two corpora. `run-flat.sh` and `run-s3.sh` read NYC taxi pinned to
 the 2025 TLC layout by `--start`/`--end`, since the schema changed under it.
 `run-nested.sh` reads the Overture places file from the STAC catalog's latest release,
