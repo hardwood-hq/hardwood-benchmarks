@@ -39,7 +39,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 
 ## Stages
 
-Done: stage 1 (#41); stages 2 and 3, but for gate skipping, and stage 4, but for the box lock, in the PR stacked on it. Next: the box lock and gate skipping, then calibration.
+Done: stage 1 (#41); stages 2 to 3, and stage 4 but for the box lock, which comes with the nightly job, in #42. Next: the nightly job (stage 6's code, with alerts off for calibration), then calibration.
 
 1. **Land what is done.**
    - hardwood-benchmarks #41: the 1BRC preset and the writer API.

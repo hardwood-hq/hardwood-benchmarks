@@ -100,7 +100,10 @@ benchmarks' `--regression` presets:
 paths, about 9 min for one version on a 1.50 GHz Intel N300. `nightly` times every preset
 contender, about 37 min there for current main and 36 min for 1.0.0.Final, which lacks some. `smoke` checks that each version runs what it supports, in a
 few minutes: one 1 s iteration per contender in one fork, without warmup, then a table of
-which contenders ran on which version. The contenders, what each covers alone and which
+which contenders ran on which version. `quick` and `nightly` first run a script's gate
+against the last version named, unless a gate passed before for the same sources (kept
+under `~/.cache/hardwood-benchmarks/gates`); a script whose gate fails is not timed. The
+contenders, what each covers alone and which
 the quick profile runs are listed in
 [the coverage design](_designs/BENCHMARK_WORKLOAD_COVERAGE.md#regression-tooling).
 
