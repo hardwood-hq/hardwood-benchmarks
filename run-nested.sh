@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='nested'
-BENCH_REGRESSION_PRESET='--rows 20000'
+BENCH_REGRESSION_PRESET='--rows 20000 --warmup 18'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--file perf.file
 --rows perf.rows'
@@ -24,7 +24,7 @@ Usage: ./run-nested.sh [options]
                     comparison across runs stays like for like.
                     (default target/overture-maps-data/overture_places.zstd.parquet)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --rows 20000; contenders matching hardwood
+Regression preset (--regression): --rows 20000 --warmup 18; contenders matching hardwood
 
 Two modes: --gate checks the row reader, the column readers and AvroParquetReader read
 identical data, then exits (no JMH); without it, the script benchmarks. Publish flow —

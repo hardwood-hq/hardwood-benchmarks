@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='narrow'
-BENCH_REGRESSION_PRESET=''
+BENCH_REGRESSION_PRESET='--warmup 18'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS='--start perf.start
 --end perf.end
@@ -23,7 +23,7 @@ Usage: ./run-narrow.sh [options]
   --end YYYY-MM     last month, inclusive (default 2016-01)
   --data-dir PATH   taxi data cache (default target/tlc-trip-record-data)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): contenders matching hardwood
+Regression preset (--regression): --warmup 18; contenders matching hardwood
 
 --gate checks that both Hardwood readers fold to parquet-java's checksum, then exits."
 

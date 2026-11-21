@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='nested'
-BENCH_REGRESSION_PRESET='--warmup 6 --meas 5 --time 2'
+BENCH_REGRESSION_PRESET='--warmup 8 --meas 5 --time 2'
 BENCH_REGRESSION_INCLUDE='hardwoodColumnReaders'
 BENCH_FLAGS='--file perf.file
 --rows perf.rows'
@@ -20,8 +20,8 @@ Usage: ./run-nested-columns.sh [options]
                     (default target/overture-maps-data/overture_places.zstd.parquet)
   --rows N          stop each scan after N rows (default 0 = the whole file)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): the whole file, --warmup 6 --meas 5 --time 2 (a read takes about
-0.7 to 3 s, longer than the common preset's iterations); contender hardwoodColumnReaders
+Regression preset (--regression): the whole file, --warmup 8 --meas 5 --time 2 (a read takes about
+0.7 to 3 s, longer than the common preset's iterations; its contenders settle within it on an Intel N300 at 1.50 GHz); contender hardwoodColumnReaders
 
 The benchmark is run-nested.sh's (NestedScanBenchmark); this script only gives it a
 second regression preset. run-nested.sh's preset reads 20,000 rows, where the read is

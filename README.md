@@ -94,16 +94,20 @@ for example a release against a local build:
 ./run-regression.sh 1.0.0.Final 1.1.0-SNAPSHOT
 ```
 
-It runs every benchmark under `--regression` for each version in interleaved rounds
-(`--rounds`, default 3), so machine drift spreads over all versions. One round of all
-ten benchmarks takes about 6 min per version on a 1.50 GHz Intel N300. It writes to
+It runs every benchmark that has a regression preset under `--regression`, one benchmark at
+a time, each over all its rounds (`--rounds`, default 3) with the versions interleaved within
+a round, so machine drift spreads over all versions. It writes to
 `target/regression/`:
 
 - `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
-  noise band, first version against the last, with control drift reported separately.
+  noise band, first version against the last. A contender whose measurement iterations
+  were still falling gets "not settled" instead of a verdict: its preset's warmup ended
+  before it reached steady state.
   The write benchmark adds the size of each file it wrote, called larger or smaller
   beyond 1%; sizes do not vary between runs, so they have no noise band.
-- `not-run.txt`: every benchmark or contender a version could not run, with the reason.
+- `not-run.txt`: what a version did not run, and why: a benchmark, contender or parameter
+  value needing a feature the version predates (not supported), a benchmark that does not
+  build (a defect, which also makes the run exit 1), or a contender that threw.
 - `charts/`: one version chart per benchmark, and `regression-overview.svg`: every Hardwood
   contender of the first version and the last on one page, relative to the first, and
   the write benchmark's written sizes, with `verdict.txt`'s verdicts
@@ -111,7 +115,10 @@ ten benchmarks takes about 6 min per version on a 1.50 GHz Intel N300. It writes
 
 More than two versions give a progression, such as 1.0 → 1.1 → 1.2; `--only` restricts
 the benchmarks, and `--fail-on-regression` sets the exit status: 1 when a Hardwood contender
-is slower beyond its band or a written file larger beyond 1%.
+is slower beyond its band or a written file larger beyond 1%. `--smoke` checks that each
+version runs what it supports, in a few minutes: one round, one 1 s iteration per contender
+and no warmup, then a table of which contenders ran on which version and `not-run.txt`, with
+no verdict or charts.
 
 `./run-gate.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
 benchmark alone:
@@ -132,17 +139,19 @@ the same version, so they belong to `run-regression.sh` on quieter hardware.
 **`--hardwood-version`** selects the version for one run. It sets a pom property, so it
 reaches Maven; a bare `-Dhardwood.version=…` would reach the JVM instead and measure the
 pom's version. Each version builds into its own `target/build/` directory, compiling
-the shared classes and the benchmark's own package, so a benchmark using API a version
-lacks fails its own build and no other (against 1.0.0.Final, `run-fixedlist.sh` does not
-build). A contender that builds but throws on an older version fails alone under JMH and
-is reported as not run.
+the shared classes and the benchmark's own package. Every benchmark builds against every
+version from 1.0.0.Final on: API that differs between versions goes through an adapter
+picked for the version at build time, and a benchmark, contender or parameter value
+needing a feature a version predates is reported as not supported on it (against
+1.0.0.Final, `run-write.sh` is). [`src/compat/README.md`](src/compat/README.md) describes
+both and what to do when Hardwood's API changes. A contender that builds but throws on an
+older version fails alone under JMH and is reported as not run.
 
 **`--regression`** fixes the run's configuration so that regression runs taken at any
 time are alike:
 
-- The benchmark's preset sizes and contenders, listed at the end of its `--help`. The
-  only non-Hardwood contender is `run-filter.sh`'s parquet-java scan, a control: its
-  version is pinned, so a move in it is the machine drifting, not Hardwood changing.
+- The benchmark's preset sizes and its Hardwood contenders, listed at the end of its
+  `--help`.
 - 3 warmup and 3 measurement iterations of 1 s, unless the preset says otherwise
   (`run-s3.sh` warms up for 5; `run-1brc.sh` runs 4 warmup and 3 measurement iterations
   of 5 s).
@@ -368,9 +377,8 @@ written by the first Hardwood version that runs, so every version of a regressio
 reads the same bytes. The gate writes every pair, reads it back bit for bit against the
 source values, and checks that its column chunks declare the encoding named. Each pair's
 compressed column-chunk bytes go into the meta sidecar (`bytes.<ENCODING>_<CODEC>`). It needs
-a Hardwood version with `ALP`, `WriterConfig.Builder.compression` and
-`FileSchema.Builder.primitive` (later than 1.1.0.Beta3); an older one fails to build this
-benchmark and runs nothing of it.
+Hardwood's writer (1.1.0.Beta1 and later); `ALP` runs from 1.1.0.CR1 on, and is left out on
+an older version.
 ### 1BRC over Parquet — `run-1brc.sh`
 
 The [One Billion Row Challenge](https://github.com/gunnarmorling/1brc) over Parquet:
@@ -409,9 +417,8 @@ hyperfine and `python3`.
 Hardwood's column writer and row writer, SNAPPY and ZSTD, so the number is encode
 throughput. Each file is read back and checked before timing. The meta sidecar records
 each codec's compressed column-chunk bytes (`bytes.SNAPPY`, `bytes.ZSTD`), so a version that
-writes larger files shows there even where the time does not move. It needs a Hardwood
-version with `WriterConfig.Builder.compression` and `FileSchema.Builder.primitive` (later
-than 1.1.0.Beta3); an older one fails to build this benchmark and runs nothing of it.
+writes larger files shows there even where the time does not move. It needs Hardwood's
+writer (1.1.0.Beta1 and later).
 
 ### S3 reads — `run-s3.sh`
 
@@ -482,8 +489,7 @@ adds. Before timing, both objects are read back through Hardwood and every colum
 the fixture, as `run-write.sh` checks its files; the meta sidecar records each object's compressed
 column-chunk bytes (`bytes.hardwood`, `bytes.parquetJava`), the part size and the endpoint's
 latency and bandwidth. The benchmark is in a package of its own, `s3write`, and builds on the
-`write` package's classes, so it needs a Hardwood version with `S3Source.outputFile` beside
-the writer API `run-write.sh` needs.
+`write` package's classes, and it needs `S3Source.outputFile` (1.1.0.CR1 and later).
 
 `run-s3-write-python.sh` runs PyArrow and DuckDB beside it, in a virtualenv of pinned versions
 under `target/`: each rewrites the file the gate wrote (`target/s3-write-fixture.parquet`, so every

@@ -160,6 +160,7 @@ def compared_row(y, r, label, scale):
     word, color, weight = {
         "slower": ("slower", SLOWER_COLOR, "700"),
         "faster": ("faster", NEW_COLOR, "700"),
+        "not settled": ("not settled", SLOWER_COLOR, "400"),
     }.get(r["verdict"], ("within noise", "#868e96", "400"))
     band = "band ±{:.1f}%{}".format(r["band"], "" if r["measured"] else " (threshold)")
     return bar_row(y, label, r["new_ms"] / r["base_ms"] * 100.0, fmt_ms(r["base_ms"]), fmt_ms(r["new_ms"]),

@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='binary'
-BENCH_REGRESSION_PRESET=''
+BENCH_REGRESSION_PRESET='--warmup 11'
 BENCH_REGRESSION_INCLUDE='hardwood'
 BENCH_FLAGS=''
 BENCH_USAGE="Plain binary scan benchmark, regression-only (a generated file of 5M rows, SNAPPY):
@@ -18,7 +18,7 @@ letters, null in one row of ten, both PLAIN with no dictionary.
 
 Usage: ./run-binary.sh [options]
 $BENCH_COMMON_USAGE
-Regression preset (--regression): contenders matching hardwood
+Regression preset (--regression): --warmup 11; contenders matching hardwood
 
 Contenders: hardwoodColumnViews (column readers, each value through its byte view),
 hardwoodRowStrings (row reader, each value as a String). Both need hardwood-core
