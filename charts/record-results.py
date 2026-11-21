@@ -123,9 +123,15 @@ def script_of(cls, method, scripts):
     raise SystemExit("record-results: no script of {} times {}.{}".format(scripts, cls, method))
 
 
-def meta(run, cls):
+def meta(run, cls, script=None):
+    """The meta sidecar of `cls` in `run`: the one `script` wrote, where run-regression.sh kept it
+    apart (bench-meta-<Class>@<script>.tsv), else the class's, which is the first script's to
+    write it when two scripts time the same class."""
     fields = {}
     path = os.path.join(run, "bench-meta-{}.tsv".format(cls))
+    own = os.path.join(run, "bench-meta-{}@{}.tsv".format(cls, script))
+    if script is not None and os.path.exists(own):
+        path = own
     if os.path.exists(path):
         with open(path) as f:
             for line in f:
@@ -172,11 +178,12 @@ def summarise(out, version):
         raise SystemExit("record-results: no runs of {} in {}".format(version, out))
     verdicts = settling.verdicts(runs)
     files = scripts_by_file(out)
-    records, metas = {}, {}
+    records, metas, run_of = {}, {}, {}
     for run in runs:
         for key, rows in metric_rows(run).items():
             records.setdefault(key, []).extend(rows)
             metas.setdefault(key[0], meta(run, key[0]))
+            run_of.setdefault(key[0], run)
 
     common = common_preset()
     contenders = []
@@ -184,7 +191,8 @@ def summarise(out, version):
         method = contender.split("[", 1)[0]
         params = sorted({json.dumps(r["params"], sort_keys=True) for r in rows})
         script = script_of(cls, method, files.get("bench-metrics-{}.jsonl".format(cls), []))
-        fixture = {k: fixture_value(k, metas[cls][k]) for k in FIXTURE_KEYS if k in metas[cls]}
+        own = meta(run_of[cls], cls, script)
+        fixture = {k: fixture_value(k, own[k]) for k in FIXTURE_KEYS if k in own}
         definition = {"script": script, "preset": shell_value("run-{}.sh".format(script), "BENCH_REGRESSION_PRESET"),
                       "common": common, "method": method_source(cls, method), "params": params,
                       "fixture": fixture}

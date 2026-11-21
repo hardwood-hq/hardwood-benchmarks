@@ -224,14 +224,16 @@ for s in "${SCRIPTS[@]}"; do
       BENCH_LOG=0 BENCH_SMOKE="$SMOKE" BENCH_PROFILE="$PROFILE" ./run-"$s".sh --regression --hardwood-version "$v" > "$dest/$s.log" 2>&1
       rc=$?
       # Two scripts may time the same benchmark class (run-nested.sh and
-      # run-nested-columns.sh), each its own contenders: their results are joined.
+      # run-nested-columns.sh), each its own contenders: their results are joined. Their
+      # fixtures may differ, so each script's meta is also kept as bench-meta-<Class>@<script>.tsv,
+      # which recording reads for that script's contenders.
       for f in target/bench-throughput-*.tsv target/bench-meta-*.tsv target/bench-metrics-*.jsonl; do
         [ -f "$f" ] || continue
         to="$dest/$(basename "$f")"
         case "$f" in
           *bench-throughput-*) if [ -f "$to" ]; then tail -n +2 "$f" >> "$to"; else cp "$f" "$to"; fi ;;
           *bench-metrics-*) cat "$f" >> "$to" ;;
-          *) [ -f "$to" ] || cp "$f" "$to" ;;
+          *) [ -f "$to" ] || cp "$f" "$to"; cp "$f" "${to%.tsv}@$s.tsv" ;;
         esac
         echo "$s $(basename "$f")" >> "$OUT/files.txt"
       done
