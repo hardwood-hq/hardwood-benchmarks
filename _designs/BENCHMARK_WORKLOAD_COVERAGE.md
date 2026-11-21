@@ -114,14 +114,15 @@ version fails alone under JMH, and the version chart shows it as not run.
 
 **The regression preset.** `--regression` fixes a run's whole configuration so that
 regression runs taken at any time are alike: each script's reduced sizes and contender
-subset, 3 warmup and 3 measurement iterations of 1 s, and one pass on all cores. A
-script's preset may override the iteration counts (`run-s3.sh` warms up for 5, since
-requests over the emulated latency take longer to settle; `run-1brc.sh` runs 4 warmup
-and 3 measurement iterations of 5 s, since one operation takes about 1.5 s and C2 can
-compile the aggregating loop again up to about 18 s into the fork). Pinned to one core, the JIT,
-the GC and the reader's worker threads share the core and a contender does not settle
-within ten iterations; on all cores it settles by the third. Passing a flag the preset
-sets is an error. The meta sidecar records the preset, and the comparator and the
+subset, its warmup, 3 measurement iterations of 1 s in each of 3 forks, a 4 GB heap with
+G1 in every benchmark JVM, `RegressionProfiler` in every fork, and one pass on all cores.
+A script's warmup is as long as its contenders took to settle on a 1.50 GHz Intel N300,
+from 6 s to 30 s; time-based, it covers more operations on a faster machine. `run-1brc.sh`
+runs iterations of 5 s, since one operation takes about 1.5 s and C2 can compile the
+aggregating loop again up to about 18 s into the fork. Three forks show a JIT decision that
+differs between JVMs instead of averaging it away. Pinned to one core, the JIT, the GC and
+the reader's worker threads share the core and a contender settles far later, so a preset
+runs on all cores. Passing a flag the preset sets is an error. The meta sidecar records the preset, and the comparator and the
 version chart treat it as part of the dataset key, so a regression number is never
 compared with one measured to a published definition.
 
@@ -131,7 +132,7 @@ allocation and live-set peak; the `quick` profile runs the ones marked so.
 | Script | Preset | Contender | Covers alone | `quick` |
 | --- | --- | --- | --- | --- |
 | `run-flat.sh` | taxi 2025-01 | `hardwoodColumnar` | full scan of every flat type through the column readers | yes |
-| | | `hardwoodRowReaderIndexed` | the row reader materialising every column of a flat row | yes |
+| | | `hardwoodRowReaderIndexed` | the row reader materialising every column of a flat row | |
 | `run-narrow.sh` | taxi 2016-01 | `hardwoodColumnar` | a projection: a few columns fetched and decoded of many | yes |
 | | | `hardwoodRowReaderIndexed` | the row reader over a projection | |
 | `run-nested-columns.sh` | Overture places, whole file | `hardwoodColumnReaders` | nested decoding, decode-bound | yes |
@@ -168,20 +169,44 @@ read beside a remote one each repeat a contender above, and run only outside `--
 A preset times Hardwood's contenders only: the suite compares Hardwood with itself, and
 interleaved rounds spread machine drift over every version.
 
-**The regression run.** `run-regression.sh V1 V2 [V3 ...]` runs every script under
-`--regression`, one benchmark at a time over all its rounds (`--rounds`, default 3), with the
-versions interleaved within each round, so drift on the machine spreads over all versions and
-each benchmark's table (`tables.md`) is in before the next starts. It starts the emulated S3
-endpoint once for the whole run when `run-s3.sh` is among them. It ends in `verdict.txt`,
-which compares the first version with the last and lists per benchmark a tally plus only the
-contenders that moved beyond the noise band; `not-run.txt`, which gives the reason for every
-benchmark a version could not run; and one version chart per benchmark.
+**The regression run.** `run-regression.sh [--profile quick|nightly|smoke] V1 [V2 ...]`
+runs the profile's scripts under `--regression`, one benchmark at a time over all its rounds
+(`--rounds`, default 1), with the versions interleaved within each round, so drift on the
+machine spreads over all versions and each benchmark's table (`tables.md`) is in before the
+next starts. `quick` times the contenders marked so above, `nightly` all of them, and
+`smoke` all of them once, without warmup, to check what each version runs. It starts the
+emulated S3 endpoint once for the whole run when `run-s3.sh` is among them, and records the
+machine and JVM in `manifest.json`. With several versions it ends in `verdict.txt`, which
+compares the first version with the last and lists per benchmark a tally plus only the
+contenders that moved beyond the noise band, and one version chart per benchmark;
+`not-run.txt` gives the reason for every benchmark a version could not run. Two scripts
+that time one benchmark class, `run-nested.sh` and `run-nested-columns.sh`, each with its own
+contenders, have their results joined.
 
-**Settled or not.** A contender whose measurement iterations still fell one after another,
-by more than 5 % in all, was measured before it reached steady state: the comparator calls
-it "not settled" rather than faster or slower, and the version table marks it
-(`charts/settling.py`). A preset's warmup is sized so that its contenders settle on a
-1.50 GHz Intel N300, the slowest machine the suite runs on.
+**What a fork records.** `RegressionProfiler`, a JMH profiler of the suite's own, appends one
+line per iteration of each fork to the run's `bench-metrics-<Benchmark>.jsonl`: the score,
+the process's CPU time per operation with the JIT compiler's and the collector's apart, the
+bytes allocated per operation by every thread (`getTotalThreadAllocatedBytes`, so threads
+that have ended count), and the live-set peak, the most heap in use right after a
+collection during the iteration. Wall time alone hides more work spread over more cores, and
+memory held longer than it should be.
+
+**Settled, bimodal.** From the forks' measurement iterations (`charts/settling.py`): a
+contender whose last iteration, averaged over its forks, is more than 3 % below its first,
+falling in at least two forks, was measured before it reached steady state, and is "not
+settled"; one whose forks' means split into groups further apart than 5 % of their median
+and three times the spread within a fork took different JIT decisions in different JVMs, and
+is "bimodal". The comparator gives either instead of faster or slower, and the version table
+marks it. With forks, the noise band comes from the forks' means, so a single run has one.
+
+**Recording.** `charts/record-results.py` appends a version's run to a checkout of
+`hardwood-benchmark-results`, one series per contender, epoch and machine epoch, for Apache
+Otava: a contender's epoch hashes what it measures (its preset, the iteration counts every
+preset shares, its method's source, its parameters and its fixture's size), and a machine
+epoch the manifest's description of the machine and JVM, so that no series mixes two
+definitions or two machines. A row's time is the measured commit's, so that a backfilled
+release sorts before later commits; rows that did not settle go to a twin file Otava does
+not read.
 `--fail-on-regression` exits non-zero when a Hardwood contender is slower beyond the band.
 
 **The comparator.** `charts/compare-runs.py BASE NEW` takes two snapshots, each a run

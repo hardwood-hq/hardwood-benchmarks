@@ -35,7 +35,7 @@ SMALL_FILES_COUNT=200
 SMALL_FILES_MIN_KIB=100
 SMALL_FILES_MAX_KIB=5120
 SMALL_FILES_SEED=1663
-BENCH_REGRESSION_PRESET='--warmup 5'
+BENCH_REGRESSION_PRESET='--warmup 12'
 # hardwoodManySmallFiles stays out: one read of it takes about 8 s at 30 ms, longer than another
 # contender's whole preset.
 BENCH_REGRESSION_INCLUDE='hardwoodProjectedScan|hardwoodWideFilteredScan|hardwoodLargeBloomLookup|hardwoodMultiFileScan|hardwoodRemoteBesideWideRemote'
@@ -46,8 +46,8 @@ BENCH_USAGE="S3 read benchmark, regression-only (column reader over an emulated 
 
 Usage: ./run-s3.sh [options]
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --warmup 5 (requests over the emulated latency take
-longer to settle); contenders matching
+Regression preset (--regression): --warmup 12 (requests over the emulated latency take
+longer to settle; the multi-file scan is still getting faster after 5); contenders matching
 hardwoodProjectedScan|hardwoodWideFilteredScan|hardwoodLargeBloomLookup|hardwoodMultiFileScan|hardwoodRemoteBesideWideRemote,
 one read per scenario the others do not cover: not hardwoodFilteredScan, hardwoodBloomLookup
 and hardwoodLocalBesideRemote, which repeat the wide filtered scan, the large bloom lookup and

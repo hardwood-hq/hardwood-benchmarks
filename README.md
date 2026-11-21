@@ -87,38 +87,60 @@ comparison and chart tools read.
 
 ## Comparing versions
 
-`./run-regression.sh BASE NEW` checks for regressions between two Hardwood versions,
-for example a release against a local build:
+`./run-regression.sh` measures one Hardwood version, or compares several, through the
+benchmarks' `--regression` presets:
 
 ```sh
-./run-regression.sh 1.0.0.Final 1.1.0-SNAPSHOT
+./run-regression.sh 1.1.0-SNAPSHOT                          # quick profile, one version
+./run-regression.sh 1.1.0.Beta2 1.1.0-SNAPSHOT              # quick profile, compared
+./run-regression.sh --profile nightly 1.1.0-SNAPSHOT        # every contender
 ```
 
-It runs every benchmark that has a regression preset under `--regression`, one benchmark at
-a time, each over all its rounds (`--rounds`, default 3) with the versions interleaved within
-a round, so machine drift spreads over all versions. It writes to
+**Profiles.** `quick`, the default, times the contenders that cover the core read and write
+paths, about 9 min for one version on a 1.50 GHz Intel N300. `nightly` times every preset
+contender, about 37 min there for current main and 36 min for 1.0.0.Final, which lacks some. `smoke` checks that each version runs what it supports, in a
+few minutes: one 1 s iteration per contender in one fork, without warmup, then a table of
+which contenders ran on which version. The contenders, what each covers alone and which
+the quick profile runs are listed in
+[the coverage design](_designs/BENCHMARK_WORKLOAD_COVERAGE.md#regression-tooling).
+
+**Measurement.** A preset warms each contender until it settles on the N300, the slowest
+machine the suite runs on, and runs it in three forks on a fixed 4 GB heap with G1. In each
+fork `RegressionProfiler` records, beside each iteration's time, the process's CPU time per
+operation (with the JIT compiler's and the collector's apart), the bytes allocated per
+operation by every thread, and the live-set peak, the most heap in use after a collection.
+A contender whose measurement iterations were still falling is "not settled", and one whose
+forks split into groups (JVMs that took different JIT decisions) is "bimodal"; either gets
+that instead of a verdict.
+
+With several versions, oldest first, the versions are interleaved within each round
+(`--rounds`, default 1), so drift on the machine spreads over all of them. It writes to
 `target/regression/`:
 
-- `verdict.txt`: per benchmark, a tally and only the contenders that moved beyond the
-  noise band, first version against the last. A contender whose measurement iterations
-  were still falling gets "not settled" instead of a verdict: its preset's warmup ended
-  before it reached steady state.
-  The write benchmark adds the size of each file it wrote, called larger or smaller
-  beyond 1%; sizes do not vary between runs, so they have no noise band.
+- `tables.md`: per benchmark, as soon as it is done, each version's median over its forks
+  and the last version against each earlier one.
+- `verdict.txt`, with several versions: per benchmark, a tally and only the contenders that
+  moved beyond the noise band, first version against the last. The write benchmark adds the
+  size of each file it wrote, called larger or smaller beyond 1%; sizes do not vary between
+  runs, so they have no noise band.
 - `not-run.txt`: what a version did not run, and why: a benchmark, contender or parameter
   value needing a feature the version predates (not supported), a benchmark that does not
   build (a defect, which also makes the run exit 1), or a contender that threw.
-- `charts/`: one version chart per benchmark, and `regression-overview.svg`: every Hardwood
-  contender of the first version and the last on one page, relative to the first, and
-  the write benchmark's written sizes, with `verdict.txt`'s verdicts
-  (`charts/make-regression-chart.py <out>` redraws it).
+- `charts/`, with several versions: one version chart per benchmark, and
+  `regression-overview.svg`: every Hardwood contender of the first version and the last on
+  one page, relative to the first, and the write benchmark's written sizes, with
+  `verdict.txt`'s verdicts (`charts/make-regression-chart.py <out>` redraws it).
+- `<version>/run-<n>/`: the results files, with each benchmark's `RegressionProfiler`
+  metrics (`bench-metrics-*.jsonl`), and `manifest.json`: the machine and JVM the run used.
 
-More than two versions give a progression, such as 1.0 → 1.1 → 1.2; `--only` restricts
-the benchmarks, and `--fail-on-regression` sets the exit status: 1 when a Hardwood contender
-is slower beyond its band or a written file larger beyond 1%. `--smoke` checks that each
-version runs what it supports, in a few minutes: one round, one 1 s iteration per contender
-and no warmup, then a table of which contenders ran on which version and `not-run.txt`, with
-no verdict or charts.
+`--only` restricts the benchmarks, and `--fail-on-regression` sets the exit status: 1 when a
+Hardwood contender is slower beyond its band or a written file larger beyond 1%.
+
+**Recording.** `charts/record-results.py OUT VERSION --results DIR --hardwood-repo DIR`
+appends a version's run to a checkout of
+[hardwood-benchmark-results](https://github.com/hardwood-hq/hardwood-benchmark-results), one
+series per contender for [Apache Otava](https://otava.apache.org/) to find change points
+in; that repository's README describes its layout.
 
 `./run-gate.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
 benchmark alone:

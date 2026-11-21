@@ -7,7 +7,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 - **Trustworthy numbers.** Every contender is measured after it settles, in three JVMs. A contender still warming during measurement gets "not settled", never a verdict, and is not recorded. A night whose reference version moved is not recorded either.
 - **A known false-alarm rate.** At most one false alert a month, established by running the same commit nightly before alerts are trusted.
 - **Two profiles.**
-  - `quick`, for development: under 10 min on the N300, the version under test only, compared with the median of the last nightly results from the same machine. Elsewhere `--baseline V` interleaves a baseline version, doubling the time.
+  - `quick`, for development: under 10 min on the N300, the version under test only, compared with the median of the last nightly results from the same machine. Elsewhere a baseline version named beside it is interleaved, doubling the time.
   - `nightly`, comprehensive: up to 60 min for one version, `origin/main` on the N300, recorded into the history.
 - **A history.** Each nightly run's results go to `hardwood-hq/hardwood-benchmark-results`; Otava finds the change points, and a change point is confirmed before anyone is alerted. A one-time backfill seeds the history with 1.0.0.Final, 1.1.0.Beta1 to Beta3 and selected main commits.
 
@@ -20,7 +20,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 | Runnable on any machine | Version adapters (`src/compat`) let every benchmark build against 1.0.0.Final and later. Warmups are sized on the N300, the slowest machine the suite runs on; the settle check catches a slower or loaded one. |
 | Hardwood only | No parquet-java, Avro or Arrow contender in a preset. The nightly reference is a pinned Hardwood release. |
 | Gates when they can fail | A benchmark's correctness gate runs when its sources or fixtures change, keyed by their hash; core tests cover functional regressions otherwise. |
-| Minimal options | `run-regression.sh [--profile quick\|nightly\|smoke] [--baseline V] [--out DIR] VERSION`. |
+| Minimal options | `run-regression.sh [--profile quick\|nightly\|smoke] [--out DIR] VERSION [VERSION ...]`. |
 | Every contender earns its place | Each contender is listed with the code path only it covers, judged on all four metrics, and the profile it belongs to. |
 
 ## Measurement
@@ -35,9 +35,11 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 
 **Cold start.** One or two paths are also timed as the first operation of a fresh JVM, over many forks, since a library is often used for a single read per process.
 
-**Run time.** With the presets of stage 1 and the 43 contenders they hold, a nightly run on the N300 takes about 48 min of forks, plus about 3 min of per-script overhead and about 5 min for the reference: about 55 min, within the 60 min a nightly run may take. The audit still drops the contenders that add nothing, leaving room for ones that would.
+**Run time.** After the audit, 32 contenders: a nightly run of main on the N300 takes 37 min, and the quick profile 9 min; the reference adds about 5 min to a nightly run, within the 60 min it may take.
 
 ## Stages
+
+Done: stage 1 (#41); stages 2 and 3, but for gate skipping, and stage 4, but for the box lock, in the PR stacked on it. Next: the box lock and gate skipping, then calibration.
 
 1. **Land what is done.**
    - hardwood-benchmarks #41: the 1BRC preset and the writer API.
@@ -74,7 +76,7 @@ All four come from standard JVM interfaces, so they are recorded on every machin
 
 ## Settled decisions
 
-- `quick` compares against history on the N300 only; on any other machine it needs `--baseline`.
+- `quick` compares against history on the N300 only; on any other machine it needs a baseline version named beside the one under test.
 - Reading a sample of a taxi month to shorten flat and narrow is dropped: it changes their inputs and only halved warmup, since a smaller read makes per-read setup a larger share of each operation and that code needs its own invocations to compile.
 - Warmup is time-based per preset, sized on the N300. One operation count per script does not fit contenders whose settle points differ twentyfold; operation counts per contender would need a JMH run per contender in every benchmark.
 - 3 forks of 3 measurement iterations per contender, nightly.
