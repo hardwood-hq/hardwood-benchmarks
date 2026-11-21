@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """One Markdown table of a regression run's Hardwood contenders across versions.
 
-Usage: version-table.py OUT [--script NAME] VERSION VERSION [VERSION ...]
+Usage: version-table.py OUT [--script NAME] VERSION [VERSION ...]
 
 OUT is run-regression.sh's output directory, holding <version>/run-<n>/ snapshots and
 files.txt (which script wrote which results file). Per contender: each version's median
-ms/op over its rounds, then the last version against each earlier one, and the last
-version's spread over its rounds (half the range, relative to its median). --script
+ms/op over its forks (over its rounds where no forks were recorded), then the last version
+against each earlier one, and the last version's spread (half the range of those values,
+relative to their median). --script
 restricts the table to the benchmarks that script ran.
 
-A cell is marked "(still warming)" when, in any round, the version's measurement iterations
-of the contender fell one after another by more than 5 % in all: its preset's warmup ended
-before it settled, and its time is not steady state.
+A cell is marked "(not settled)" or "(bimodal)" as settling.py finds the version's runs of the
+contender: measured before it reached steady state, or with forks that disagree.
 """
 import argparse
 import csv
@@ -51,7 +51,16 @@ def main():
                         key = (row["benchmark"], row["contender"])
                         times.setdefault(key, {}).setdefault(version, []).append(float(row["ms_per_op"]))
 
-    warming = still_warming(args.out, args.versions, args.script)
+    marks = flagged(args.out, args.versions)
+    # Each fork's mean where the runs recorded forks, so that a single run has a spread.
+    for version in args.versions:
+        vdir = os.path.join(args.out, version)
+        if not os.path.isdir(vdir):
+            continue
+        runs = [os.path.join(vdir, d) for d in sorted(os.listdir(vdir)) if d.startswith("run-")]
+        for key, means in settling.fork_means(runs).items():
+            if key in times and len(means) >= 2:
+                times[key][version] = means
 
     last = args.versions[-1]
     earlier = args.versions[:-1]
@@ -63,7 +72,8 @@ def main():
         runs = times[(benchmark, contender)]
         median = {v: statistics.median(runs[v]) for v in runs}
         cells = [benchmark.removesuffix("Benchmark"), contender]
-        cells += [(fmt(median[v]) + (" (still warming)" if (v, benchmark, contender) in warming else ""))
+        cells += [(fmt(median[v]) + (" ({})".format(marks[(v, benchmark, contender)])
+                                     if (v, benchmark, contender) in marks else ""))
                   if v in median else "not run" for v in args.versions]
         for v in earlier:
             cells.append(f"{(median[last] / median[v] - 1) * 100:+.1f} %" if last in median and v in median else "—")
@@ -72,17 +82,16 @@ def main():
         print("| " + " | ".join(cells) + " |")
 
 
-def still_warming(out, versions, script):
-    """(version, benchmark, contender) whose measurement iterations kept falling in some round."""
-    found = set()
+def flagged(out, versions):
+    """{(version, benchmark, contender): verdict} for contenders settling.py flags."""
+    found = {}
     for version in versions:
         vdir = os.path.join(out, version)
         if not os.path.isdir(vdir):
             continue
-        for run in sorted(d for d in os.listdir(vdir) if d.startswith("run-")):
-            rdir = os.path.join(vdir, run)
-            logs = [os.path.join(rdir, f"{script}.log")] if script else settling.run_logs(rdir)
-            found |= {(version, benchmark, contender) for benchmark, contender in settling.still_warming(logs)}
+        runs = [os.path.join(vdir, d) for d in sorted(os.listdir(vdir)) if d.startswith("run-")]
+        for (benchmark, contender), verdict in settling.verdicts(runs).items():
+            found[(version, benchmark, contender)] = verdict
     return found
 
 

@@ -12,6 +12,8 @@ source ./bench-common.sh
 BENCH_PACKAGE='filter'
 BENCH_REGRESSION_PRESET='--rows 5000000 --warmup 16'
 BENCH_REGRESSION_INCLUDE='hardwoodDefault|hardwoodRowReader$'
+BENCH_QUICK_INCLUDE='hardwoodDefault|hardwoodRowReader$'
+BENCH_QUICK_PRESET='--selectivity selective'
 BENCH_FLAGS='--rows perf.rows
 --selectivity perf.param'
 BENCH_USAGE="Filtered scan benchmark (generated time-clustered event log, range push-down).
@@ -22,6 +24,7 @@ Usage: ./run-filter.sh [options]
                         (default: run both)
 $BENCH_COMMON_USAGE
 Regression preset (--regression): --rows 5000000 --warmup 16; contenders matching hardwoodDefault|hardwoodRowReader$
+Quick profile (run-regression.sh --profile quick): contenders matching hardwoodDefault|hardwoodRowReader$, --selectivity selective
 
 Two modes: --gate folds every contender and checks they agree, then exits (no JMH);
 without it, the script benchmarks. Publish flow — gate, smoke-test, measure, chart:
