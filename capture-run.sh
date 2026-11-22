@@ -11,7 +11,7 @@
 #   python3 charts/make-flat-chart.py   --results-dir <dir>
 #   python3 charts/make-filter-chart.py --results-dir <dir>
 #
-# Usage: ./capture-run.sh <dir>   e.g.  ./capture-run.sh results/2026-06-25-hardwood-1.0/run-2
+# Usage: ./capture-run.sh <dir>   e.g.  ./capture-run.sh publications/2026-06-25-hardwood-1.0/run-2
 #
 set -euo pipefail
 cd "$(dirname "$0")"

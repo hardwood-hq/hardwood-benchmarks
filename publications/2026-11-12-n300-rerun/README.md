@@ -26,7 +26,7 @@ The published charts show both Hardwood versions side by side and take the basel
 from the newer snapshot. From the repository root:
 
 ```sh
-P=results/2026-11-12-n300-rerun/pq1.18.2
+P=publications/2026-11-12-n300-rerun/pq1.18.2
 python3 charts/make-two-version-charts.py $P/1.0.0.Final/median $P/main/median \
     --old-label 1.0.0.Final --new-label b7ffc871 --old-short 1.0 --new-short main \
     --baseline-label 1.18.2

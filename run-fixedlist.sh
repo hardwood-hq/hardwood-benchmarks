@@ -58,13 +58,13 @@ own dir (sweep and headline share a TSV filename):
   # headline (~512 MB files) — keep flatFloor; the bars chart draws it as the floor line:
   for i in 1 2 3; do
     ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --k 3,768 --total-values 128000000 --forks 3 --meas 5 -Dperf.compression=ZSTD
-    ./capture-run.sh results/2026-07-21-fixed-size-list/headline/run-\$i
+    ./capture-run.sh publications/2026-07-21-fixed-size-list/headline/run-\$i
     sleep 300
   done
   # sweep (speedup curve) — --include skips flatFloor, which the sweep chart doesn't use:
   for i in 1 2 3; do
     ./run-fixedlist.sh --machine \"AWS m7i.2xlarge (8 vCPU / 4 physical cores)\" --forks 3 --meas 5 -Dperf.compression=ZSTD --include 'column|row'
-    ./capture-run.sh results/2026-07-21-fixed-size-list/sweep/run-\$i
+    ./capture-run.sh publications/2026-07-21-fixed-size-list/sweep/run-\$i
     [ \$i -lt 3 ] && sleep 300   # 5-min break between runs, not after the last
   done
 

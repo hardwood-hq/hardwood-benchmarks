@@ -19,7 +19,7 @@ Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of tw
 - **Mixed-use:** a published result rests on it. Its definition (fixture, parameters,
   plotted contenders) is fixed once published, and a change to it is a deliberate break
   the README records with its date. It has a publication chart generator of its own, the
-  runs a publication cites are archived under `results/`, and every run of it doubles as
+  runs a publication cites are archived under `publications/`, and every run of it doubles as
   a regression check. It may carry arms that serve regression only, gated but never
   plotted. Comparing engines does not decide the kind: `run-fixedlist.sh` is
   Hardwood-only and mixed-use.

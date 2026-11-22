@@ -19,12 +19,12 @@ The meta sidecar is copied verbatim from the first run (values / codec / host /
 build are identical across repeats).
 
 Usage:
-    # median of three runs -> results/<pub>/median/
-    python charts/median-runs.py results/<pub>/median \
-        results/<pub>/run-1 results/<pub>/run-2 results/<pub>/run-3
+    # median of three runs -> publications/<pub>/median/
+    python charts/median-runs.py publications/<pub>/median \
+        publications/<pub>/run-1 publications/<pub>/run-2 publications/<pub>/run-3
 
     # then render as usual:
-    python charts/make-fixedlist-chart.py --results-dir results/<pub>/median
+    python charts/make-fixedlist-chart.py --results-dir publications/<pub>/median
 
 Stdlib only; no third-party dependencies.
 """

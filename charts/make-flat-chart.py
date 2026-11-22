@@ -92,7 +92,7 @@ def main():
     ap.add_argument("--results-dir", default="target",
                     help="directory holding bench-throughput/-meta-FlatScanBenchmark.tsv "
                          "(default target; point at a captured run, e.g. "
-                         "results/2026-06-25-hardwood-1.0/run-2)")
+                         "publications/2026-06-25-hardwood-1.0/run-2)")
     ap.add_argument("--results", default=None,
                     help="override flat throughput TSV")
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")

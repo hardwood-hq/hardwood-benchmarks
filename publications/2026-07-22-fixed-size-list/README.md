@@ -39,18 +39,18 @@ directories are git-ignored; they rebuild byte-for-byte from the TSVs + sidecars
 
 ```sh
 # from the repo root — rebuild the published median snapshots:
-python3 charts/median-runs.py results/2026-07-22-fixed-size-list/headline/median \
-    results/2026-07-22-fixed-size-list/headline/run-1 \
-    results/2026-07-22-fixed-size-list/headline/run-2 \
-    results/2026-07-22-fixed-size-list/headline/run-3
-python3 charts/median-runs.py results/2026-07-22-fixed-size-list/sweep/median-128M \
-    results/2026-07-22-fixed-size-list/sweep/run-128M-1 \
-    results/2026-07-22-fixed-size-list/sweep/run-128M-2 \
-    results/2026-07-22-fixed-size-list/sweep/run-128M-3
+python3 charts/median-runs.py publications/2026-07-22-fixed-size-list/headline/median \
+    publications/2026-07-22-fixed-size-list/headline/run-1 \
+    publications/2026-07-22-fixed-size-list/headline/run-2 \
+    publications/2026-07-22-fixed-size-list/headline/run-3
+python3 charts/median-runs.py publications/2026-07-22-fixed-size-list/sweep/median-128M \
+    publications/2026-07-22-fixed-size-list/sweep/run-128M-1 \
+    publications/2026-07-22-fixed-size-list/sweep/run-128M-2 \
+    publications/2026-07-22-fixed-size-list/sweep/run-128M-3
 
 # render the published charts (bars from the headline median, speedup-vs-n from the sweep median):
-python3 charts/make-fixedlist-bars-chart.py --results-dir results/2026-07-22-fixed-size-list/headline/median
-python3 charts/make-fixedlist-chart.py      --results-dir results/2026-07-22-fixed-size-list/sweep/median-128M
+python3 charts/make-fixedlist-bars-chart.py --results-dir publications/2026-07-22-fixed-size-list/headline/median
+python3 charts/make-fixedlist-chart.py      --results-dir publications/2026-07-22-fixed-size-list/sweep/median-128M
 ```
 
 ## Provenance

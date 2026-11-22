@@ -25,7 +25,7 @@ exceeds --size-tolerance (default 1%) rather than a noise band.
 
 Usage:
     # two publication directories, each holding run-1/ run-2/ run-3/
-    python charts/compare-runs.py results/2026-06-25-hardwood-1.0 results/2026-09-10-hardwood-1.1
+    python charts/compare-runs.py publications/2026-06-25-hardwood-1.0 publications/2026-09-10-hardwood-1.1
 
     # two single runs, with an explicit noise threshold
     python charts/compare-runs.py --threshold 8 old-run target
