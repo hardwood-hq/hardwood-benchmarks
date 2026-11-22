@@ -44,7 +44,7 @@ Each run is ./run-<script>.sh --regression --hardwood-version VERSION; see a scr
 --help for its preset. Before a script is timed, its gate (--gate) checks that its
 contenders agree, against the last VERSION, unless a gate already passed for the same
 sources: the script, bench-common.sh, pom.xml, src/compat, the shared classes and the
-packages of the benchmarks it runs. Its fixtures are generated or downloaded by those
+packages of the benchmarks it runs, the files git tracks among them. Its fixtures are generated or downloaded by those
 sources, so they are covered by the same hash. Passed gates are kept in
 \${XDG_CACHE_HOME:-~/.cache}/hardwood-benchmarks/gates. A script whose gate fails is not
 timed, and the run exits 1. A preset warms its contenders until they settle on a 1.50 GHz
@@ -165,22 +165,28 @@ GATES="${XDG_CACHE_HOME:-$HOME/.cache}/hardwood-benchmarks/gates"
 mkdir -p "$GATES"
 
 # The hash of what a script's gate checks: the script and what it shares with every
-# script, and the packages of the benchmark classes it runs.
+# script, and the packages of the benchmark classes it runs. Only the files git tracks count,
+# at their working-tree contents, so leftovers in a checkout do not change the key; fails
+# outside a git checkout or when a source is missing.
 gate_key() {
   local s="$1" pkg files
-  files=("run-$s.sh" bench-common.sh pom.xml src/main/java/dev/hardwood/benchmarks/*.java)
+  files=("run-$s.sh" bench-common.sh pom.xml ":(glob)src/main/java/dev/hardwood/benchmarks/*.java")
   for pkg in $(sed -n 's/^ *bench_run dev\.hardwood\.benchmarks\.\([a-z0-9]*\)\..*/\1/p' "run-$s.sh" | sort -u); do
     files+=("src/main/java/dev/hardwood/benchmarks/$pkg")
   done
   files+=(src/compat)
-  find "${files[@]}" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16
+  git ls-files --error-unmatch -- "${files[@]}" > /dev/null || return 1
+  git ls-files -z -- "${files[@]}" | xargs -0 sha256sum | sha256sum | cut -c1-16
 }
 
 # Whether script $1's gate passed for its current sources; runs the gate against version $2
 # when none did, and records a pass.
 gate() {
   local s="$1" v="$2" key log
-  key="$(gate_key "$s")"
+  if ! key="$(gate_key "$s")"; then
+    echo "gate $s: FAILED, cannot hash its sources" | tee -a "$progress"
+    return 1
+  fi
   if [ -f "$GATES/$s-$key" ]; then
     echo "gate $s: passed before for these sources ($(cat "$GATES/$s-$key"))" | tee -a "$progress"
     return 0
