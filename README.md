@@ -70,7 +70,8 @@ only.
 **Flags.** Every script takes `--warmup`, `--meas`, `--forks`, `--time`, `--include`,
 `--prof`, `--machine`, `--no-pin`, `--pin-only`, `--gate`, `--hardwood-version` and
 `--regression`, plus its own; its `--help` documents all of them. Any `-D…` passes
-through to the JVM.
+through to the JVM. The scripts share `bench-common.sh`, which parses these flags, builds
+the benchmarks for the selected version and runs the passes.
 
 **Output.** JMH reports average time per op (`ms/op`, lower is better); some benchmarks
 also print throughput (`M rows/s`, `MB/s`). A run writes to `target/`:
@@ -122,7 +123,7 @@ With several versions, oldest first, the versions are interleaved within each ro
 `target/regression/`:
 
 - `tables.md`: per benchmark, as soon as it is done, each version's median over its forks
-  and the last version against each earlier one.
+  and the last version against each earlier one (`charts/version-table.py`).
 - `verdict.txt`, with several versions: per benchmark, a tally and only the contenders that
   moved beyond the noise band, first version against the last. The write benchmark adds the
   size of each file it wrote, called larger or smaller beyond 1%; sizes do not vary between
@@ -243,6 +244,8 @@ Python, sharing `charts/chartlib.py`). They read a snapshot (`--results-dir`, de
 `target/`), write SVGs to its `charts/` directory, and rasterize each to PNG when
 `rsvg-convert`, `resvg`, `inkscape` or `cairosvg` is on `PATH`. The hardware label comes
 from the meta sidecar's `machine`; `--machine` overrides it.
+`charts/make-two-version-charts.py OLD NEW` draws the published flat and filter charts with
+two Hardwood versions side by side.
 
 ## Profiling
 

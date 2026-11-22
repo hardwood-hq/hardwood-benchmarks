@@ -1,7 +1,6 @@
 # Shared core for the benchmark run scripts: option parsing, build + classpath
 # resolution, and the all-cores / single-core (taskset-pinned) execution passes.
-# Sourced by the per-benchmark run-*.sh scripts (run-flat.sh, run-filter.sh,
-# run-nested.sh) — not meant to be executed directly.
+# Sourced by the per-benchmark run-*.sh scripts; not meant to be executed directly.
 #
 # A caller declares its benchmark-specific flags in BENCH_FLAGS and a help string
 # in BENCH_USAGE, then calls: bench_parse_args "$@"; bench_build; bench_run <class>;
