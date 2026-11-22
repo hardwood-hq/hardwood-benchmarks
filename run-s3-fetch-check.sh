@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# Quick gate of a head Hardwood version against a base, on the S3 benchmark: the requests and
-# bytes of every S3 read, and optionally the time of a few contenders. See ./run-gate.sh --help.
+# Quick fetch check of a head Hardwood version against a base, on the S3 benchmark: the requests
+# and bytes of every S3 read, and optionally the time of a few contenders.
+# See ./run-s3-fetch-check.sh --help.
 #
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -12,14 +13,14 @@ MIN_BAND=5
 
 usage() {
   cat <<EOF
-Quick gate of a head Hardwood version against a base, on the S3 benchmark.
+Quick fetch check of a head Hardwood version against a base, on the S3 benchmark.
 
-Usage: ./run-gate.sh [options] BASE HEAD
+Usage: ./run-s3-fetch-check.sh [options] BASE HEAD
   BASE, HEAD        hardwood-core versions as --hardwood-version takes them; the same version
-                    twice measures the gate's own noise
+                    twice measures the check's own noise
   --counts-only     only the requests and bytes, from run-s3.sh --gate at 0 ms (about 1 min)
   --rounds N        timed rounds (default 2); each runs BASE, then HEAD
-  --out DIR         where the snapshots, logs and verdict go (default target/gate)
+  --out DIR         where the snapshots, logs and verdict go (default target/s3-fetch-check)
   --fail-on-regression
                     exit 1 when a read makes more requests, or fetches more bytes than its
                     allowance, or a timed contender is slower beyond its band
@@ -41,7 +42,7 @@ EOF
 }
 
 ROUNDS=2
-OUT=target/gate
+OUT=target/s3-fetch-check
 FAIL=""
 COUNTS_ONLY=""
 TAIL_BYTES=65536
@@ -72,7 +73,7 @@ fi
 LATENCY=30
 [[ -n "$COUNTS_ONLY" ]] && LATENCY=0
 S3_LATENCY_MS=$LATENCY ./s3-env.sh start > /dev/null
-# s3-env.sh stop can leave an S3Proxy JVM running in the dev container. The gate started this
+# s3-env.sh stop can leave an S3Proxy JVM running in the dev container. The check started this
 # endpoint, as it refuses to run beside another, so whatever still runs from its directory is its.
 stop_endpoint() {
   ./s3-env.sh stop > /dev/null
