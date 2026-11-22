@@ -8,7 +8,7 @@
 #   5. sweep scan, ZSTD                (this repo — the speedup-vs-n curve)
 # The micro-benches run once; the scan benches (3-5) run 3 rounds for a median.
 #
-# Everything lands under  <hardwood-benchmarks>/results/<DATE>-fixed-size-list/  :
+# Everything lands under  <hardwood-benchmarks>/publications/<DATE>-fixed-size-list/  :
 #   decode-benchmark.{log,json}   fallback-benchmark.{log,json}      (micro-benches, 1 run)
 #   headline/run-{1,2,3}/  headline-plain/run-{1,2,3}/  sweep/run-{1,2,3}/
 #     (scan benches, 3 rounds — each run-N/: run.log + captured bench-*.tsv; chart the median)
@@ -17,7 +17,7 @@
 #   ./run-overnight-fixedlist.sh smoke   # tiny & fast — verify the wiring/capture, throwaway numbers
 #   ./run-overnight-fixedlist.sh full    # the real run (long — start it in tmux)
 #
-# smoke writes to results/_smoke-fixed-size-list/ so it never touches the real capture.
+# smoke writes to publications/_smoke-fixed-size-list/ so it never touches the real capture.
 #
 # Env overrides: HW, HB (repo paths), DATE, MACHINE, PYTHON (needs pyarrow+numpy),
 #   SKIP_BUILD=1 (reuse an existing micro-bench jar + installed core),
@@ -36,7 +36,7 @@ MICRO_DATA="${MICRO_DATA:-/tmp/fsl-micro-data}"
 HEADLINE_DATA="$HB/target/fsl-headline-data"   # reused (rebuilt) between zstd & plain
 
 if [[ "$MODE" == smoke ]]; then
-  BASE="$HB/results/_smoke-fixed-size-list"
+  BASE="$HB/publications/_smoke-fixed-size-list"
   DECODE_ARGS="-f 1 -wi 1 -i 1 -p k=768"
   FALLBACK_ARGS="-f 1 -wi 1 -i 1 -p k=768 -p differPos=last"
   SCAN_ARGS="--forks 1 --warmup 1 --meas 1"
@@ -44,7 +44,7 @@ if [[ "$MODE" == smoke ]]; then
   SWEEP_ARGS="--k 3,16 --total-values 1000000"
   LABEL="SMOKE (fast wiring check — numbers are throwaway)"
 else
-  BASE="$HB/results/$DATE-fixed-size-list"
+  BASE="$HB/publications/$DATE-fixed-size-list"
   DECODE_ARGS="-f 5"      # 5 forks to match the post; warmup/iters are baked into the bench
   FALLBACK_ARGS="-f 5"
   SCAN_ARGS="--forks 3 --meas 5"

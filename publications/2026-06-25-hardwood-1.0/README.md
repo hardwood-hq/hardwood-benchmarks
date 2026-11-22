@@ -2,7 +2,7 @@
 
 Archived raw output of the 1.0 performance runs, kept for transparency and
 reproducibility. Each `run-N/` is a self-contained, chartable snapshot — filenames
-unchanged — produced by `./capture-run.sh results/2026-06-25-hardwood-1.0/run-N`:
+unchanged — produced by `./capture-run.sh publications/2026-06-25-hardwood-1.0/run-N`:
 
 ```
 run-N/bench-throughput-FlatScanBenchmark.tsv     # flat scan, ms/op + throughput, both passes
@@ -20,7 +20,7 @@ git-ignored — it rebuilds byte-for-byte from the TSVs + sidecars):
 python3 ../../charts/make-flat-chart.py   --results-dir run-N
 python3 ../../charts/make-filter-chart.py --results-dir run-N
 # or, from the repo root:
-python3 charts/make-flat-chart.py --results-dir results/2026-06-25-hardwood-1.0/run-N
+python3 charts/make-flat-chart.py --results-dir publications/2026-06-25-hardwood-1.0/run-N
 ```
 
 ## Provenance

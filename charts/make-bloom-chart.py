@@ -224,7 +224,7 @@ def main():
     ap.add_argument("--results-dir", default="target",
                     help="directory holding bench-throughput/-meta-BloomFilterBenchmark.tsv "
                          "(default target; point at a captured run, e.g. "
-                         "results/2026-06-25-hardwood-1.0/run-2)")
+                         "publications/2026-06-25-hardwood-1.0/run-2)")
     ap.add_argument("--results", default=None, help="override bloom throughput TSV")
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")
     ap.add_argument("--machine", default="AWS m7i.2xlarge (8 vCPU / 4 physical cores)",

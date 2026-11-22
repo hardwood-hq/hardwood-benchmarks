@@ -96,7 +96,7 @@ def main():
     ap.add_argument("--results-dir", default="target",
                     help="directory holding bench-throughput/-meta-NestedScanBenchmark.tsv "
                          "(default target; point at a captured run, e.g. "
-                         "results/2026-09-10-nested/run-2)")
+                         "publications/2026-09-10-nested/run-2)")
     ap.add_argument("--results", default=None,
                     help="override nested throughput TSV")
     ap.add_argument("--out", default=None, help="output directory (default <results-dir>/charts)")

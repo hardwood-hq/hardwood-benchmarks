@@ -47,7 +47,7 @@ from a Hardwood checkout first with `./mvnw -pl core -am install -Dquick`.
 An **engine comparison** times whole programs with hyperfine rather than methods with
 JMH, so engines outside the JVM take part. It is never part of a regression run.
 A **published** benchmark backs a post: its definition is fixed once a post cites it,
-the cited runs are archived under `results/`, and it has chart generators of its own.
+the cited runs are archived under `publications/`, and it has chart generators of its own.
 A **regression-only** benchmark witnesses one scenario, times Hardwood alone over a
 fixture of one size, and changes or goes with the code it witnesses. A **mixed-use**
 benchmark times Hardwood beside other engines without backing a post. All kinds serve
@@ -234,12 +234,12 @@ then paste this loop into a `tmux` session, with the measure line from the bench
 tmux new -s bench        # then paste:
 for i in 1 2 3; do
   <measure line>                     # e.g. ./run-flat.sh --forks 5 --meas 10 --include "…"
-  ./capture-run.sh results/<YYYY-MM-DD>-<slug>/run-$i
+  ./capture-run.sh publications/<YYYY-MM-DD>-<slug>/run-$i
   [ $i -lt 3 ] && sleep 300
 done
 ```
 
-`results/<YYYY-MM-DD>-<slug>/` holds one publication, with a README of its own.
+`publications/<YYYY-MM-DD>-<slug>/` holds one publication, with a README of its own.
 `charts/median-runs.py` writes a snapshot of the per-contender medians of the three runs.
 
 Each published benchmark has `charts/make-<benchmark>-*chart.py` generators (stdlib

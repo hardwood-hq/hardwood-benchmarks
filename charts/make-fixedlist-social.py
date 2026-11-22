@@ -10,7 +10,7 @@ Outputs `social_bars.{svg,png}` and `social_sweep.{svg,png}` (1200x630).
 
 Usage:
     python charts/make-fixedlist-social.py \
-        --results-dir results/2026-07-22-fixed-size-list --out target/charts/social
+        --results-dir publications/2026-07-22-fixed-size-list --out target/charts/social
 
 Stdlib only (plus chartlib for SVG->PNG rasterization).
 """
@@ -155,7 +155,7 @@ def sweep(results_dir, logo_path):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--results-dir", default="results/2026-07-22-fixed-size-list")
+    ap.add_argument("--results-dir", default="publications/2026-07-22-fixed-size-list")
     ap.add_argument("--out", default="target/charts/social")
     ap.add_argument("--logo", default=str(HERE / "assets" / "hardwood.svg"))
     args = ap.parse_args()
