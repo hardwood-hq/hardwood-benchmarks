@@ -163,7 +163,7 @@ session during the run voids the night. `--no-alert` opens no issue, `--commit R
 another commit, `--enqueue "VERSION SCRIPTS"` and `--backfill` record older versions; see
 `./nightly.sh --help`. Its analysis steps are `charts/nightly.py`.
 
-`./run-gate.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
+`./run-s3-fetch-check.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
 benchmark alone:
 
 - `--counts-only` compares the requests and bytes of every S3 read the benchmark checks
@@ -175,7 +175,7 @@ benchmark alone:
 - A read fails the counts when it makes more requests than the base, or fetches more bytes than
   the base plus 1 MiB, the coalescing gap, for every request it saves.
 
-It writes `verdict.txt` under `target/gate/`. Local reads are not timed by it: on the dev
+It writes `verdict.txt` under `target/s3-fetch-check/`. Local reads are not timed by it: on the dev
 container, short runs of the narrow and flat scans move by 20 % and more between rounds of
 the same version, so they belong to `run-regression.sh` on quieter hardware.
 
