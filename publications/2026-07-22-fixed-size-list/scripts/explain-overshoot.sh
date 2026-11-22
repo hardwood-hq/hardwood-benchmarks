@@ -27,13 +27,13 @@
 #
 # Requires the -Dperf.batchSize knob (for C and D) — present in this repo's benchmark.
 #
-# Usage: ./explain-overshoot.sh            # full A+B+C+D at 128M values
-#        TOTAL_VALUES=64000000 ./explain-overshoot.sh
-#        KS="3,64,256,768" CORES="0 0-3 0-7" FORKS=5 ./explain-overshoot.sh
-#        MATCHED_SIZES="500000 1000000" ./explain-overshoot.sh   # narrow exp D
+# Usage: ./publications/2026-07-22-fixed-size-list/scripts/explain-overshoot.sh            # full A+B+C+D at 128M values
+#        TOTAL_VALUES=64000000 ./publications/2026-07-22-fixed-size-list/scripts/explain-overshoot.sh
+#        KS="3,64,256,768" CORES="0 0-3 0-7" FORKS=5 ./publications/2026-07-22-fixed-size-list/scripts/explain-overshoot.sh
+#        MATCHED_SIZES="500000 1000000" ./publications/2026-07-22-fixed-size-list/scripts/explain-overshoot.sh   # narrow exp D
 #
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../../.."
 
 TOTAL_VALUES="${TOTAL_VALUES:-128000000}"   # 512 MB files → DRAM-bound
 KS="${KS:-3,16,64,128,256,768,1536}"        # k sweep for experiment A
