@@ -130,10 +130,6 @@ With several versions, oldest first, the versions are interleaved within each ro
 - `not-run.txt`: what a version did not run, and why: a benchmark, contender or parameter
   value needing a feature the version predates (not supported), a benchmark that does not
   build (a defect, which also makes the run exit 1), or a contender that threw.
-- `charts/`, with several versions: one version chart per benchmark, and
-  `regression-overview.svg`: every Hardwood contender of the first version and the last on
-  one page, relative to the first, and the write benchmark's written sizes, with
-  `verdict.txt`'s verdicts (`charts/make-regression-chart.py <out>` redraws it).
 - `<version>/run-<n>/`: the results files, with each benchmark's `RegressionProfiler`
   metrics (`bench-metrics-*.jsonl`), and `manifest.json`: the machine and JVM the run used.
 
