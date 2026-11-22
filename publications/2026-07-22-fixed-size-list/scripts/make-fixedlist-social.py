@@ -9,7 +9,7 @@ use — it does not touch them.
 Outputs `social_bars.{svg,png}` and `social_sweep.{svg,png}` (1200x630).
 
 Usage:
-    python charts/make-fixedlist-social.py \
+    python publications/2026-07-22-fixed-size-list/scripts/make-fixedlist-social.py \
         --results-dir publications/2026-07-22-fixed-size-list --out target/charts/social
 
 Stdlib only (plus chartlib for SVG->PNG rasterization).
@@ -18,12 +18,16 @@ import argparse
 import math
 import os
 import re
+import sys
 from pathlib import Path
 
-from chartlib import render_pngs
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
+sys.path.insert(0, str(ROOT / "charts"))
+
+from chartlib import render_pngs  # noqa: E402
 
 W, H = 1200, 630
-HERE = Path(__file__).resolve().parent
 
 
 def load(path):
@@ -157,7 +161,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results-dir", default="publications/2026-07-22-fixed-size-list")
     ap.add_argument("--out", default="target/charts/social")
-    ap.add_argument("--logo", default=str(HERE / "assets" / "hardwood.svg"))
+    ap.add_argument("--logo", default=str(ROOT / "charts" / "assets" / "hardwood.svg"))
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

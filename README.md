@@ -356,9 +356,8 @@ files; absolute throughput is not, so the headline points (`k` = 3 and 768) run 
 
 The generated file is uncompressed and without dictionary by default;
 `-Dperf.compression` and `-Dperf.pageVersion=v1` change that.
-`run-overnight-fixedlist.sh` captures the complete set behind the published post, and
-`explain-overshoot.sh` attributes the fast path's gap to the flat floor on a machine
-without a usable PMU.
+The scripts that captured the published post and explain its numbers are kept with its
+runs, under [`publications/2026-07-22-fixed-size-list/scripts/`](publications/2026-07-22-fixed-size-list/README.md#scripts).
 
 **Charts:** `make-fixedlist-bars-chart.py` → `fixedlist_bars.svg`, throughput at one
 `k` with the flat floor as a reference line; `make-fixedlist-chart.py` →

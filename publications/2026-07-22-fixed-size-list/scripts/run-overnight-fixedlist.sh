@@ -14,8 +14,8 @@
 #     (scan benches, 3 rounds — each run-N/: run.log + captured bench-*.tsv; chart the median)
 #
 # Two modes:
-#   ./run-overnight-fixedlist.sh smoke   # tiny & fast — verify the wiring/capture, throwaway numbers
-#   ./run-overnight-fixedlist.sh full    # the real run (long — start it in tmux)
+#   ./publications/2026-07-22-fixed-size-list/scripts/run-overnight-fixedlist.sh smoke   # tiny & fast — verify the wiring/capture, throwaway numbers
+#   ./publications/2026-07-22-fixed-size-list/scripts/run-overnight-fixedlist.sh full    # the real run (long — start it in tmux)
 #
 # smoke writes to publications/_smoke-fixed-size-list/ so it never touches the real capture.
 #

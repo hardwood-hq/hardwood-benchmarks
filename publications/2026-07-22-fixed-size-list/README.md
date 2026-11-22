@@ -53,6 +53,17 @@ python3 charts/make-fixedlist-bars-chart.py --results-dir publications/2026-07-2
 python3 charts/make-fixedlist-chart.py      --results-dir publications/2026-07-22-fixed-size-list/sweep/median-128M
 ```
 
+## Scripts
+
+`scripts/` holds the one-off tools behind the post. Run them from the repository root:
+
+- `run-overnight-fixedlist.sh smoke|full` captures the complete set above: the two
+  micro-benchmarks from a Hardwood checkout (`HW`) and the three scan experiments.
+- `explain-overshoot.sh` attributes the fast path's gap to the flat floor on a machine
+  without a usable PMU.
+- `make-fixedlist-social.py --results-dir publications/2026-07-22-fixed-size-list`
+  draws 1200×630 social-card variants of the post's two charts.
+
 ## Provenance
 
 | | |
