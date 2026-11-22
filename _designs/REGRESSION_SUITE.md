@@ -149,7 +149,7 @@ document marks for it, `nightly` all of them, and `smoke` all of them once, with
 check what each version runs. It starts the emulated S3 endpoint once for the whole run when
 `run-s3.sh` is among the scripts, and records the machine and JVM in `manifest.json`.
 
-With one version a run ends in tables. With several it also writes `verdict.txt`, comparing
+With one version a run ends in tables, which `charts/version-table.py` writes. With several it also writes `verdict.txt`, comparing
 the first version with the last; `not-run.txt` gives the
 reason for every benchmark a version could not run. A benchmark class belongs to one script,
 since its meta sidecar holds the fixture a contender's series is keyed on; a run in which two
