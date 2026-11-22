@@ -134,7 +134,9 @@ to the unsettled twin of its series.
 
 **Gates.** Before a script is timed, its gate checks that its contenders agree, against the
 last version of the run, unless a gate already passed for the hash of the script's sources:
-the script, what every script shares, and the packages of the benchmarks it runs. Passed
+the script, what every script shares, and the packages of the benchmarks it runs. The hash
+covers the files git tracks, at their working-tree contents, so a checkout with untracked
+leftovers hashes as a clean clone of the same commit does. Passed
 gates are kept under `~/.cache/hardwood-benchmarks/gates`. Fixtures are generated or
 downloaded by those sources, so the hash covers them; a change in Hardwood alone runs no gate
 again, since Hardwood's own tests cover its results. A script whose gate fails is not timed.
