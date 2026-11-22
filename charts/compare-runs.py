@@ -154,8 +154,7 @@ def compare_benchmark(base, new, benchmark, threshold, min_band, pattern=None, c
     the medians, delta, band and verdict; a contender matching `control` is left out of
     rows and, when it moved beyond its band, listed in drift instead. only_base and
     only_new list the (pass, contender) keys one side lacks. Contenders not matching
-    `pattern` are skipped altogether. make-regression-chart.py charts these rows, so it
-    and the text report cannot disagree.
+    `pattern` are skipped altogether.
     """
     base_bench = base["samples"].get(benchmark, {})
     new_bench = new["samples"].get(benchmark, {})

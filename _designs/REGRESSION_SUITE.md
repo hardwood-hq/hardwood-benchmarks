@@ -150,7 +150,7 @@ check what each version runs. It starts the emulated S3 endpoint once for the wh
 `run-s3.sh` is among the scripts, and records the machine and JVM in `manifest.json`.
 
 With one version a run ends in tables. With several it also writes `verdict.txt`, comparing
-the first version with the last, and one version chart per benchmark; `not-run.txt` gives the
+the first version with the last; `not-run.txt` gives the
 reason for every benchmark a version could not run. A benchmark class belongs to one script,
 since its meta sidecar holds the fixture a contender's series is keyed on; a run in which two
 scripts write the same class's results fails. `run-nested-columns.sh` therefore times
@@ -176,9 +176,9 @@ verdict. A contender whose definition differs from the nightly one has no series
 with, and says so. Hardwood's `hardwood-quick-vs-nightly` skill runs the `quick` profile for
 a branch on the N300 and shows this table.
 
-**The version chart.** `charts/make-version-chart.py` charts each Hardwood contender across
-any number of snapshots in the order given, labelled with the version, and the commit for a
-snapshot build. A version that could not run a contender is drawn as missing.
+**The version chart.** `charts/make-version-chart.py`, run by hand, charts each Hardwood
+contender across any number of snapshots in the order given, labelled with the version, and
+the commit for a snapshot build. A version that could not run a contender is drawn as missing.
 
 ## Change points
 

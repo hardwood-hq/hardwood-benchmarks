@@ -2,7 +2,7 @@
 #
 # Regression run: the benchmarks' --regression presets for one Hardwood version, or for
 # several interleaved and compared, in one of three profiles; then the tables, and with
-# several versions the verdict (compare-runs.py, first version against the last) and charts.
+# several versions the verdict (compare-runs.py, first version against the last).
 # See ./run-regression.sh --help.
 #
 set -uo pipefail
@@ -34,7 +34,7 @@ Usage: ./run-regression.sh [options] VERSION [VERSION ...]
   --rounds N        rounds (default 1); with several versions, each round runs every
                     version once, so drift on the machine spreads over all of them
   --only LIST       comma-separated scripts of the profile to run
-  --out DIR         where the snapshots, logs, tables, verdict and charts go
+  --out DIR         where the snapshots, logs, tables and verdict go
                     (default target/regression)
   --fail-on-regression
                     exit 1 when a Hardwood contender is slower beyond the band, or a
@@ -59,16 +59,13 @@ not run for it, and listed as not supported (see src/compat/README.md). A script
 does not build against a version is a defect, listed as such, and the run exits 1.
 
 Output, under --out:
-  <version>/run-<n>/   the snapshot compare-runs.py and the version chart read, with each
+  <version>/run-<n>/   the snapshot compare-runs.py and make-version-chart.py read, with each
                        benchmark's RegressionProfiler metrics (bench-metrics-*.jsonl)
   tables.md            per benchmark, as soon as its rounds are done: each version's median
                        per Hardwood contender, the last version against each earlier one
   not-run.txt          per version, what it did not run and why
   verdict.txt          with several versions, per benchmark: a tally, and only the
                        contenders that moved
-  charts/              with several versions, one version chart per benchmark, and
-                       regression-overview.svg: every Hardwood contender, the last version
-                       relative to the first
 EOF
 }
 
@@ -248,7 +245,7 @@ for s in "${SCRIPTS[@]}"; do
 done
 echo "total $(( $(date +%s) - started ))s" | tee -a "$progress"
 
-# What a version did not run is listed from the logs, so a "not run" in a chart has its
+# What a version did not run is listed from the logs, so a "not run" in a table has its
 # reason next to it: a script or parameter value needing a feature the version predates, a
 # build that failed, or a contender that threw.
 {
@@ -317,10 +314,6 @@ last="$OUT/${VERSIONS[${#VERSIONS[@]}-1]}"
 python3 charts/compare-runs.py "$first" "$last" --changes-only $FAIL \
   > "$OUT/verdict.txt"
 status=$?
-python3 charts/make-version-chart.py "${VERSIONS[@]/#/$OUT/}" --out "$OUT/charts" \
-  > /dev/null 2> "$OUT/charts.log" || cat "$OUT/charts.log" >&2
-python3 charts/make-regression-chart.py "$first" "$last" --out "$OUT/charts" \
-  > /dev/null 2>> "$OUT/charts.log" || cat "$OUT/charts.log" >&2
 
 echo
 cat "$OUT/verdict.txt"
@@ -329,7 +322,5 @@ if [ -s "$OUT/not-run.txt" ]; then
   echo "Not run:"
   cat "$OUT/not-run.txt"
 fi
-echo
-echo "Charts: $OUT/charts/"
 (( broken )) && exit 1
 exit $status
