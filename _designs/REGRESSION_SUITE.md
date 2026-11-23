@@ -9,8 +9,9 @@ Related documents:
 
 - [Benchmark workload coverage](BENCHMARK_WORKLOAD_COVERAGE.md): the benchmarks, the
   contenders the regression presets time and the path each covers alone.
-- [README](../README.md#comparing-versions): running the profiles, recording a run,
-  backfilling, the nightly job's options.
+- [README](../README.md#comparing-versions): running the profiles and what a run writes;
+  `nightly.sh --help` gives the nightly job's options, backfilling among them.
+- [Benchmark reference](../BENCHMARKS.md): each benchmark's workload, contenders and gate.
 - [Version adapters](../src/compat/README.md): the API concerns that differ between Hardwood
   versions and how to add one.
 - [hardwood-benchmark-results](https://github.com/hardwood-hq/hardwood-benchmark-results#readme):
