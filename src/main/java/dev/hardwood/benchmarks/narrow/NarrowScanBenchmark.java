@@ -246,6 +246,7 @@ public class NarrowScanBenchmark {
         List<Path> files = TaxiDataDownloader.ensure(start, end);
         long rows = BenchReport.totalRows(files);
         long bytes = BenchReport.totalBytes(files);
+        BenchReport.fixture(files.toArray(Path[]::new));
         BenchReport.writeRunParams(rows, bytes, start + "–" + end);
 
         java.util.Collection<org.openjdk.jmh.results.RunResult> results = new Runner(opts.build()).run();

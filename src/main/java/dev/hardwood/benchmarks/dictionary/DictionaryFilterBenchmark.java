@@ -235,6 +235,9 @@ public class DictionaryFilterBenchmark {
             gate();
             return;
         }
+        BenchReport.fixture(FILE);
+        BenchReport.fixture("hardwoodRowInWide", WIDE_FILE);
+        BenchReport.fixture("hardwoodRowLtWide", WIDE_FILE);
         BenchReport.writeRunParams(ROWS, Files.size(FILE), "distinct", Integer.toString(UrlFileGenerator.DISTINCT));
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(DictionaryFilterBenchmark.class))

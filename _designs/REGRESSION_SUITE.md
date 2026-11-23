@@ -57,10 +57,13 @@ A series is identified by its contender, its **epoch** and its **machine epoch**
 either:
 
 - A contender's epoch hashes what it measures: its script's preset, the iteration counts
-  every preset shares, its benchmark method's source, its parameters and its fixture's size
-  to three significant figures. The size is rounded because the version that writes a
-  generated fixture leaves its name in the file's metadata, which changes the size by a few
-  hundred bytes without changing the data.
+  every preset shares, its benchmark method's source, its parameters and the files it reads,
+  each by name and size to three significant figures. A benchmark declares those files in its
+  meta sidecar (`BenchReport.fixture`), once for all its contenders and again for each
+  contender that reads other files, and recording fails for a contender with none declared.
+  A contender whose input is generated in memory declares none. The size is
+  rounded because the version that writes a generated fixture leaves its name in the file's
+  metadata, which changes the size by a few hundred bytes without changing the data.
 - A machine epoch hashes the machine and JVM a run's manifest describes: CPU, core count,
   microcode, the JDK build, the JVM's heap and collector flags, governor, clock and turbo.
   The kernel is recorded but not hashed: a distribution ships one every few weeks, and series

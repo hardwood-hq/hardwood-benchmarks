@@ -243,6 +243,17 @@ public class FloatEncodingBenchmark {
         return sizes;
     }
 
+    /// Declares the source month for the writes and, for each read, the file it reads. The read
+    /// files are written here, before the forks, so they can be sized; a fork's setup reuses them.
+    private static void declareFixtures(TaxiDoubles data, List<String> encodings, String[] codecs) throws IOException {
+        BenchReport.fixture(TaxiDataDownloader.ensure(MONTH, MONTH).getFirst());
+        for (String encoding : encodings) {
+            for (String codec : codecs) {
+                BenchReport.fixture("hardwoodRead[" + codec + "][" + encoding + "]", ensureFile(data, encoding, codec));
+            }
+        }
+    }
+
     /// `encodings` less those the Hardwood version on the classpath lacks, each reported.
     private static List<String> supported(List<String> encodings) {
         List<String> supported = new ArrayList<>();
@@ -272,8 +283,11 @@ public class FloatEncodingBenchmark {
         if (Boolean.getBoolean("perf.gate")) {
             return;
         }
+        String codecs = System.getProperty("perf.codec");
+        String[] selectedCodecs = codecs == null || codecs.isBlank() ? CODECS : codecs.split(",");
         List<String> meta = new ArrayList<>(List.of("rows", Integer.toString(data.rows)));
         meta.addAll(sizes);
+        declareFixtures(data, encodings, selectedCodecs);
         BenchReport.writeMeta(meta.toArray(new String[0]));
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(FloatEncodingBenchmark.class))
@@ -283,10 +297,7 @@ public class FloatEncodingBenchmark {
                 .measurementTime(TimeValue.seconds(Integer.getInteger("perf.time", 2)))
                 .forks(Integer.getInteger("perf.forks", 1));
         opts.param("encoding", encodings.toArray(new String[0]));
-        String codecs = System.getProperty("perf.codec");
-        if (codecs != null && !codecs.isBlank()) {
-            opts.param("codec", codecs.split(","));
-        }
+        opts.param("codec", selectedCodecs);
         // JMH forks a fresh JVM that does not inherit -D props; forward perf.* so
         // the forked benchmark sees the same settings.
         System.getProperties().forEach((k, v) -> {

@@ -266,6 +266,18 @@ public class FixedSizeListScanBenchmark {
         }
     }
 
+    private static void declareFixtures(int[] ks) {
+        Path dir = Path.of(dataDir());
+        long totalValues = totalValues();
+        for (int k : ks) {
+            Path list = FixedSizeListFileGenerator.listFile(dir, k, totalValues);
+            for (String method : List.of("columnFast", "columnBaseline", "rowFast", "rowBaseline")) {
+                BenchReport.fixture(method + "[" + k + "]", list);
+            }
+            BenchReport.fixture("flatFloor[" + k + "]", FixedSizeListFileGenerator.flatFile(dir, k, totalValues));
+        }
+    }
+
     /// Writes the run's throughput denominator to `bench-meta-*.tsv` next to the
     /// results TSV (`values` = leaf floats per file, constant across `k`; `bytes` =
     /// their float payload), so make-fixedlist-bars-chart.py can turn each
@@ -426,6 +438,7 @@ public class FixedSizeListScanBenchmark {
             return;
         }
         generate(ks);
+        declareFixtures(ks);
         writeMeta();
 
         ChainedOptionsBuilder opts = new OptionsBuilder()

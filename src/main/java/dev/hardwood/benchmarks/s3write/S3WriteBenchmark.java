@@ -295,6 +295,7 @@ public class S3WriteBenchmark {
         if (Boolean.getBoolean("perf.gate")) {
             return;
         }
+        BenchReport.fixture();
         BenchReport.writeMeta("rows", Long.toString(ROWS), "bytes.hardwood", Long.toString(sizes[0]),
                 "bytes.parquetJava", Long.toString(sizes[1]), "partBytes", Integer.toString(PART_SIZE),
                 "latencyMs", System.getProperty("perf.s3.latencyMs", "?"),

@@ -803,6 +803,7 @@ public class NestedScanBenchmark {
         if (rows < fileRows) {
             bytes = Math.round((double) bytes * rows / fileRows);
         }
+        BenchReport.fixture(FILE);
         BenchReport.writeRunParams(rows, bytes, "release", OvertureMapsDownloader.releaseOf(FILE),
                 BenchReport.leafComposition(files));
         BenchReport.printFullScanThroughput(results, benchmark, rows, bytes);

@@ -753,6 +753,17 @@ public class S3ScanBenchmark {
                 "latencyMs", System.getProperty("perf.s3.latencyMs", "?"),
                 "bandwidthKBps", System.getProperty("perf.s3.bandwidthKBps", "?")));
         meta.addAll(smallFilesMeta);
+        BenchReport.fixture(months.get(0));
+        BenchReport.fixture("hardwoodFilteredScan", FILTER_FILE);
+        BenchReport.fixture("hardwoodWideFilteredScan", WIDE_FILE);
+        BenchReport.fixture("hardwoodBloomLookup", BloomLookupGenerator.SMALL.file());
+        BenchReport.fixture("hardwoodLargeBloomLookup", BloomLookupGenerator.LARGE.file());
+        BenchReport.fixture("hardwoodFixedSizeBloomLookup", BloomLookupGenerator.FIXED.file());
+        BenchReport.fixture("hardwoodMultiFileScan", months);
+        if (smallFiles != null) {
+            BenchReport.fixture("hardwoodManySmallFiles",
+                    smallFiles.files().stream().map(entry -> smallFiles.dir().resolve(entry.name())).toList());
+        }
         BenchReport.writeRunParams(BenchReport.totalRows(months.subList(0, 1)), Files.size(months.get(0)),
                 null, null, meta.toArray(String[]::new));
 

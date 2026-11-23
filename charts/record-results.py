@@ -23,8 +23,9 @@ per contender its benchmark, script, series file and whether its series is new.
 otava.yaml is written again from every series file, one Otava test per file.
 
 A contender's epoch hashes what it measures: its script's preset and the iteration counts
-every preset shares, its benchmark method's source, its parameters and the size of its
-fixture, to three significant figures. A machine epoch hashes the manifest's description of the
+every preset shares, its benchmark method's source, its parameters and the files it reads,
+each by name and size to three significant figures, as the benchmark declares them in its
+meta sidecar (`fixture`, or `fixture.<contender>` for a contender that reads other files). A machine epoch hashes the manifest's description of the
 machine and JVM, MACHINE_KEYS, the kernel left out. A new hash of either starts a new series,
 so that no series mixes two definitions or machines.
 
@@ -57,7 +58,6 @@ OTAVA_METRICS = {"wall_ms": -1, "cpu_ms": -1, "alloc_bytes": -1, "live_bytes": -
 # kernel causes shows as a change point that the confirmation run, on one kernel, refutes.
 MACHINE_KEYS = ["cpu", "cores", "microcode", "java", "jvm_flags", "governor", "max_freq_khz",
                 "no_turbo"]
-FIXTURE_KEYS = ["rows", "bytes", "window"]
 
 
 def digest(value):
@@ -93,13 +93,22 @@ def method_source(cls, method):
     raise SystemExit("record-results: no method {} in {}".format(method, cls))
 
 
-def fixture_value(key, value):
+def fixture_size(size):
     """A fixture's size to three significant figures: the version that writes a fixture leaves
     its name in the file's metadata, so its exact size differs by a few hundred bytes with the
     version that first ran the benchmark, while a change to the data moves it further."""
-    if key != "bytes":
-        return value
-    return "{:.3g}".format(float(value))
+    return "{:.3g}".format(float(size))
+
+
+def fixture_of(fields, cls, contender):
+    """{file name: size} of the files `contender` reads, from the first of the meta lines
+    `fixture.<contender>`, `fixture.<method>` and `fixture` there is; fails without one."""
+    method = contender.split("[", 1)[0]
+    for key in ("fixture." + contender, "fixture." + method, "fixture"):
+        if key in fields:
+            files = [f.rsplit(":", 1) for f in fields[key].split(",") if f]
+            return {name: fixture_size(size) for name, size in files}
+    raise SystemExit("record-results: the meta of {} declares no fixture for {}".format(cls, contender))
 
 
 def scripts_by_file(out):
@@ -184,7 +193,7 @@ def summarise(out, version):
         method = contender.split("[", 1)[0]
         params = sorted({json.dumps(r["params"], sort_keys=True) for r in rows})
         script = script_of(cls, method, files.get("bench-metrics-{}.jsonl".format(cls), []))
-        fixture = {k: fixture_value(k, metas[cls][k]) for k in FIXTURE_KEYS if k in metas[cls]}
+        fixture = fixture_of(metas[cls], cls, contender)
         definition = {"script": script, "preset": shell_value("run-{}.sh".format(script), "BENCH_REGRESSION_PRESET"),
                       "common": common, "method": method_source(cls, method), "params": params,
                       "fixture": fixture}

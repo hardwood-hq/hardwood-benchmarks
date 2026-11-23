@@ -168,6 +168,7 @@ public class TimeWindowBenchmark {
             gateControls();
             return;
         }
+        BenchReport.fixture(FILE);
         BenchReport.writeRunParams(ROWS, Files.size(FILE), "rowGroupMb", Integer.toString(ROW_GROUP_MB),
                 "rowGroups", Integer.toString(rowGroups));
         ChainedOptionsBuilder opts = new OptionsBuilder()

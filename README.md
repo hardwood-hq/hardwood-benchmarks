@@ -77,8 +77,9 @@ the benchmarks for the selected version and runs the passes.
 also print throughput (`M rows/s`, `MB/s`). A run writes to `target/`:
 
 - `bench-throughput-<Benchmark>.tsv`: the numbers.
-- `bench-meta-<Benchmark>.tsv`: the dataset parameters, plus `java`, `hardwood`
-  (version and commit), `machine`, `preset` and `simd`. `simd` is `scalar` unless
+- `bench-meta-<Benchmark>.tsv`: the dataset parameters, the files the contenders read
+  (`fixture`, and `fixture.<contender>` where a contender reads other files), plus `java`,
+  `hardwood` (version and commit), `machine`, `preset` and `simd`. `simd` is `scalar` unless
   `--add-modules jdk.incubator.vector` reaches the JVM from the environment, which the
   scripts do not pass; quote SIMD and scalar numbers separately.
 - `<bench>.log`: the console output (`BENCH_LOG=0` disables it).

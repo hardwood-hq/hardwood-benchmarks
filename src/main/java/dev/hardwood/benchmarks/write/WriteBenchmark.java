@@ -293,6 +293,7 @@ public class WriteBenchmark {
         }
         System.out.printf("Run params: %,d rows; writes %,d bytes with SNAPPY, %,d with ZSTD%n",
                 ROWS, snappyBytes, zstdBytes);
+        BenchReport.fixture();
         BenchReport.writeMeta("rows", Long.toString(ROWS),
                 "bytes.SNAPPY", Long.toString(snappyBytes), "bytes.ZSTD", Long.toString(zstdBytes));
         ChainedOptionsBuilder opts = new OptionsBuilder()
