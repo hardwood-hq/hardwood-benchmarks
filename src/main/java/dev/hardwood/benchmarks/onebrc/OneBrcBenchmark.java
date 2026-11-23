@@ -154,6 +154,7 @@ public class OneBrcBenchmark {
             return;
         }
         long bytes = Files.size(FILE);
+        BenchReport.fixture(FILE);
         BenchReport.writeRunParams(ROWS, bytes, "");
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(OneBrcBenchmark.class))

@@ -182,6 +182,7 @@ public class FilterBenchmark {
         }
         // Generate (if needed) and log the dataset params before timing.
         EventFileGenerator.ensure(FILE, ROWS);
+        BenchReport.fixture(FILE);
         BenchReport.writeRunParams(ROWS, Files.size(FILE), "");
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(FilterBenchmark.class))

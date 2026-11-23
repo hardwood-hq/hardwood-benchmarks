@@ -9,13 +9,16 @@ package dev.hardwood.benchmarks;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
@@ -170,10 +173,53 @@ public final class BenchReport {
         writeMeta(pairs);
     }
 
+    /// The files the run's contenders read, by contender; "" holds the run's own.
+    private static final Map<String, List<Path>> FIXTURES = new LinkedHashMap<>();
+
+    /// Declares the files every contender of the run reads, or loads its input from; none for a
+    /// benchmark whose input is generated in memory. [#writeMeta(String...)] records them as
+    /// `fixture`, each by file name and size, and a regression run keys a contender's series on
+    /// them, so a changed fixture starts a new series. Call before the meta is written.
+    public static void fixture(Path... files) {
+        FIXTURES.put("", List.of(files));
+    }
+
+    /// Declares the files `contender` reads in place of the run's own, recorded as
+    /// `fixture.<contender>`. `contender` is a method name, or a method with its parameter values
+    /// as `[value]` suffixes in the order of the parameters' names, as the results files name it.
+    public static void fixture(String contender, List<Path> files) {
+        FIXTURES.put(contender, List.copyOf(files));
+    }
+
+    /// As [#fixture(String,List)].
+    public static void fixture(String contender, Path... files) {
+        fixture(contender, List.of(files));
+    }
+
+    /// The declared fixtures as meta lines: `fixture[.<contender>]\t<name>:<bytes>,...`.
+    private static String fixtureLines() {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, List<Path>> e : FIXTURES.entrySet()) {
+            sb.append(e.getKey().isEmpty() ? "fixture" : "fixture." + e.getKey()).append('\t');
+            for (int i = 0; i < e.getValue().size(); i++) {
+                Path file = e.getValue().get(i);
+                try {
+                    sb.append(i == 0 ? "" : ",").append(file.getFileName()).append(':').append(Files.size(file));
+                }
+                catch (IOException ex) {
+                    throw new UncheckedIOException("Cannot size fixture " + file, ex);
+                }
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
     /// Writes the run's meta sidecar next to the `-Dperf.results` file
     /// (`bench-throughput-<X>.tsv` → `bench-meta-<X>.tsv`), one `key\tvalue` per
-    /// line: the given benchmark-specific `pairs` (`key, value, key, value, …`)
-    /// followed by `java` and the resolved `hardwood` build. Centralising the JVM
+    /// line: the given benchmark-specific `pairs` (`key, value, key, value, …`), the
+    /// fixtures declared through [#fixture(Path...)], then `java` and the resolved
+    /// `hardwood` build. Centralising the JVM
     /// and Hardwood-SHA capture here means every benchmark's meta records them, so
     /// no per-benchmark writer can drift and drop a field. No-op when
     /// `-Dperf.results` is unset or is not the conventional `bench-throughput-` path.
@@ -186,6 +232,7 @@ public final class BenchReport {
         for (int i = 0; i + 1 < pairs.length; i += 2) {
             sb.append(pairs[i]).append('\t').append(pairs[i + 1]).append('\n');
         }
+        sb.append(fixtureLines());
         sb.append("java\t").append(javaVersion()).append('\n');
         sb.append("hardwood\t").append(hardwoodVersion()).append('\n');
         sb.append("simd\t").append(simdStatus()).append('\n');

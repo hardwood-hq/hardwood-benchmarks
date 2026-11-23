@@ -197,6 +197,7 @@ public class BinaryScanBenchmark {
             gate();
             return;
         }
+        BenchReport.fixture(FILE);
         BenchReport.writeRunParams(ROWS, Files.size(FILE), "columns", String.join(",", COLUMNS));
         ChainedOptionsBuilder opts = new OptionsBuilder()
                 .include(BenchReport.includePattern(BinaryScanBenchmark.class))

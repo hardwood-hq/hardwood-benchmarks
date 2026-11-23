@@ -180,6 +180,9 @@ public class BloomFilterBenchmark {
         // Generate (if needed) and log the dataset params before timing. The bloom
         // file is the reported dataset; the no-bloom twin holds the same rows.
         LookupFileGenerator.ensure(ROWS);
+        BenchReport.fixture(BLOOM);
+        BenchReport.fixture("hardwoodNoBloom", NO_BLOOM);
+        BenchReport.fixture("parquetJavaNoBloom", NO_BLOOM);
         BenchReport.writeRunParams(BenchReport.totalRows(java.util.List.of(BLOOM)), Files.size(BLOOM),
                 "unique 64-bit key");
         ChainedOptionsBuilder opts = new OptionsBuilder()
