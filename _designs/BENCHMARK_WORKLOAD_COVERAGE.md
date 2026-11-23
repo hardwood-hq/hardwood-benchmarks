@@ -13,28 +13,30 @@ hardwood-hq/hardwood, and issue numbers in this document refer to that repositor
 
 ## Benchmarks
 
-Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of two kinds
-(the engine comparison below is the one script that is neither):
+Every benchmark is a `run-<name>.sh` script, and is one of four kinds. Comparing engines
+does not decide the kind: `run-fixedlist.sh` is Hardwood-only and published.
 
-- **Mixed-use:** a published result rests on it. Its definition (fixture, parameters,
+- **Published:** a published result rests on it. Its definition (fixture, parameters,
   plotted contenders) is fixed once published, and a change to it is a deliberate break
-  the README records with its date. It has a publication chart generator of its own, the
-  runs a publication cites are archived under `publications/`, and every run of it doubles as
-  a regression check. It may carry arms that serve regression only, gated but never
-  plotted. Comparing engines does not decide the kind: `run-fixedlist.sh` is
-  Hardwood-only and mixed-use.
+  recorded with its date. It has a publication chart generator of its own, the runs a
+  publication cites are archived under `publications/`, and every run of it doubles as a
+  regression check. It may carry arms that serve regression only, gated but never plotted.
 - **Regression-only:** a witness for one scenario, typically one optimization, that no
   publication cites. It has Hardwood contenders only, one fixture size, no archived runs,
-  and it changes or goes when the code it witnesses does. The README lists these in a
-  section of their own.
+  and it changes or goes when the code it witnesses does.
+- **Mixed-use:** times Hardwood beside other engines, with a regression preset for its
+  Hardwood contenders, without a publication resting on it: no chart generator and no
+  archived runs.
+- **Engine comparison:** times one process per engine with hyperfine instead of a method
+  under JMH, so engines outside the JVM take part. It is never part of a regression run.
 
 | Script | Kind | Workload | Fixture, codec | Contenders | State |
 | --- | --- | --- | --- | --- | --- |
-| `run-flat.sh` | mixed-use | Full scan of 20 flat columns, multi-file | NYC taxi, 2025 layout; ZSTD | Hardwood columnar and row; parquet-java columnar; `AvroParquetReader`; Arrow Dataset (JNI) | built |
-| `run-filter.sh` | mixed-use | `event_time < T` over a time-clustered file, reading `amount`; `selective` (5 %) and `matchAll` | generated event file; SNAPPY | Hardwood columnar and row, each with an unfiltered control; parquet-java, filtered and unfiltered; `AvroParquetReader` with filter | built |
-| `run-bloom.sh` | mixed-use | Equality point lookup, bloom-bearing file against a statistics-only twin | generated; SNAPPY | Hardwood and parquet-java, each with and without bloom | built |
-| `run-nested.sh` | mixed-use | Full record read of deeply nested struct / list / map | Overture Maps places; ZSTD | Hardwood row, typed, and columnar; `AvroParquetReader` | built |
-| `run-fixedlist.sh` | mixed-use | `LIST<float32>` fast path on and off across vector lengths | generated; UNCOMPRESSED by default, `-Dperf.compression` | Hardwood column and row, fast path and baseline; flat floor | built |
+| `run-flat.sh` | published | Full scan of 20 flat columns, multi-file | NYC taxi, 2025 layout; ZSTD | Hardwood columnar and row; parquet-java columnar; `AvroParquetReader`; Arrow Dataset (JNI) | built |
+| `run-filter.sh` | published | `event_time < T` over a time-clustered file, reading `amount`; `selective` (5 %) and `matchAll` | generated event file; SNAPPY | Hardwood columnar and row, each with an unfiltered control; parquet-java, filtered and unfiltered; `AvroParquetReader` with filter | built |
+| `run-bloom.sh` | published | Equality point lookup, bloom-bearing file against a statistics-only twin | generated; SNAPPY | Hardwood and parquet-java, each with and without bloom | built |
+| `run-nested.sh` | published | Full record read of deeply nested struct / list / map | Overture Maps places; ZSTD | Hardwood row, typed, and columnar; `AvroParquetReader` | built |
+| `run-fixedlist.sh` | published | `LIST<float32>` fast path on and off across vector lengths | generated; UNCOMPRESSED by default, `-Dperf.compression` | Hardwood column and row, fast path and baseline; flat floor | built |
 | `run-window.sh` | regression-only | `event_time >= T` for the most recent 5 / 25 / 75 % of the time range: pruned row groups, one straddling the boundary, and row groups proven fully matching, whose `event_time` is not read (#1274) | generated event file, time-sorted, 16 MB row groups; SNAPPY | Hardwood columnar and row, each filtered and unfiltered | built |
 | `run-dictfilter.sh` | regression-only | `url IN (5 values)` over a dictionary-encoded column of 1,000 distinct URLs of about 40 bytes, reading each match with `getString`: the predicate is decided once per dictionary entry, and the matches resolve through the entry ids without byte views (#859) | generated, 5M rows; SNAPPY | Hardwood row reader | built |
 | `run-binary.sh` | regression-only | Full read of two string columns stored `PLAIN`, without a dictionary, one required and one optional with 10 % nulls: each value through the column reader's byte views and as a `String` through the row reader, so the path of a variable-length value's bytes from page to batch is timed alone (#1287) | generated, 5M rows; SNAPPY | Hardwood column and row readers | built |
@@ -43,22 +45,22 @@ Every benchmark is a `run-<name>.sh` script over one JMH class, and is one of tw
 | `run-encodings.sh` | regression-only | Every `DOUBLE` column under `AUTO`, `PLAIN`, `BYTE_STREAM_SPLIT` and `ALP`, uncompressed and ZSTD: a column-reader scan of each file and a column-writer write to memory, with each pair's compressed column-chunk bytes (#581) | NYC taxi 2025-01, its 11 `DOUBLE` columns, 1M rows; UNCOMPRESSED and ZSTD | Hardwood column reader and column writer | built |
 | `run-s3.sh` | regression-only | Column-reader reads from S3Proxy behind Toxiproxy (30 ms first-byte latency, 80 MB/s per connection): a projected scan, a selective filtered scan, one multi-file reader over twelve files, a selective filtered scan projecting 3 of 200 columns across 40 row groups, whose page index is large against its data (#708), three equality lookups for a key every bloom filter rejects, over 200 row groups with small filters, 6 large row groups with 1 MiB filters read under a 1 MiB index-window budget (#735, #1915), and 20 small row groups with parquet-java's default 1 MiB filters (#1915), and one multi-file reader over 200 small files (#1399); records requests and bytes per read, the wide read's page-index requests and bytes apart, and the small-file read's requests per file and per band of file size | NYC taxi 2025 and the generated event file in a local bucket, ZSTD and SNAPPY; a generated wide table (200 numeric columns, 40 row groups of 20 pages per chunk), SNAPPY; three generated bloom-lookup files (a unique `INT64` key with a bloom filter, no dictionary), SNAPPY; 200 files of 100 KiB to 5 MiB written by pinned PyArrow, one row group each, page index on, SNAPPY | Hardwood column reader | built |
 | `run-s3-write.sh` | mixed-use | Writes to S3Proxy behind Toxiproxy (30 ms latency, 80 MB/s upload per connection, in-memory storage), each beside the same write to memory, so the upload's share shows; `run-s3-write-python.sh` adds PyArrow and DuckDB rewriting the same file; records each object's compressed column-chunk bytes | generated taxi-shaped records, 4M rows; ZSTD | Hardwood column writer through `S3Source.outputFile`; parquet-java over S3A; PyArrow; DuckDB | built |
-| `run-projection.sh` | mixed-use | Projection width 1 / 3 / 10 / 20 of 20 columns, each with and without a range predicate, crossed with null density 0 / 10 / 50 / 90 % on one numeric column | generated | Hardwood columnar and row; parquet-java columnar | planned, 1st |
-| codec axis on `run-flat.sh` | mixed-use | `-Dperf.codec` over the taxi corpus re-encoded once per codec, reporting each codec's time beside the file size it produced | taxi, re-encoded | Hardwood; parquet-java | planned, 2nd |
-| `run-write.sh` | mixed-use | Flat and nested writes, row API against columnar API, across codecs and encoding policies, reporting produced bytes beside time | generated records | Hardwood; parquet-java; `AvroParquetWriter` | planned, 3rd |
-| `run-strings.sh` | mixed-use | Flat string scan across a cardinality sweep, dictionary-encoded and PLAIN | generated | Hardwood columnar and row; parquet-java | planned, 4th |
-| `run-open.sh` | mixed-use | Open, footer parse and page-index load as latency, over wide schemas and many small files | generated | Hardwood; parquet-java | planned, 4th |
-| `run-s3.sh` | mixed-use | Reads against a real bucket: footer prefetch, tail cache, range coalescing, the `RangeBacking` modes | taxi in a bucket | Hardwood; parquet-java over `s3a` | planned, 5th |
-| `run-mixed.sh` | mixed-use | Flat columns beside nested ones in one file, projected to each and to both | generated | Hardwood row and columnar; `AvroParquetReader` | planned, 6th |
+| `run-projection.sh` | published | Projection width 1 / 3 / 10 / 20 of 20 columns, each with and without a range predicate, crossed with null density 0 / 10 / 50 / 90 % on one numeric column | generated | Hardwood columnar and row; parquet-java columnar | planned, 1st |
+| codec axis on `run-flat.sh` | published | `-Dperf.codec` over the taxi corpus re-encoded once per codec, reporting each codec's time beside the file size it produced | taxi, re-encoded | Hardwood; parquet-java | planned, 2nd |
+| `run-write.sh` | published | Flat and nested writes, row API against columnar API, across codecs and encoding policies, reporting produced bytes beside time | generated records | Hardwood; parquet-java; `AvroParquetWriter` | planned, 3rd |
+| `run-strings.sh` | published | Flat string scan across a cardinality sweep, dictionary-encoded and PLAIN | generated | Hardwood columnar and row; parquet-java | planned, 4th |
+| `run-open.sh` | published | Open, footer parse and page-index load as latency, over wide schemas and many small files | generated | Hardwood; parquet-java | planned, 4th |
+| `run-s3.sh` | published | Reads against a real bucket: footer prefetch, tail cache, range coalescing, the `RangeBacking` modes | taxi in a bucket | Hardwood; parquet-java over `s3a` | planned, 5th |
+| `run-mixed.sh` | published | Flat columns beside nested ones in one file, projected to each and to both | generated | Hardwood row and columnar; `AvroParquetReader` | planned, 6th |
 
-`run-1brc-engines.sh` is an engine comparison: it times `run-1brc.sh`'s workload as one
+`run-1brc-engines.sh`, the one engine comparison, times `run-1brc.sh`'s workload as one
 process per engine (Hardwood on the JVM, the DuckDB CLI, Polars, PyArrow) with hyperfine,
 start to printed result, because engines outside the JVM cannot run under JMH. Its
 contenders' versions are pinned in the script and in `engines/requirements.txt`, and it
 is never part of a regression run (#1476).
 
 `run-write.sh` and `run-s3.sh` appear twice: the regression-only form is built first,
-and the mixed-use form extends it with cross-engine contenders and a publication chart.
+and the published form extends it with cross-engine contenders and a publication chart.
 `run-flat.sh` also takes two contenders at no fixture cost, `AvroRowReader` from
 `hardwood-avro` and `GroupReadSupport` from `parquet-java-compat`, both migration paths
 users take.
@@ -166,8 +168,8 @@ measured in either place.
 | Strings and dictionaries, flat | `run-dictfilter.sh`, a filtered read; `run-binary.sh`, a `PLAIN` scan | `DictionaryStringReadBenchmark`, one method; `RecordFilterBenchmarkTest` | `run-strings.sh` |
 | Aggregating consumer | `run-1brc.sh` | — | — |
 | Flat and nested columns in one file | — | `MixedSchemaReadBenchmark` | `run-mixed.sh` |
-| Writes | `run-write.sh`, flat, Hardwood only; `run-s3-write.sh`, flat to S3, cross-engine | `FlatWriteBenchmark`, `WriteEncodingBenchmark` | nested writes, cross-engine: `run-write.sh` mixed-use |
-| Remote object storage | `run-s3.sh`, reads, and `run-s3-write.sh`, writes, emulated latency | `FlatS3PerformanceTest`, S3Proxy on localhost | a real bucket: `run-s3.sh` mixed-use |
+| Writes | `run-write.sh`, flat, Hardwood only; `run-s3-write.sh`, flat to S3, cross-engine | `FlatWriteBenchmark`, `WriteEncodingBenchmark` | nested writes, cross-engine: `run-write.sh` published |
+| Remote object storage | `run-s3.sh`, reads, and `run-s3-write.sh`, writes, emulated latency | `FlatS3PerformanceTest`, S3Proxy on localhost | a real bucket: `run-s3.sh` published |
 | Open, footer and metadata latency | — | `WideSchemaMetadataBenchmark`, `TailReadBenchmarkTest` | `run-open.sh` |
 | Thread scaling | all cores; one core via `taskset -c 0` outside `--regression` | — | sweep on `run-projection.sh` |
 | SIMD | — | `SimdBenchmark` | every published run records `simd=scalar` |
