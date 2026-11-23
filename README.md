@@ -159,7 +159,9 @@ history page to the results repository's `main`; a confirmed regression opens an
 Hardwood. It runs only on an idle box whose clock nobody else pinned, and a JVM of another
 session during the run voids the night. `--no-alert` opens no issue, `--commit REF` measures
 another commit, `--enqueue "VERSION SCRIPTS"` and `--backfill` record older versions; see
-`./nightly.sh --help`. Its analysis steps are `charts/nightly.py`.
+`./nightly.sh --help`. Its analysis steps are `charts/nightly.py`. The
+[history page](https://hardwood.dev/hardwood-benchmark-results/) charts every series the job
+has recorded.
 
 `./run-s3-fetch-check.sh BASE HEAD` is a quick check of a change to Hardwood's fetching, on the S3
 benchmark alone:
