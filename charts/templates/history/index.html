@@ -33,7 +33,7 @@
   select { font: inherit; background: var(--card); color: var(--fg); border: 1px solid var(--grid); padding: 2px 6px; }
   .row { background: var(--card); border: 1px solid var(--grid); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
   .row h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; word-break: break-all; }
-  .charts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .charts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
   @media (max-width: 900px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { .charts { grid-template-columns: minmax(0, 1fr); } }
   .chart .title { font-size: 12px; color: var(--muted); }
@@ -51,12 +51,13 @@
     <span style="color:var(--regression)">┃ confirmed regression</span><span style="color:var(--improvement)">┃ improvement</span>
     <span style="color:var(--history)">┃ earlier change point</span><span style="color:var(--release)">┆ release</span>
   </p>
-  <p class="note">Each metric is per operation, lower is better; the live set is the largest heap in use after a collection. Rows are placed at the measured commit's time. A break in a line is a new epoch: what the contender measures changed.
+  <p class="note">Wall, CPU, allocated and live set are per operation, lower is better; the live set is the largest heap in use after a collection. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A break in a line is a new epoch: what the contender measures changed.
     Machine: <select id="machine"></select></p>
   <div id="content"></div>
 </main>
 <script>
-const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Live set", "B"]];
+const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Live set", "B"],
+  ["caller_share", "Caller share", "ratio"]];
 const W = 280, H = 130, L = 46, R = 6, T = 14, B = 18;
 
 function parseCsv(text) {
@@ -66,6 +67,7 @@ function parseCsv(text) {
     const cells = l.split(","), row = {};
     head.forEach((h, i) => row[h] = cells[i] ?? "");
     row.t = Date.parse(row.time);
+    row.caller_share = row.caller_ms && row.wall_ms ? String(+row.caller_ms / +row.wall_ms) : "";
     return row;
   });
 }
@@ -77,6 +79,7 @@ async function csv(path) {
 }
 
 function format(value, unit) {
+  if (unit === "ratio") return value.toFixed(2);
   if (unit === "B") {
     for (const [scale, suffix] of [[2 ** 30, "GiB"], [2 ** 20, "MiB"], [2 ** 10, "KiB"]]) {
       if (Math.abs(value) >= scale) return (value / scale).toFixed(value / scale < 10 ? 1 : 0) + " " + suffix;
