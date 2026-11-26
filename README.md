@@ -34,6 +34,7 @@ first with `./mvnw -pl core -am install -Dquick`.
 | `run-fixedlist.sh` | published | The fixed-size-list fast path against flat-column speed |
 | `run-nested-columns.sh` | regression-only | Nested decoding over the whole Overture file |
 | `run-narrow.sh` | regression-only | A long read of three columns |
+| `run-wide.sh` | regression-only | Every column of a 10,000-column file |
 | `run-window.sh` | regression-only | A time-window predicate over a sorted event log |
 | `run-dictfilter.sh` | regression-only | A string `IN` predicate over a dictionary-encoded column |
 | `run-binary.sh` | regression-only | `PLAIN` string columns |
@@ -102,7 +103,7 @@ JAVA_TOOL_OPTIONS=-Dperf.threads=6 ./run-regression.sh BASE NEW   # a fixed pool
 | Profile | Runs | Time for one version on a 1.50 GHz Intel N300 |
 | --- | --- | --- |
 | `quick` (default) | the contenders covering the core read and write paths | about 9 min |
-| `nightly` | every preset contender | about 37 min |
+| `nightly` | every preset contender | about 39 min |
 | `smoke` | every contender once, without warmup, to check which run on which version | a few minutes |
 
 It writes to `target/regression/`:
