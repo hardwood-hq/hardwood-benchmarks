@@ -103,6 +103,7 @@ suite](REGRESSION_SUITE.md) describes how they are measured, recorded and analys
 | Script | Preset | Contender | Covers alone | `quick` |
 | --- | --- | --- | --- | --- |
 | `run-flat.sh` | taxi 2025-01 | `hardwoodColumnar` | full scan of every flat type through the column readers | yes |
+| | | `columnarDrain` | the same readers with values fetched but not folded, so that wall time is the readers' alone: `hardwoodColumnar`'s fold on the caller's thread hides decode changes smaller than its slack | |
 | | | `hardwoodRowReaderIndexed` | the row reader materialising every column of a flat row | |
 | `run-narrow.sh` | taxi 2016-01 | `hardwoodColumnar` | a projection: a few columns fetched and decoded of many | yes |
 | | | `hardwoodRowReaderIndexed` | the row reader over a projection | |

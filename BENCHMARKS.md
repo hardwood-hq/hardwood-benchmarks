@@ -56,6 +56,9 @@ checksum, through two API pairs:
 - **Record:** Hardwood's row reader against `AvroParquetReader`, each by name
   (`getDouble("fare_amount")`) and by index. An `AvroParquetReader` `SpecificRecord`
   contender confirms the gap is not a `GenericRecord` artifact.
+- **Drain:** `columnarDrain` fetches the same column readers' batches without folding them,
+  timing Hardwood with almost no consumer work; it runs only in the regression preset.
+  Its gate checks that it fetched one value per column and row.
 
 Reads are specific to the 2025 TLC schema (20 columns), so `--start`/`--end` must stay within
 the 2025 layout; another schema fails the gate. `--data-dir` (or `-Ddata.dir`) relocates the
