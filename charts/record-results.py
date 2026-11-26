@@ -11,7 +11,7 @@ Per contender one row is added to series/<machine epoch>/<Benchmark>/<contender>
 or to its .unsettled.csv twin when settling.py calls it not settled or bimodal: the commit's
 time, commit, version, when the run began, its verdict, and the metrics RegressionProfiler
 recorded (the median of the forks' mean time and its spread, each fork's mean, and the
-median CPU, JIT, GC and allocation per operation and the largest live-set peak over the
+median CPU, caller CPU, JIT, GC and allocation per operation and the largest live-set peak over the
 measurement iterations of every fork). A series is kept in the order of its rows' time, the
 measured commit's, since Otava reads rows in file order: an older version recorded later
 lands before the newer ones. The run's raw results go to runs/<start>-<version>/.
@@ -51,7 +51,7 @@ import settling  # noqa: E402
 
 SCHEMA = 1
 COLUMNS = ["time", "commit", "version", "run", "schema", "verdict", "wall_ms", "wall_spread_pct",
-           "wall_forks_ms", "cpu_ms", "jit_ms", "gc_ms", "alloc_bytes", "live_bytes"]
+           "wall_forks_ms", "cpu_ms", "jit_ms", "gc_ms", "alloc_bytes", "live_bytes", "caller_ms"]
 OTAVA_METRICS = {"wall_ms": -1, "cpu_ms": -1, "alloc_bytes": -1, "live_bytes": -1}
 # The kernel is left out: Fedora ships one every few weeks, and a series that restarted with each
 # would rarely hold enough rows for Otava. Each run's manifest still records it, and a step a
@@ -159,7 +159,7 @@ def metric_rows(run):
 
 
 def median_of(records, field):
-    values = [r[field] for r in records if r[field] is not None]
+    values = [r[field] for r in records if r.get(field) is not None]
     return statistics.median(values) if values else None
 
 
@@ -210,7 +210,8 @@ def summarise(out, version):
             "wall_spread_pct": (max(fork_means) - min(fork_means)) / 2 / wall * 100 if len(fork_means) > 1 else None,
             "wall_forks_ms": fork_means,
             "cpu_ms": median_of(rows, "cpuMs"), "jit_ms": median_of(rows, "jitMs"), "gc_ms": median_of(rows, "gcMs"),
-            "alloc_bytes": median_of(rows, "allocBytes"), "live_bytes": max(live) if live else None})
+            "alloc_bytes": median_of(rows, "allocBytes"), "live_bytes": max(live) if live else None,
+            "caller_ms": median_of(rows, "callerMs")})
     return {"manifest": manifest, "machine": machine, "machine_epoch": "m" + digest(machine), "runs": runs,
             "metas": metas, "contenders": contenders}
 
@@ -260,7 +261,8 @@ def main():
                "wall_spread_pct": number(c["wall_spread_pct"], 3),
                "wall_forks_ms": ";".join(number(v) for v in c["wall_forks_ms"]),
                "cpu_ms": number(c["cpu_ms"]), "jit_ms": number(c["jit_ms"]), "gc_ms": number(c["gc_ms"]),
-               "alloc_bytes": number(c["alloc_bytes"]), "live_bytes": number(c["live_bytes"])}
+               "alloc_bytes": number(c["alloc_bytes"]), "live_bytes": number(c["live_bytes"]),
+               "caller_ms": number(c["caller_ms"])}
         os.makedirs(series, exist_ok=True)
         new = not os.path.exists(base + ".csv") and not os.path.exists(base + ".unsettled.csv")
         add_row(base + (".unsettled.csv" if verdict else ".csv"), row)

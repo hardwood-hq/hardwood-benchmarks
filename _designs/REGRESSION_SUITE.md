@@ -124,9 +124,15 @@ line per iteration, warmup and measurement, to the run's `bench-metrics-<Benchma
 the score; the process's CPU time per operation, with the JIT compiler's and the collector's
 apart; the bytes allocated per operation by every thread (`getTotalThreadAllocatedBytes`, so
 threads that have ended count); and the live-set peak, the most heap in use right after a
-collection during the iteration, which is empty when no collection ran. Wall time alone hides
-more work spread over more cores, and memory held longer than it should be; the fixed heap
-makes the live-set peak comparable from run to run.
+collection during the iteration, which is empty when no collection ran; and the caller time,
+the CPU time per operation of JMH's worker threads, which call the benchmark method. Wall time
+alone hides more work spread over more cores, and memory held longer than it should be; the
+fixed heap makes the live-set peak comparable from run to run. Hardwood decodes on its pool
+while the caller consumes, so a caller time close to the wall time means the caller never waits
+on the pool: wall time then misses a decode change smaller than the caller's slack, and only
+the process's CPU time shows it. The caller time counts all work on the caller's thread alike,
+the benchmark's own loop and Hardwood's row path, and a busy wait as well. The series record it
+(`caller_ms`, empty in rows from before it was recorded); Otava does not track it.
 
 **Settled, bimodal** (`charts/settling.py`). A contender is "not settled" when its measurement
 iterations are faster than the end of its warmup by more than a threshold and more than the
