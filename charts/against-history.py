@@ -16,7 +16,7 @@ whose forks disagree, in this run gets that instead of a call. One without a ser
 same epoch on this machine says why: its definition differs from the nightly one, or the
 machine has no history.
 
---metric picks the metric: wall (default), cpu, alloc or live.
+--metric picks the metric: wall (default), cpu, alloc or live, the heap-after-collection peak.
 """
 import argparse
 import csv

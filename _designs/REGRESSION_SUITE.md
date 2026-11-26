@@ -123,16 +123,21 @@ forks' means.
 line per iteration, warmup and measurement, to the run's `bench-metrics-<Benchmark>.jsonl`:
 the score; the process's CPU time per operation, with the JIT compiler's and the collector's
 apart; the bytes allocated per operation by every thread (`getTotalThreadAllocatedBytes`, so
-threads that have ended count); and the live-set peak, the most heap in use right after a
-collection during the iteration, which is empty when no collection ran; and the caller time,
-the CPU time per operation of JMH's worker threads, which call the benchmark method. Wall time
+threads that have ended count); and the heap-after-collection peak, the most heap in use
+right after a collection during the iteration, which is empty when no collection ran; and the
+caller time, the CPU time per operation of JMH's worker threads, which call the benchmark
+method. Wall time
 alone hides more work spread over more cores, and memory held longer than it should be; the
-fixed heap makes the live-set peak comparable from run to run. Hardwood decodes on its pool
-while the caller consumes, so a caller time close to the wall time means the caller never waits
+fixed heap makes the heap-after-collection peak measured alike from run to run. That peak is live
+data plus objects promoted and not yet reclaimed, so it depends on how often collections run
+and when the old generation was last cleared: where an iteration sees one or two collections,
+runs of one commit can differ in it by as much as 40 %. A step in it that the GC time per
+operation moves with is a change in what survives a young collection. Hardwood decodes on its
+pool while the caller consumes, so a caller time close to the wall time means the caller never waits
 on the pool: wall time then misses a decode change smaller than the caller's slack, and only
 the process's CPU time shows it. The caller time counts all work on the caller's thread alike,
 the benchmark's own loop and Hardwood's row path, and a busy wait as well. The series record it
-(`caller_ms`, empty in rows from before it was recorded); Otava does not track it.
+(`caller_ms`, empty in rows from before it was recorded).
 
 **Settled, bimodal** (`charts/settling.py`). A contender is "not settled" when its measurement
 iterations are faster than the end of its warmup by more than a threshold and more than the
@@ -181,11 +186,12 @@ regression.
 run with the latest nightly results of the same machine: per contender, the latest settled
 value of the series the run would be recorded into (same contender, epoch and machine epoch),
 the commit it measured, the run's value and the delta, for wall time, CPU, allocation or the
-live-set peak. It summarises the run as recording does (`record-results.py`'s `summarise`), so
-the series it compares with is the one recording would extend. The latest nightly value is a
-single row, so a delta is called worse or better only beyond a fixed band: a hint, not a
-verdict. A contender whose definition differs from the nightly one has no series to compare
-with, and says so. Hardwood's `hardwood-quick-vs-nightly` skill runs the `quick` profile for
+heap-after-collection peak. It summarises the run as recording does (`record-results.py`'s
+`summarise`), so the series it compares with is the one recording would extend. The latest
+nightly value is a single row, so a delta is called worse or better only beyond a fixed band: a
+hint, not a verdict. A call on the heap-after-collection peak means something only where the GC
+time moves with it. A contender whose definition differs from the nightly one has no series to
+compare with, and says so. Hardwood's `hardwood-quick-vs-nightly` skill runs the `quick` profile for
 a branch on the N300 and shows this table.
 
 **The version chart.** `charts/make-version-chart.py`, run by hand, charts each Hardwood
@@ -195,8 +201,9 @@ the commit for a snapshot build. A version that could not run a contender is dra
 ## Change points
 
 **Analysis.** Each night, after recording, `nightly.py` runs Otava over every settled series of
-the machine epoch. Otava fits each series' whole history each time, so it returns every change
-point, old ones included, and one may shift by a row or two as rows arrive. `changes.json`
+the machine epoch, on wall time, CPU and allocation; the caller time and the
+heap-after-collection peak are recorded and charted, not analysed. Otava fits each series' whole
+history each time, so it returns every change point, old ones included, and one may shift by a row or two as rows arrive. `changes.json`
 keeps every change point found, keyed by series and commit, and a change point within a
 couple of rows of one already there is the same one. Each has a status:
 
@@ -257,8 +264,8 @@ its row, since measuring the same commit night after night is how calibration re
 contender's metrics against the median of its series' last nights and its caller share (caller
 time against wall time, marked from 0.8, where wall time misses decode changes), what did not
 run, and the change points found or decided. `index.html` with `history.json` charts every
-series of a machine epoch: per contender its wall time, CPU, allocation, live-set peak and
-caller share against commit time, unsettled rows hollow, each fork's mean faint, releases and change points marked, and a
+series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
+peak and caller share against commit time, unsettled rows hollow, each fork's mean faint, releases and change points marked, and a
 break where a new epoch starts.
 
 **Credentials.** Pushing uses a token for the results repository alone, and opening issues one

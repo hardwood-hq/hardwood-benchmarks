@@ -51,12 +51,12 @@
     <span style="color:var(--regression)">┃ confirmed regression</span><span style="color:var(--improvement)">┃ improvement</span>
     <span style="color:var(--history)">┃ earlier change point</span><span style="color:var(--release)">┆ release</span>
   </p>
-  <p class="note">Wall, CPU, allocated and live set are per operation, lower is better; the live set is the largest heap in use after a collection. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A break in a line is a new epoch: what the contender measures changed.
+  <p class="note">Wall, CPU and allocated are per operation, lower is better. Heap after GC is the largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed, so it moves with when collections fall, by as much as 40 % between runs of one commit where an iteration sees only one or two; a step in it means more survives a young collection only where GC time moves with it. It is charted, not analysed for change points, and no change point is marked on it. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A break in a line is a new epoch: what the contender measures changed.
     Machine: <select id="machine"></select></p>
   <div id="content"></div>
 </main>
 <script>
-const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Live set", "B"],
+const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Heap after GC", "B"],
   ["caller_share", "Caller share", "ratio"]];
 const W = 280, H = 130, L = 46, R = 6, T = 14, B = 18;
 
@@ -194,7 +194,7 @@ async function render(history, machine) {
       const title = document.createElement("div");
       title.className = "title";
       title.textContent = label;
-      box.append(title, chart(epochs, metric, unit, span, releases, own.filter(c => metric in c.metrics)));
+      box.append(title, chart(epochs, metric, unit, span, releases, own.filter(c => metric !== "live_bytes" && metric in c.metrics)));
       charts.append(box);
     }
     row.append(charts);

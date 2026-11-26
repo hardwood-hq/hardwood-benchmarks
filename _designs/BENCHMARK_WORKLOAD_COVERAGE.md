@@ -97,7 +97,7 @@ What the planned benchmarks are for:
 
 The regression presets time Hardwood's contenders only: the suite compares Hardwood with itself.
 Each contender covers a path no other one does, judged on wall time, CPU, allocation and
-live-set peak, and the `quick` profile runs the ones marked so. [The regression
+heap after collection, and the `quick` profile runs the ones marked so. [The regression
 suite](REGRESSION_SUITE.md) describes how they are measured, recorded and analysed.
 
 | Script | Preset | Contender | Covers alone | `quick` |

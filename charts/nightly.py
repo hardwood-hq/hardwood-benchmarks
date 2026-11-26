@@ -185,7 +185,7 @@ def handled(changes, file, commits, index, kind):
 
 def fork_values(run_dirs, benchmark, contender, field):
     """Each fork's value of `field` over its measurement iterations: the mean, or for the
-    live-set peak the largest."""
+    heap-after-collection peak the largest."""
     by_fork = {}
     for run in run_dirs:
         for path in glob.glob(os.path.join(run, "bench-metrics-{}.jsonl".format(benchmark))):
@@ -290,7 +290,7 @@ def report(args):
                       "time of the thread calling the benchmark against wall time; in bold from {}, where that "
                       "thread hardly waits on Hardwood and wall time misses decode changes that CPU time "
                       "still shows.".format(LAST_NIGHTS, CALLER_BOUND), "",
-                  "| Benchmark | Contender | Wall | | CPU | | Allocated | | Live set | | Caller share | |",
+                  "| Benchmark | Contender | Wall | | CPU | | Allocated | | Heap after GC | | Caller share | |",
                   "|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|"]
         for c in summary["contenders"]:
             base = os.path.join(args.results, c["file"][:-len(".csv")])
@@ -367,7 +367,7 @@ def page(args):
 
 
 def confirmed_metrics(change):
-    names = {"wall_ms": "wall time", "cpu_ms": "CPU time", "alloc_bytes": "allocation", "live_bytes": "live set"}
+    names = {"wall_ms": "wall time", "cpu_ms": "CPU time", "alloc_bytes": "allocation", "live_bytes": "heap after collection"}
     return [names[m] for m, v in change["confirmation"]["metrics"].items() if v.get("verdict") == "confirmed"]
 
 

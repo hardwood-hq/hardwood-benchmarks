@@ -11,7 +11,7 @@ Per contender one row is added to series/<machine epoch>/<Benchmark>/<contender>
 or to its .unsettled.csv twin when settling.py calls it not settled or bimodal: the commit's
 time, commit, version, when the run began, its verdict, and the metrics RegressionProfiler
 recorded (the median of the forks' mean time and its spread, each fork's mean, and the
-median CPU, caller CPU, JIT, GC and allocation per operation and the largest live-set peak over the
+median CPU, caller CPU, JIT, GC and allocation per operation and the largest heap-after-collection peak over the
 measurement iterations of every fork). A series is kept in the order of its rows' time, the
 measured commit's, since Otava reads rows in file order: an older version recorded later
 lands before the newer ones. The run's raw results go to runs/<start>-<version>/.
@@ -52,7 +52,7 @@ import settling  # noqa: E402
 SCHEMA = 1
 COLUMNS = ["time", "commit", "version", "run", "schema", "verdict", "wall_ms", "wall_spread_pct",
            "wall_forks_ms", "cpu_ms", "jit_ms", "gc_ms", "alloc_bytes", "live_bytes", "caller_ms"]
-OTAVA_METRICS = {"wall_ms": -1, "cpu_ms": -1, "alloc_bytes": -1, "live_bytes": -1}
+OTAVA_METRICS = {"wall_ms": -1, "cpu_ms": -1, "alloc_bytes": -1}
 # The kernel is left out: Fedora ships one every few weeks, and a series that restarted with each
 # would rarely hold enough rows for Otava. Each run's manifest still records it, and a step a
 # kernel causes shows as a change point that the confirmation run, on one kernel, refutes.
