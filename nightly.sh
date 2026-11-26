@@ -105,7 +105,7 @@ minutes() { echo $(( ($(date +%s) - STARTED) / 60 )); }
 clone() {
   local url="$1" dir="$2"
   [ -d "$dir/.git" ] || git clone -q "$url" "$dir" >> "$LOG" 2>&1 || return 1
-  git -C "$dir" fetch -q --tags origin >> "$LOG" 2>&1
+  git -C "$dir" fetch -q --tags --force origin >> "$LOG" 2>&1
 }
 
 RESULTS_TOKEN="$HOME_DIR/token-results"
