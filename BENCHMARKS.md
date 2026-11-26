@@ -21,6 +21,7 @@ Related documents:
 | [`run-fixedlist.sh`](#fixed-size-list-scan--run-fixedlistsh) | published | How close the fixed-size-list fast path comes to flat-column speed |
 | [`run-nested-columns.sh`](#nested-column-readers--run-nested-columnssh) | regression-only | Nested decoding over the whole Overture file |
 | [`run-narrow.sh`](#narrow-projection-scan--run-narrowsh) | regression-only | A long read of three columns keeping the decode pool busy |
+| [`run-wide.sh`](#wide-schema-scan--run-widesh) | regression-only | Per-column work a read repeats on every batch, multiplied by 10,000 columns |
 | [`run-window.sh`](#time-window--run-windowsh) | regression-only | Row groups before a time window skipped, fully matching ones not filtered row by row |
 | [`run-dictfilter.sh`](#dictionary-filter--run-dictfiltersh) | regression-only | A string `IN` predicate decided once per dictionary entry |
 | [`run-binary.sh`](#plain-binary-scan--run-binarysh) | regression-only | `PLAIN` string bytes from page to batch |
@@ -143,6 +144,22 @@ row reader. The month is one row group of 10.9M rows, GZIP-compressed, with page
 0.7M rows: about 15 pages per column. Three columns give few pages in flight at a time, and
 the read is long enough that how far the reader decodes ahead of the batch it hands out sets
 its throughput. The gate checks both readers against parquet-java's low-level column API.
+
+## Wide-schema scan — `run-wide.sh`
+
+Reads every column of a generated file of 10,000 required `FLOAT` columns and 2,190 rows
+(one time series per column, an hour per row over a quarter): one row group, one page per column
+chunk, `BYTE_STREAM_SPLIT` without a dictionary, SNAPPY, 76 MB. Each column is a seeded random
+walk rounded to two decimals. `hardwoodColumnar` reads it through the column readers and
+`hardwoodRowReaderIndexed` through the row reader by index, both at the default batch size,
+folding the values' bits into a checksum. A read takes one batch of every column per step, so
+whatever it does per batch and column, or repeats over all columns per batch taken, is
+multiplied by the column count: from 1.1.0.Beta1 the default batch holds about 150 rows at this
+width, 14 batches per read, while 1.0.0.Final's batch floor of 16,384 rows reads the file in
+one batch. The regression preset times `hardwoodColumnar` only: on the
+N300 the row reader's time alternates between two levels about 20 % apart from one iteration
+to the next, so it does not settle. The gate checks that every chunk is one `BYTE_STREAM_SPLIT`
+page without a dictionary, and both readers against parquet-java's low-level column API.
 
 ## Time window — `run-window.sh`
 

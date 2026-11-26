@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 
 # Every regression script, as the nightly profile runs them; the quick profile runs those
 # that name quick contenders (BENCH_QUICK_INCLUDE).
-ALL=(filter bloom window dictfilter 1brc binary nested nested-columns flat narrow fixedlist write encodings s3)
+ALL=(filter bloom window dictfilter 1brc binary nested nested-columns flat narrow wide fixedlist write encodings s3)
 QUICK=()
 for s in "${ALL[@]}"; do
   grep -q "^BENCH_QUICK_INCLUDE=" "run-$s.sh" && QUICK+=("$s")
