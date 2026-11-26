@@ -11,7 +11,7 @@ source ./bench-common.sh
 
 BENCH_PACKAGE='flat'
 BENCH_REGRESSION_PRESET='--start 2025-01 --end 2025-01 --warmup 30'
-BENCH_REGRESSION_INCLUDE='hardwoodColumnar|hardwoodRowReaderIndexed'
+BENCH_REGRESSION_INCLUDE='hardwoodColumnar|columnarDrain|hardwoodRowReaderIndexed'
 BENCH_QUICK_INCLUDE='hardwoodColumnar'
 BENCH_FLAGS='--start perf.start
 --end perf.end
@@ -27,7 +27,7 @@ Usage: ./run-flat.sh [options]
   --batch-size N    Hardwood column reader batch size (0/unset = default); shrink
                     it (e.g. 4096) to probe single-core columnar cache behaviour
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --start 2025-01 --end 2025-01 --warmup 30; contenders matching hardwoodColumnar|hardwoodRowReaderIndexed
+Regression preset (--regression): --start 2025-01 --end 2025-01 --warmup 30; contenders matching hardwoodColumnar|columnarDrain|hardwoodRowReaderIndexed
 Quick profile (run-regression.sh --profile quick): contenders matching hardwoodColumnar
 
 Two modes: --gate verifies every contender folds to the same checksum as

@@ -124,6 +124,9 @@ public class FlatScanBenchmark {
     // 18 Airport_fee            DOUBLE
     // 19 cbd_congestion_fee     DOUBLE
 
+    /// The number of columns listed above.
+    private static final int COLUMNS = 20;
+
     /// Rows per Arrow `VectorSchemaRoot` batch for the Arrow Dataset contender.
     private static final int ARROW_BATCH_SIZE = 65_536;
 
@@ -183,6 +186,13 @@ public class FlatScanBenchmark {
         check("AvroParquetReader (named)", avroNamed(), ref);
         check("AvroParquetReader (specific)", avroSpecific(), ref);
         check("Arrow Dataset", arrowDatasetScan(), ref);
+        long rows = BenchReport.totalRows(files);
+        long drained = columnarDrain();
+        if (drained != COLUMNS * rows) {
+            throw new IllegalStateException("Hardwood column reader (drain) fetched " + drained
+                    + " values, not " + COLUMNS + " x " + rows + " rows");
+        }
+        System.out.printf("  OK  Hardwood column reader (drain), %d values%n", COLUMNS * rows);
         System.out.printf("Gate passed — all contenders agree (checksum %d).%n", ref);
     }
 
@@ -245,6 +255,62 @@ public class FlatScanBenchmark {
             }
         }
         return checksum;
+    }
+
+    /// The column readers of [#hardwoodColumnar], each batch's values fetched but not folded:
+    /// it returns the number of values fetched. [#hardwoodColumnar]'s fold, on the caller's
+    /// thread, takes about as long as the readers take to decode, so its wall time hides a
+    /// decode change smaller than the fold's slack; here wall time is the readers' alone.
+    @Benchmark
+    public long columnarDrain() throws IOException {
+        long values = 0;
+        try (HardwoodContext context = BenchContext.create();
+             ParquetFileReader reader = ParquetFileReader.openAll(inputFiles, context);
+             ColumnReaders cols = buildColumnReaders(reader)) {
+            ColumnReader vendorId = cols.getColumnReader(0);
+            ColumnReader pickup = cols.getColumnReader(1);
+            ColumnReader dropoff = cols.getColumnReader(2);
+            ColumnReader passengerCount = cols.getColumnReader(3);
+            ColumnReader tripDistance = cols.getColumnReader(4);
+            ColumnReader ratecodeId = cols.getColumnReader(5);
+            ColumnReader storeAndFwd = cols.getColumnReader(6);
+            ColumnReader puLocationId = cols.getColumnReader(7);
+            ColumnReader doLocationId = cols.getColumnReader(8);
+            ColumnReader paymentType = cols.getColumnReader(9);
+            ColumnReader fareAmount = cols.getColumnReader(10);
+            ColumnReader extra = cols.getColumnReader(11);
+            ColumnReader mtaTax = cols.getColumnReader(12);
+            ColumnReader tipAmount = cols.getColumnReader(13);
+            ColumnReader tollsAmount = cols.getColumnReader(14);
+            ColumnReader improvementSurcharge = cols.getColumnReader(15);
+            ColumnReader totalAmount = cols.getColumnReader(16);
+            ColumnReader congestionSurcharge = cols.getColumnReader(17);
+            ColumnReader airportFee = cols.getColumnReader(18);
+            ColumnReader cbdCongestionFee = cols.getColumnReader(19);
+            while (cols.nextBatch()) {
+                values += vendorId.getInts().length;
+                values += pickup.getLongs().length;
+                values += dropoff.getLongs().length;
+                values += passengerCount.getLongs().length;
+                values += tripDistance.getDoubles().length;
+                values += ratecodeId.getLongs().length;
+                values += storeAndFwd.getStrings().length;
+                values += puLocationId.getInts().length;
+                values += doLocationId.getInts().length;
+                values += paymentType.getLongs().length;
+                values += fareAmount.getDoubles().length;
+                values += extra.getDoubles().length;
+                values += mtaTax.getDoubles().length;
+                values += tipAmount.getDoubles().length;
+                values += tollsAmount.getDoubles().length;
+                values += improvementSurcharge.getDoubles().length;
+                values += totalAmount.getDoubles().length;
+                values += congestionSurcharge.getDoubles().length;
+                values += airportFee.getDoubles().length;
+                values += cbdCongestionFee.getDoubles().length;
+            }
+        }
+        return values;
     }
 
     /// Builds the column readers over all columns. `-Dperf.batchSize` overrides the
