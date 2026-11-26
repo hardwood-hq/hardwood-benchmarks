@@ -527,7 +527,7 @@ bench_run() {
       rm -f "target/bench-metrics-$name.jsonl"
       ARGS+=("-Dperf.metrics=$PWD/target/bench-metrics-$name.jsonl")
       # A heap of fixed size and collector in the benchmark JVMs (the main and its forks, which
-      # inherit the environment), so that the live-set peak is measured alike in every run and
+      # inherit the environment), so that the heap-after-collection peak is measured alike in every run and
       # a retention regression meets a collection.
       export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:+$JAVA_TOOL_OPTIONS }$BENCH_HEAP_FLAGS"
     fi

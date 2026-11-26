@@ -48,8 +48,9 @@ import com.sun.management.ThreadMXBean;
 
 /// What a regression run records of each iteration besides its time, in the fork that runs it:
 /// the process's CPU time, with the JIT compiler's and the collector's apart, the bytes every
-/// thread allocated, threads that have ended included, and the live-set peak, the most heap in
-/// use right after a collection during the iteration (`NaN` when none ran); and the CPU time of
+/// thread allocated, threads that have ended included, and the heap-after-collection peak, the
+/// most heap in use right after a collection during the iteration (`NaN` when none ran): live
+/// data plus objects promoted and not yet reclaimed; and the CPU time of
 /// the threads that call the benchmark method, JMH's workers, apart (`caller`). Each value is per
 /// operation but the peak.
 ///
@@ -74,7 +75,7 @@ public final class RegressionProfiler implements InternalProfiler {
             .map(MemoryPoolMXBean::getName)
             .collect(Collectors.toSet());
     /// The most heap in use after a collection since the iteration began, `-1` before one.
-    private static final AtomicLong LIVE_PEAK = new AtomicLong(-1);
+    private static final AtomicLong HEAP_AFTER_GC_PEAK = new AtomicLong(-1);
 
     static {
         for (GarbageCollectorMXBean collector : COLLECTORS) {
@@ -89,7 +90,7 @@ public final class RegressionProfiler implements InternalProfiler {
                                 used += pool.getValue().getUsed();
                             }
                         }
-                        LIVE_PEAK.accumulateAndGet(used, Math::max);
+                        HEAP_AFTER_GC_PEAK.accumulateAndGet(used, Math::max);
                     }
                 }, null, null);
             }
@@ -109,7 +110,7 @@ public final class RegressionProfiler implements InternalProfiler {
 
     @Override
     public String getDescription() {
-        return "Hardwood regression metrics: CPU, caller CPU, JIT and GC time, allocation and live-set peak per iteration";
+        return "Hardwood regression metrics: CPU, caller CPU, JIT and GC time, allocation and heap-after-collection peak per iteration";
     }
 
     @Override
@@ -119,7 +120,7 @@ public final class RegressionProfiler implements InternalProfiler {
         jitMillis = JIT.getTotalCompilationTime();
         gcMillis = gcMillis();
         allocated = THREADS.getTotalThreadAllocatedBytes();
-        LIVE_PEAK.set(-1);
+        HEAP_AFTER_GC_PEAK.set(-1);
     }
 
     @Override
@@ -131,7 +132,7 @@ public final class RegressionProfiler implements InternalProfiler {
         double jitMs = (JIT.getTotalCompilationTime() - jitMillis) / ops;
         double gcMs = (gcMillis() - gcMillis) / ops;
         double allocBytes = (THREADS.getTotalThreadAllocatedBytes() - allocated) / ops;
-        long peak = LIVE_PEAK.get();
+        long peak = HEAP_AFTER_GC_PEAK.get();
         double liveBytes = peak < 0 ? Double.NaN : peak;
         boolean measured = iterationParams.getType() == IterationType.MEASUREMENT;
         int iteration = measured ? ++measurement : ++warmup;
@@ -148,7 +149,7 @@ public final class RegressionProfiler implements InternalProfiler {
         results.add(new ScalarResult("·gc", gcMs, "ms/op", AggregationPolicy.AVG));
         results.add(new ScalarResult("·alloc", allocBytes, "B/op", AggregationPolicy.AVG));
         if (peak >= 0) {
-            results.add(new ScalarResult("·live", liveBytes, "B", AggregationPolicy.MAX));
+            results.add(new ScalarResult("·heapAfterGc", liveBytes, "B", AggregationPolicy.MAX));
         }
         return results;
     }

@@ -49,7 +49,7 @@ sources, so they are covered by the same hash. Passed gates are kept in
 \${XDG_CACHE_HOME:-~/.cache}/hardwood-benchmarks/gates. A script whose gate fails is not
 timed, and the run exits 1. A preset warms its contenders until they settle on a 1.50 GHz
 Intel N300 and runs each in three forks, with RegressionProfiler recording CPU, JIT and GC
-time, allocation and the live-set peak beside each iteration's time. A contender that had
+time, allocation and the heap-after-collection peak beside each iteration's time. A contender that had
 not settled, or whose forks disagree, gets that as its verdict. progress.log records each
 script's time. When run-s3.sh is among them, the emulated S3 endpoint (./s3-env.sh) is
 started once for the whole run.
