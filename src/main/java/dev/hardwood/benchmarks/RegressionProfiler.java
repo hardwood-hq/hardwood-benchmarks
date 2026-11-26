@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,8 +49,15 @@ import com.sun.management.ThreadMXBean;
 /// What a regression run records of each iteration besides its time, in the fork that runs it:
 /// the process's CPU time, with the JIT compiler's and the collector's apart, the bytes every
 /// thread allocated, threads that have ended included, and the live-set peak, the most heap in
-/// use right after a collection during the iteration (`NaN` when none ran). Each value is per
+/// use right after a collection during the iteration (`NaN` when none ran); and the CPU time of
+/// the threads that call the benchmark method, JMH's workers, apart (`caller`). Each value is per
 /// operation but the peak.
+///
+/// The caller time says whether the benchmark is bound by its own thread: Hardwood decodes on its
+/// pool while the caller consumes, so a caller time close to the wall time means the caller never
+/// waits on the pool, and a decode change the caller's slack absorbs does not show in wall time.
+/// It counts whatever runs on the workers, the benchmark's own aggregation, Hardwood's work on the
+/// caller's thread and an iteration-level setup alike; a busy wait counts as CPU time too.
 ///
 /// It appends one JSON line per iteration, warmup and measurement, to the file
 /// `-Dperf.metrics` names, which `run-regression.sh` reads to tell whether a contender settled
@@ -88,7 +96,11 @@ public final class RegressionProfiler implements InternalProfiler {
         }
     }
 
+    /// The name JMH gives the threads that call the benchmark method.
+    private static final String WORKER_NAME = "-jmh-worker-";
+
     private long cpuNanos;
+    private Map<Long, Long> workerNanos = Map.of();
     private long jitMillis;
     private long gcMillis;
     private long allocated;
@@ -97,12 +109,13 @@ public final class RegressionProfiler implements InternalProfiler {
 
     @Override
     public String getDescription() {
-        return "Hardwood regression metrics: CPU, JIT and GC time, allocation and live-set peak per iteration";
+        return "Hardwood regression metrics: CPU, caller CPU, JIT and GC time, allocation and live-set peak per iteration";
     }
 
     @Override
     public void beforeIteration(BenchmarkParams benchmarkParams, IterationParams iterationParams) {
         cpuNanos = OS.getProcessCpuTime();
+        workerNanos = workerCpuNanos();
         jitMillis = JIT.getTotalCompilationTime();
         gcMillis = gcMillis();
         allocated = THREADS.getTotalThreadAllocatedBytes();
@@ -114,6 +127,7 @@ public final class RegressionProfiler implements InternalProfiler {
                                                        IterationResult result) {
         double ops = result.getMetadata().getMeasuredOps();
         double cpuMs = (OS.getProcessCpuTime() - cpuNanos) / 1e6 / ops;
+        double callerMs = callerNanos(workerNanos, workerCpuNanos()) / 1e6 / ops;
         double jitMs = (JIT.getTotalCompilationTime() - jitMillis) / ops;
         double gcMs = (gcMillis() - gcMillis) / ops;
         double allocBytes = (THREADS.getTotalThreadAllocatedBytes() - allocated) / ops;
@@ -125,10 +139,11 @@ public final class RegressionProfiler implements InternalProfiler {
         String path = System.getProperty("perf.metrics");
         if (path != null && !path.isBlank()) {
             append(Path.of(path), benchmarkParams, measured, iteration, result.getPrimaryResult().getScore(),
-                    result.getPrimaryResult().getScoreUnit(), cpuMs, jitMs, gcMs, allocBytes, liveBytes);
+                    result.getPrimaryResult().getScoreUnit(), cpuMs, callerMs, jitMs, gcMs, allocBytes, liveBytes);
         }
         List<Result> results = new ArrayList<>();
         results.add(new ScalarResult("·cpu", cpuMs, "ms/op", AggregationPolicy.AVG));
+        results.add(new ScalarResult("·caller", callerMs, "ms/op", AggregationPolicy.AVG));
         results.add(new ScalarResult("·jit", jitMs, "ms/op", AggregationPolicy.AVG));
         results.add(new ScalarResult("·gc", gcMs, "ms/op", AggregationPolicy.AVG));
         results.add(new ScalarResult("·alloc", allocBytes, "B/op", AggregationPolicy.AVG));
@@ -136,6 +151,32 @@ public final class RegressionProfiler implements InternalProfiler {
             results.add(new ScalarResult("·live", liveBytes, "B", AggregationPolicy.MAX));
         }
         return results;
+    }
+
+    /// The CPU time of each live JMH worker thread, by thread id. The workers start with the first
+    /// iteration, so one missing before an iteration has spent nothing yet.
+    private static Map<Long, Long> workerCpuNanos() {
+        Map<Long, Long> nanos = new HashMap<>();
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            if (thread.getName().contains(WORKER_NAME)) {
+                long cpu = THREADS.getThreadCpuTime(thread.threadId());
+                if (cpu >= 0) {
+                    nanos.put(thread.threadId(), cpu);
+                }
+            }
+        }
+        return nanos;
+    }
+
+    private static long callerNanos(Map<Long, Long> before, Map<Long, Long> after) {
+        if (after.isEmpty()) {
+            throw new IllegalStateException("No JMH worker thread (named \"*" + WORKER_NAME + "*\") after an iteration");
+        }
+        long total = 0;
+        for (Map.Entry<Long, Long> worker : after.entrySet()) {
+            total += worker.getValue() - before.getOrDefault(worker.getKey(), 0L);
+        }
+        return total;
     }
 
     private static long gcMillis() {
@@ -147,7 +188,7 @@ public final class RegressionProfiler implements InternalProfiler {
     }
 
     private static void append(Path path, BenchmarkParams benchmark, boolean measured, int iteration, double score,
-                               String unit, double cpuMs, double jitMs, double gcMs, double allocBytes,
+                               String unit, double cpuMs, double callerMs, double jitMs, double gcMs, double allocBytes,
                                double liveBytes) {
         Map<String, String> params = new TreeMap<>();
         for (String key : benchmark.getParamsKeys()) {
@@ -155,13 +196,13 @@ public final class RegressionProfiler implements InternalProfiler {
         }
         String line = String.format(Locale.ROOT,
                 "{\"benchmark\":%s,\"params\":%s,\"fork\":%d,\"phase\":\"%s\",\"iteration\":%d,"
-                        + "\"score\":%s,\"unit\":%s,\"cpuMs\":%s,\"jitMs\":%s,\"gcMs\":%s,\"allocBytes\":%s,"
+                        + "\"score\":%s,\"unit\":%s,\"cpuMs\":%s,\"callerMs\":%s,\"jitMs\":%s,\"gcMs\":%s,\"allocBytes\":%s,"
                         + "\"liveBytes\":%s}%n",
                 quote(benchmark.getBenchmark()), params.entrySet().stream()
                         .map(e -> quote(e.getKey()) + ":" + quote(e.getValue()))
                         .collect(Collectors.joining(",", "{", "}")),
                 ProcessHandle.current().pid(), measured ? "measurement" : "warmup", iteration, number(score),
-                quote(unit), number(cpuMs), number(jitMs), number(gcMs), number(allocBytes), number(liveBytes));
+                quote(unit), number(cpuMs), number(callerMs), number(jitMs), number(gcMs), number(allocBytes), number(liveBytes));
         try {
             Files.writeString(path, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         }
