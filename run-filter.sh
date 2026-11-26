@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 source ./bench-common.sh
 
 BENCH_PACKAGE='filter'
-BENCH_REGRESSION_PRESET='--rows 5000000 --warmup 16'
+BENCH_REGRESSION_PRESET='--rows 5000000 --warmup 30'
 BENCH_REGRESSION_INCLUDE='hardwoodDefault|hardwoodRowReader$'
 BENCH_QUICK_INCLUDE='hardwoodDefault|hardwoodRowReader$'
 BENCH_QUICK_PRESET='--selectivity selective'
@@ -23,7 +23,7 @@ Usage: ./run-filter.sh [options]
   --selectivity VALUE   restrict to one selectivity: selective | matchAll
                         (default: run both)
 $BENCH_COMMON_USAGE
-Regression preset (--regression): --rows 5000000 --warmup 16; contenders matching hardwoodDefault|hardwoodRowReader$
+Regression preset (--regression): --rows 5000000 --warmup 30; contenders matching hardwoodDefault|hardwoodRowReader$
 Quick profile (run-regression.sh --profile quick): contenders matching hardwoodDefault|hardwoodRowReader$, --selectivity selective
 
 Two modes: --gate folds every contender and checks they agree, then exits (no JMH);
