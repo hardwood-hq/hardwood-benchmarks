@@ -254,10 +254,11 @@ backfilled again. A night's own run of a commit already recorded adds
 its row, since measuring the same commit night after night is how calibration reads the noise.
 
 **The report and the page.** `reports/<date>.md` lists what the night measured, each
-contender's metrics against the median of its series' last nights, what did not run, and the
-change points found or decided. `index.html` with `history.json` charts every series of a
-machine epoch: per contender its wall time, CPU, allocation and live-set peak against commit
-time, unsettled rows hollow, each fork's mean faint, releases and change points marked, and a
+contender's metrics against the median of its series' last nights and its caller share (caller
+time against wall time, marked from 0.8, where wall time misses decode changes), what did not
+run, and the change points found or decided. `index.html` with `history.json` charts every
+series of a machine epoch: per contender its wall time, CPU, allocation, live-set peak and
+caller share against commit time, unsettled rows hollow, each fork's mean faint, releases and change points marked, and a
 break where a new epoch starts.
 
 **Credentials.** Pushing uses a token for the results repository alone, and opening issues one

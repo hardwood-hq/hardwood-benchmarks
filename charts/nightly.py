@@ -43,6 +43,8 @@ import settling  # noqa: E402
 
 METRICS = {"wall_ms": "score", "cpu_ms": "cpuMs", "alloc_bytes": "allocBytes", "live_bytes": "liveBytes"}
 UNITS = {"wall_ms": "ms", "cpu_ms": "ms", "alloc_bytes": "B", "live_bytes": "B"}
+# The caller share from which the report marks a contender as bound by its caller's thread.
+CALLER_BOUND = 0.8
 RECENT_DAYS = 7
 SHIFT_ROWS = 2
 LAST_NIGHTS = 5
@@ -258,6 +260,15 @@ def against_last(rows, row, metric):
     return "{:+.1f} %".format((float(row[metric]) / statistics.median(earlier) - 1) * 100)
 
 
+def caller_share(row):
+    """The caller's CPU time against wall time, in bold from CALLER_BOUND; empty in rows from
+    before the caller's time was recorded."""
+    if not row.get("caller_ms") or not row["wall_ms"]:
+        return ""
+    share = float(row["caller_ms"]) / float(row["wall_ms"])
+    return "**{:.2f}**".format(share) if share >= CALLER_BOUND else "{:.2f}".format(share)
+
+
 def report(args):
     lines = ["# Nightly {}".format(args.date), ""]
     if args.status:
@@ -275,9 +286,12 @@ def report(args):
                 total = [l.split()[1] for l in f if l.startswith("total ")]
             if total:
                 lines.append("| Duration | {} min |".format(round(int(total[0].rstrip("s")) / 60)))
-        lines += ["", "Each metric against the median of the series' last {} nights.".format(LAST_NIGHTS), "",
-                  "| Benchmark | Contender | Wall | | CPU | | Allocated | | Live set | | |",
-                  "|---|---|--:|--:|--:|--:|--:|--:|--:|--:|---|"]
+        lines += ["", "Each metric against the median of the series' last {} nights. The caller share is the CPU "
+                      "time of the thread calling the benchmark against wall time; in bold from {}, where that "
+                      "thread hardly waits on Hardwood and wall time misses decode changes that CPU time "
+                      "still shows.".format(LAST_NIGHTS, CALLER_BOUND), "",
+                  "| Benchmark | Contender | Wall | | CPU | | Allocated | | Live set | | Caller share | |",
+                  "|---|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|---|"]
         for c in summary["contenders"]:
             base = os.path.join(args.results, c["file"][:-len(".csv")])
             path = base + (".unsettled.csv" if c["verdict"] else ".csv")
@@ -293,6 +307,7 @@ def report(args):
             for metric in ("wall_ms", "cpu_ms", "alloc_bytes", "live_bytes"):
                 value = float(row[metric]) if row[metric] else None
                 cells += [number(value, UNITS[metric]), against_last(settled, row, metric)]
+            cells.append(caller_share(row))
             lines.append("| {} | {} | {} | {} |".format(c["benchmark"].replace("Benchmark", ""), c["contender"],
                                                         " | ".join(cells), c["verdict"]))
         if args.out and os.path.exists(os.path.join(args.out, "not-run.txt")):
