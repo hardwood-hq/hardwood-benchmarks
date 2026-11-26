@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One Markdown table of a regression run's Hardwood contenders across versions.
+"""One Markdown table of a regression run's contenders across versions.
 
 Usage: version-table.py OUT [--script NAME] VERSION [VERSION ...]
 
@@ -46,8 +46,6 @@ def main():
                     continue
                 with open(path) as f:
                     for row in csv.DictReader(f, delimiter="\t"):
-                        if not row["contender"].startswith("hardwood"):
-                            continue
                         key = (row["benchmark"], row["contender"])
                         times.setdefault(key, {}).setdefault(version, []).append(float(row["ms_per_op"]))
 
