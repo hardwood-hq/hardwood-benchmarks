@@ -58,6 +58,16 @@
   circle.hit { fill: transparent; stroke: none; cursor: pointer; }
   .row.focus .epochs span:not(.on) { opacity: 0.4; }
 
+  svg { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  svg g.forks { stroke-opacity: 0.55; }
+  svg rect.band { fill: var(--muted); fill-opacity: 0.22; stroke: var(--muted); stroke-opacity: 0.5; pointer-events: none; }
+  #zoom { position: fixed; z-index: 9; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
+    background: var(--card); border: 1px solid var(--grid); border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    padding: 6px 10px; font-size: 13px; }
+  #zoom[hidden] { display: none; }
+  #zoom .dim { color: var(--muted); }
+  #zoom button { font: inherit; background: var(--card); color: var(--fg); border: 1px solid var(--grid); border-radius: 4px; padding: 2px 10px; cursor: pointer; }
+  #zoom button:hover { border-color: var(--muted); }
   #tip { position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 380px;
     background: var(--card); color: var(--fg); border: 1px solid var(--grid); border-radius: 6px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); padding: 7px 10px; font-size: 12px; line-height: 1.4; }
@@ -73,15 +83,16 @@
   <h1>Hardwood regression history</h1>
   <div class="meta" id="meta">Loading…</div>
   <p class="legend">
-    <span>● settled</span><span>○ not settled or bimodal</span><span>· each fork's mean (wall)</span>
+    <span>● settled</span><span>○ not settled or bimodal</span><span>┿ forks' means, slowest to fastest (wall)</span>
     <span style="color:var(--regression)">┃ confirmed regression</span><span style="color:var(--improvement)">┃ improvement</span>
     <span style="color:var(--history)">┃ earlier change point</span><span style="color:var(--release)">┆ release</span>
   </p>
-  <p class="note">Wall, CPU and allocated are per operation, lower is better. Heap after GC is the largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed, so it moves with when collections fall, by as much as 40 % between runs of one commit where an iteration sees only one or two; a step in it means more survives a young collection only where GC time moves with it. It is charted, not analysed for change points, and no change point is marked on it. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A new epoch starts when what the contender measures changes; each epoch of a contender has its own colour, the current one blue and superseded ones faded. Hovering a point highlights its epoch in all of the contender's charts and shows the point's details.
+  <p class="note">Wall, CPU and allocated are per operation, lower is better. Heap after GC is the largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed, so it moves with when collections fall, by as much as 40 % between runs of one commit where an iteration sees only one or two; a step in it means more survives a young collection only where GC time moves with it. It is charted, not analysed for change points, and no change point is marked on it. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A new epoch starts when what the contender measures changes; each epoch of a contender has its own colour, the current one blue and superseded ones faded. Hovering a point highlights its epoch in all of the contender's charts and shows the point's details. Dragging across a chart zooms every chart to that time range, each y axis fitted to the values in it.
     Machine: <select id="machine"></select></p>
   <div id="content"></div>
 </main>
 <div id="tip" role="tooltip"></div>
+<div id="zoom" hidden><span id="range"></span><button id="reset" type="button">Reset zoom</button><span class="dim">or Esc</span></div>
 <script>
 const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Heap after GC", "B"],
   ["caller_share", "Caller share", "ratio"]];
@@ -160,12 +171,15 @@ function differences(meta, other) {
 
 function chart(epochs, metric, unit, span, releases, changes) {
   const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img"});
+  const inside = t => t >= span[0] && t <= span[1];
   const values = [];
   for (const e of epochs) for (const r of e.rows) {
+    if (!inside(r.t)) continue;
     if (r[metric]) values.push(+r[metric]);
     if (metric === "wall_ms" && r.wall_forks_ms) r.wall_forks_ms.split(";").forEach(v => v && values.push(+v));
   }
-  if (!values.length) { svg.append(el("text", {x: L, y: H / 2}, "no data")); return svg; }
+  zoomable(svg);
+  if (!values.length) { svg.append(el("text", {x: L, y: H / 2}, view ? "no data in this range" : "no data")); return svg; }
   let lo = Math.min(...values), hi = Math.max(...values);
   const pad = (hi - lo) * 0.08 || hi * 0.05 || 1;
   lo -= pad; hi += pad;
@@ -175,15 +189,26 @@ function chart(epochs, metric, unit, span, releases, changes) {
     svg.append(el("line", {x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "var(--grid)"}));
     svg.append(el("text", {x: L - 4, y: y(v) + 3, "text-anchor": "end"}, format(v, unit)));
   }
+  // Lines run on to the points just outside a zoomed range; the clip cuts them at the plot's edges.
+  const clip = "clip" + (++clips);
+  const defs = el("defs", {});
+  const rect = el("clipPath", {id: clip});
+  rect.append(el("rect", {x: L - 5, y: 0, width: W - L - R + 10, height: H - B + 5}));
+  defs.append(rect);
+  svg.append(defs);
+  const plot = el("g", {"clip-path": `url(#${clip})`});
+  svg.append(plot);
   for (const [version, t] of releases) {
-    svg.append(el("line", {x1: x(t), x2: x(t), y1: T, y2: H - B, stroke: "var(--release)", "stroke-dasharray": "2 3"}));
-    if (metric === "wall_ms") svg.append(el("text", {x: x(t) + 2, y: T - 3}, version));
+    if (!inside(t)) continue;
+    plot.append(el("line", {x1: x(t), x2: x(t), y1: T, y2: H - B, stroke: "var(--release)", "stroke-dasharray": "2 3"}));
+    if (metric === "wall_ms") plot.append(el("text", {x: x(t) + 2, y: T - 3}, version));
   }
   for (const c of changes) {
+    if (!inside(c.t)) continue;
     const color = c.status === "confirmed" ? "var(--regression)" : c.kind === "improvement" ? "var(--improvement)" : "var(--history)";
     const line = el("line", {x1: x(c.t), x2: x(c.t), y1: T, y2: H - B, stroke: color, "stroke-width": 1.5});
     line.append(el("title", {}, `${c.status}: ${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`));
-    if (c.issue) { const a = el("a", {href: c.issue}); a.append(line); svg.append(a); } else svg.append(line);
+    if (c.issue) { const a = el("a", {href: c.issue}); a.append(line); plot.append(a); } else plot.append(line);
   }
   // Superseded epochs first, so the current one is drawn on top.
   const order = [...epochs].sort((a, b) => b.rank - a.rank);
@@ -191,34 +216,93 @@ function chart(epochs, metric, unit, span, releases, changes) {
   for (const e of order) {
     const g = el("g", {"data-epoch": e.epoch, class: e.rank ? "superseded" : ""});
     const settled = e.rows.filter(r => !r.verdict && r[metric]);
-    if (settled.length > 1) {
-      g.append(el("polyline", {points: settled.map(r => `${x(r.t)},${y(+r[metric])}`).join(" "),
+    const first = settled.findIndex(r => r.t >= span[0]), next = settled.findIndex(r => r.t > span[1]);
+    const drawn = first < 0 ? [] : settled.slice(Math.max(0, first - 1), next < 0 ? settled.length : next + 1);
+    if (drawn.length > 1) {
+      g.append(el("polyline", {points: drawn.map(r => `${x(r.t)},${y(+r[metric])}`).join(" "),
         fill: "none", stroke: e.color, "stroke-width": 1.2}));
     }
     for (const r of e.rows) {
-      if (!r[metric]) continue;
-      if (metric === "wall_ms" && r.wall_forks_ms) {
-        for (const v of r.wall_forks_ms.split(";")) {
-          if (v) g.append(el("circle", {cx: x(r.t), cy: y(+v), r: 1.6, fill: e.color, "fill-opacity": 0.3}));
-        }
-      }
-      const dot = el("circle", {class: "dot", cx: x(r.t), cy: y(+r[metric]), r: 2.8, "data-key": r.key,
-        fill: r.verdict ? "var(--card)" : e.color, stroke: e.color, "stroke-width": 1.2});
-      g.append(dot);
+      if (!r[metric] || !inside(r.t)) continue;
+      if (metric === "wall_ms" && r.wall_forks_ms) g.append(forks(r, x(r.t), y, e.color));
+      g.append(el("circle", {class: "dot", cx: x(r.t), cy: y(+r[metric]), r: 2.8, "data-key": r.key,
+        fill: r.verdict ? "var(--card)" : e.color, stroke: e.color, "stroke-width": 1.2}));
       const hit = el("circle", {class: "hit", cx: x(r.t), cy: y(+r[metric]), r: 7});
-      hit.addEventListener("pointerenter", ev => enter(ev, {e, r, metric, unit}));
+      hit.addEventListener("pointerenter", ev => { if (!drag) enter(ev, {e, r, metric, unit}); });
       hit.addEventListener("pointermove", place);
       hit.addEventListener("pointerleave", leave);
       hits.push(hit);
     }
-    svg.append(g);
+    plot.append(g);
   }
   // Hit areas above every mark, in drawing order: older epochs first, so newer ones win where points overlap.
   hits.forEach(h => svg.append(h));
-  svg.append(el("text", {x: L, y: H - 4}, new Date(span[0]).toISOString().slice(0, 10)));
-  svg.append(el("text", {x: W - R, y: H - 4, "text-anchor": "end"}, new Date(span[1]).toISOString().slice(0, 10)));
+  svg.append(el("text", {x: L, y: H - 4}, day(span[0])));
+  svg.append(el("text", {x: W - R, y: H - 4, "text-anchor": "end"}, day(span[1])));
   return svg;
 }
+
+// The run's forks as a whisker: a thin line from the slowest to the fastest fork's mean, a tick at each.
+function forks(r, cx, y, color) {
+  const g = el("g", {class: "forks", stroke: color});
+  const ys = r.wall_forks_ms.split(";").filter(v => v).map(v => y(+v));
+  g.append(el("line", {x1: cx, x2: cx, y1: Math.min(...ys), y2: Math.max(...ys), "stroke-width": 0.8}));
+  for (const fy of ys) g.append(el("line", {x1: cx - 2.5, x2: cx + 2.5, y1: fy, y2: fy, "stroke-width": 1}));
+  return g;
+}
+
+function day(t) {
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+// Zoom: dragging across any chart's plot narrows every chart to that time range, each with its
+// y axis fitted to the values in it; Escape or the reset button returns to every recorded row.
+let full = null, view = null, drag = null, clips = 0;
+const drawn = [];
+
+function zoomable(svg) {
+  svg.addEventListener("pointerdown", ev => {
+    if (ev.button !== 0) return;
+    const box = svg.getBoundingClientRect();
+    const toX = clientX => Math.min(W - R, Math.max(L, (clientX - box.left) * W / box.width));
+    const x0 = toX(ev.clientX);
+    const band = el("rect", {class: "band", x: x0, y: T, width: 0, height: H - T - B});
+    svg.append(band);
+    drag = {svg, band, x0, x1: x0, toX};
+    svg.setPointerCapture(ev.pointerId);
+    leave();
+    ev.preventDefault();
+  });
+  svg.addEventListener("pointermove", ev => {
+    if (!drag || drag.svg !== svg) return;
+    drag.x1 = drag.toX(ev.clientX);
+    drag.band.setAttribute("x", Math.min(drag.x0, drag.x1));
+    drag.band.setAttribute("width", Math.abs(drag.x1 - drag.x0));
+  });
+  const end = ev => {
+    if (!drag || drag.svg !== svg) return;
+    const {band, x0, x1} = drag;
+    drag = null;
+    band.remove();
+    if (ev.type !== "pointerup" || Math.abs(x1 - x0) < 4) return;
+    const span = view || full;
+    const toT = px => span[0] + (px - L) / (W - L - R) * (span[1] - span[0]);
+    zoom([toT(Math.min(x0, x1)), toT(Math.max(x0, x1))]);
+  };
+  svg.addEventListener("pointerup", end);
+  svg.addEventListener("pointercancel", end);
+}
+
+function zoom(span) {
+  view = span;
+  for (const d of drawn) d.box.lastChild.replaceWith(chart(d.epochs, d.metric, d.unit, view || full, d.releases, d.changes));
+  const bar = document.getElementById("zoom");
+  bar.hidden = !view;
+  if (view) document.getElementById("range").textContent = `${day(view[0])} – ${day(view[1])}`;
+}
+
+document.getElementById("reset").addEventListener("click", () => zoom(null));
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && view) zoom(null); });
 
 const tip = document.getElementById("tip");
 let hovered = null;
@@ -334,7 +418,10 @@ async function render(history, machine) {
     s.last = Math.max(...rows.map(r => Date.parse(r.run) || 0));
   }));
   const all = series.flatMap(s => s.rows);
-  const span = [Math.min(...all.map(r => r.t)), Math.max(...all.map(r => r.t))];
+  full = [Math.min(...all.map(r => r.t)), Math.max(...all.map(r => r.t))];
+  view = null;
+  drawn.length = 0;
+  document.getElementById("zoom").hidden = true;
   const releases = [...new Map(all.filter(r => !r.version.includes("SNAPSHOT")).map(r => [r.version, r.t])).entries()];
   const changes = history.changes.filter(c => c.machine === machine);
   for (const c of changes) {
@@ -378,7 +465,9 @@ async function render(history, machine) {
     const own = changes.filter(c => files.has(c.file) && !isNaN(c.t));
     for (const [metric, label, unit] of METRICS) {
       const box = div("chart");
-      box.append(div("title", label), chart(epochs, metric, unit, span, releases, own.filter(c => metric !== "live_bytes" && metric in c.metrics)));
+      const d = {box, epochs, metric, unit, releases, changes: own.filter(c => metric !== "live_bytes" && metric in c.metrics)};
+      box.append(div("title", label), chart(d.epochs, d.metric, d.unit, full, d.releases, d.changes));
+      drawn.push(d);
       charts.append(box);
     }
     row.append(charts);

@@ -265,8 +265,10 @@ contender's metrics against the median of its series' last nights and its caller
 time against wall time, marked from 0.8, where wall time misses decode changes), what did not
 run, and the change points found or decided. `index.html` with `history.json` charts every
 series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
-peak and caller share against commit time, unsettled rows hollow, each fork's mean faint, releases and change points marked, and a
-break where a new epoch starts.
+peak and caller share against commit time, unsettled rows hollow and off the line, each run's
+forks as a whisker on wall time, releases and change points marked, and each epoch in its own
+colour, superseded ones faded. Dragging across a chart narrows every chart to that time range,
+each y axis fitted to the values in it.
 
 **Credentials.** Pushing uses a token for the results repository alone, and opening issues one
 for issues on Hardwood alone, each in its own file under `~/nightly`, since a fine-grained
