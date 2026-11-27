@@ -4,23 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hardwood regression history</title>
-<!-- Written by hardwood-benchmarks' charts/nightly.py page; reads history.json and the series files. -->
+<!-- Written by hardwood-benchmarks' charts/nightly.py page; reads history.json, the series files and the epoch files. -->
 <style>
   :root {
     --bg: #fbfbfa; --fg: #1d1d1b; --muted: #6b6b66; --grid: #e4e4e0; --line: #2f6db5;
-    --fork: rgba(47, 109, 181, 0.28); --regression: #c2412d; --improvement: #2e8b57; --history: #9a9a94;
+    --epoch-2: #f47230; --epoch-3: #6a4ce2; --epoch-4: #00b894;
+    --regression: #c2412d; --improvement: #2e8b57; --history: #9a9a94;
     --release: #b0b0aa; --card: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #161615; --fg: #e8e8e4; --muted: #9a9a94; --grid: #2c2c2a; --line: #6ea2e0;
-      --fork: rgba(110, 162, 224, 0.3); --regression: #e46a55; --improvement: #5cbf86; --history: #77776f;
+      --epoch-2: #e76624; --epoch-3: #9887ef; --epoch-4: #00a888;
+      --regression: #e46a55; --improvement: #5cbf86; --history: #77776f;
       --release: #55554f; --card: #1e1e1c;
     }
   }
   :root[data-theme="dark"] {
     --bg: #161615; --fg: #e8e8e4; --muted: #9a9a94; --grid: #2c2c2a; --line: #6ea2e0;
-    --fork: rgba(110, 162, 224, 0.3); --regression: #e46a55; --improvement: #5cbf86; --history: #77776f;
+    --epoch-2: #e76624; --epoch-3: #9887ef; --epoch-4: #00a888;
+    --regression: #e46a55; --improvement: #5cbf86; --history: #77776f;
     --release: #55554f; --card: #1e1e1c;
   }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
@@ -33,6 +36,9 @@
   select { font: inherit; background: var(--card); color: var(--fg); border: 1px solid var(--grid); padding: 2px 6px; }
   .row { background: var(--card); border: 1px solid var(--grid); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
   .row h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; word-break: break-all; }
+  .epochs { font-size: 12px; color: var(--muted); margin: -2px 0 6px; }
+  .epochs span { margin-right: 16px; cursor: default; }
+  .epochs b { font-weight: 400; }
   .charts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
   @media (max-width: 900px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { .charts { grid-template-columns: minmax(0, 1fr); } }
@@ -40,6 +46,26 @@
   svg { width: 100%; height: auto; display: block; overflow: visible; }
   svg text { fill: var(--muted); font-size: 10px; }
   a { color: var(--line); }
+
+  /* A superseded epoch is faded until it is hovered; hovering an epoch fades every other one in the row. */
+  [data-epoch] { transition: opacity 0.12s; }
+  .superseded { opacity: 0.35; }
+  .row.focus [data-epoch] { opacity: 0.12; }
+  .row.focus [data-epoch].on { opacity: 1; }
+  .row.focus g.on polyline { stroke-width: 2.4; }
+  .row.focus g.on circle.dot { r: 3.4; }
+  circle.dot.at { r: 4.6; stroke: var(--fg); }
+  circle.hit { fill: transparent; stroke: none; cursor: pointer; }
+  .row.focus .epochs span:not(.on) { opacity: 0.4; }
+
+  #tip { position: fixed; z-index: 10; pointer-events: none; display: none; max-width: 380px;
+    background: var(--card); color: var(--fg); border: 1px solid var(--grid); border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); padding: 7px 10px; font-size: 12px; line-height: 1.4; }
+  #tip .value { font-size: 15px; font-weight: 600; }
+  #tip .metric, #tip .dim { color: var(--muted); }
+  #tip .key { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 6px; }
+  #tip .sep { border-top: 1px solid var(--grid); margin: 5px 0; }
+  #tip div { overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -47,18 +73,22 @@
   <h1>Hardwood regression history</h1>
   <div class="meta" id="meta">Loading…</div>
   <p class="legend">
-    <span>● settled</span><span>○ not settled or bimodal</span><span style="color:var(--fork)">● each fork's mean (wall)</span>
+    <span>● settled</span><span>○ not settled or bimodal</span><span>· each fork's mean (wall)</span>
     <span style="color:var(--regression)">┃ confirmed regression</span><span style="color:var(--improvement)">┃ improvement</span>
     <span style="color:var(--history)">┃ earlier change point</span><span style="color:var(--release)">┆ release</span>
   </p>
-  <p class="note">Wall, CPU and allocated are per operation, lower is better. Heap after GC is the largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed, so it moves with when collections fall, by as much as 40 % between runs of one commit where an iteration sees only one or two; a step in it means more survives a young collection only where GC time moves with it. It is charted, not analysed for change points, and no change point is marked on it. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A break in a line is a new epoch: what the contender measures changed.
+  <p class="note">Wall, CPU and allocated are per operation, lower is better. Heap after GC is the largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed, so it moves with when collections fall, by as much as 40 % between runs of one commit where an iteration sees only one or two; a step in it means more survives a young collection only where GC time moves with it. It is charted, not analysed for change points, and no change point is marked on it. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A new epoch starts when what the contender measures changes; each epoch of a contender has its own colour, the current one blue and superseded ones faded. Hovering a point highlights its epoch in all of the contender's charts and shows the point's details.
     Machine: <select id="machine"></select></p>
   <div id="content"></div>
 </main>
+<div id="tip" role="tooltip"></div>
 <script>
 const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_bytes", "Allocated", "B"], ["live_bytes", "Heap after GC", "B"],
   ["caller_share", "Caller share", "ratio"]];
 const W = 280, H = 130, L = 46, R = 6, T = 14, B = 18;
+// Epoch colours by recency within a contender: the current epoch first. Older epochs past the last slot share grey.
+const EPOCH_COLORS = ["var(--line)", "var(--epoch-2)", "var(--epoch-3)", "var(--epoch-4)"];
+const EPOCH_KEYS = ["script", "preset", "common", "params", "fixture", "method"];
 
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -74,7 +104,8 @@ function parseCsv(text) {
 
 async function csv(path) {
   if (!path) return [];
-  const response = await fetch(path);
+  // Contender names hold brackets, which some servers (jwebserver) reject unescaped.
+  const response = await fetch(path.split("/").map(encodeURIComponent).join("/"));
   return response.ok ? parseCsv(await response.text()) : [];
 }
 
@@ -94,6 +125,37 @@ function el(name, attrs, text) {
   for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+function div(cls, text) {
+  const node = document.createElement("div");
+  if (cls) node.className = cls;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// What an epoch measures, from epochs/<Benchmark>/<contender>/<epoch>.json; fetched once, on first hover.
+function epochMeta(e) {
+  if (!e.meta) {
+    const path = ["epochs", e.benchmark, e.contender, e.epoch + ".json"].map(encodeURIComponent).join("/");
+    e.meta = fetch(path).then(r => r.ok ? r.json() : null, () => null);
+  }
+  return e.meta;
+}
+
+function show(value) {
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+// The fields in which an epoch differs from another, as "key: this → other".
+function differences(meta, other) {
+  const out = [];
+  for (const k of EPOCH_KEYS) {
+    const a = show(meta[k] ?? ""), b = show(other[k] ?? "");
+    if (a === b) continue;
+    out.push(k === "method" ? "method source differs" : `${k}: ${a || "–"} → ${b || "–"}`);
+  }
+  return out;
 }
 
 function chart(epochs, metric, unit, span, releases, changes) {
@@ -123,26 +185,141 @@ function chart(epochs, metric, unit, span, releases, changes) {
     line.append(el("title", {}, `${c.status}: ${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`));
     if (c.issue) { const a = el("a", {href: c.issue}); a.append(line); svg.append(a); } else svg.append(line);
   }
-  for (const e of epochs) {
+  // Superseded epochs first, so the current one is drawn on top.
+  const order = [...epochs].sort((a, b) => b.rank - a.rank);
+  const hits = [];
+  for (const e of order) {
+    const g = el("g", {"data-epoch": e.epoch, class: e.rank ? "superseded" : ""});
     const settled = e.rows.filter(r => !r.verdict && r[metric]);
     if (settled.length > 1) {
-      svg.append(el("polyline", {points: settled.map(r => `${x(r.t)},${y(+r[metric])}`).join(" "),
-        fill: "none", stroke: "var(--line)", "stroke-width": 1.2}));
+      g.append(el("polyline", {points: settled.map(r => `${x(r.t)},${y(+r[metric])}`).join(" "),
+        fill: "none", stroke: e.color, "stroke-width": 1.2}));
     }
     for (const r of e.rows) {
       if (!r[metric]) continue;
       if (metric === "wall_ms" && r.wall_forks_ms) {
-        for (const v of r.wall_forks_ms.split(";")) if (v) svg.append(el("circle", {cx: x(r.t), cy: y(+v), r: 1.6, fill: "var(--fork)"}));
+        for (const v of r.wall_forks_ms.split(";")) {
+          if (v) g.append(el("circle", {cx: x(r.t), cy: y(+v), r: 1.6, fill: e.color, "fill-opacity": 0.3}));
+        }
       }
-      const dot = el("circle", {cx: x(r.t), cy: y(+r[metric]), r: 2.8,
-        fill: r.verdict ? "var(--card)" : "var(--line)", stroke: "var(--line)", "stroke-width": 1.2});
-      dot.append(el("title", {}, `${format(+r[metric], unit)}\n${r.version} (${r.commit.slice(0, 9)})\n${r.time.slice(0, 10)}${r.verdict ? "\n" + r.verdict : ""}`));
-      svg.append(dot);
+      const dot = el("circle", {class: "dot", cx: x(r.t), cy: y(+r[metric]), r: 2.8, "data-key": r.key,
+        fill: r.verdict ? "var(--card)" : e.color, stroke: e.color, "stroke-width": 1.2});
+      g.append(dot);
+      const hit = el("circle", {class: "hit", cx: x(r.t), cy: y(+r[metric]), r: 7});
+      hit.addEventListener("pointerenter", ev => enter(ev, {e, r, metric, unit}));
+      hit.addEventListener("pointermove", place);
+      hit.addEventListener("pointerleave", leave);
+      hits.push(hit);
     }
+    svg.append(g);
   }
+  // Hit areas above every mark, in drawing order: older epochs first, so newer ones win where points overlap.
+  hits.forEach(h => svg.append(h));
   svg.append(el("text", {x: L, y: H - 4}, new Date(span[0]).toISOString().slice(0, 10)));
   svg.append(el("text", {x: W - R, y: H - 4, "text-anchor": "end"}, new Date(span[1]).toISOString().slice(0, 10)));
   return svg;
+}
+
+const tip = document.getElementById("tip");
+let hovered = null;
+
+function highlight(row, epoch, key) {
+  row.classList.toggle("focus", epoch !== null);
+  for (const node of row.querySelectorAll("[data-epoch]")) node.classList.toggle("on", node.dataset.epoch === epoch);
+  for (const span of row.querySelectorAll(".epochs span")) span.classList.toggle("on", span.dataset.for === epoch);
+  for (const node of row.querySelectorAll("circle.dot")) node.classList.toggle("at", key !== null && node.dataset.key === key);
+}
+
+function enter(ev, point) {
+  hovered = point;
+  highlight(point.e.row, point.e.epoch, point.r.key);
+  fillTip(point);
+  tip.style.display = "block";
+  place(ev);
+  Promise.all(point.e.siblings.map(epochMeta)).then(() => { if (hovered === point) { fillTip(point); place(ev); } });
+}
+
+function leave() {
+  if (hovered) highlight(hovered.e.row, null, null);
+  hovered = null;
+  tip.style.display = "none";
+}
+
+function place(ev) {
+  const gap = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let left = ev.clientX + gap, top = ev.clientY + gap;
+  if (left + w > window.innerWidth - 4) left = ev.clientX - gap - w;
+  if (top + h > window.innerHeight - 4) top = ev.clientY - gap - h;
+  tip.style.left = Math.max(4, left) + "px";
+  tip.style.top = Math.max(4, top) + "px";
+}
+
+// Built with textContent only: versions, verdicts and epoch fields come from data files.
+function fillTip({e, r, metric, unit}) {
+  const label = METRICS.find(m => m[0] === metric)[1];
+  tip.replaceChildren();
+  const head = div("");
+  const value = document.createElement("span");
+  value.className = "value";
+  value.textContent = format(+r[metric], unit);
+  const name = document.createElement("span");
+  name.className = "metric";
+  name.textContent = "  " + label;
+  head.append(value, name);
+  tip.append(head);
+  if (metric === "wall_ms" && r.wall_forks_ms) {
+    const spread = r.wall_spread_pct ? ` (±${(+r.wall_spread_pct).toFixed(1)} %)` : "";
+    tip.append(div("dim", "forks " + r.wall_forks_ms.split(";").filter(v => v).map(v => format(+v, unit)).join(" · ") + spread));
+  }
+  if (r.verdict) tip.append(div("", "not counted: " + r.verdict));
+  tip.append(div("sep"));
+  tip.append(div("", `${r.version} (${r.commit.slice(0, 9)})`));
+  tip.append(div("dim", `committed ${r.time.slice(0, 10)} · measured ${r.run.slice(0, 10)}`));
+  tip.append(div("sep"));
+  const epoch = div("");
+  const key = document.createElement("span");
+  key.className = "key";
+  key.style.borderColor = e.color;
+  epoch.append(key, document.createTextNode(`epoch ${e.epoch} · ${e.rank ? "superseded" : "current"}`));
+  tip.append(epoch);
+  const meta = e.metaValue;
+  if (meta === undefined) {
+    tip.append(div("dim", "loading…"));
+  } else if (meta === null) {
+    tip.append(div("dim", "no epoch file"));
+  } else {
+    tip.append(div("dim", `${meta.script} ${meta.preset || ""} ${meta.common || ""}`.replace(/\s+/g, " ").trim()));
+    if (meta.params && meta.params.length) tip.append(div("dim", "params " + meta.params.join(", ")));
+    const current = e.siblings.find(s => s.rank === 0);
+    if (e.rank && current && current.metaValue) {
+      for (const d of differences(meta, current.metaValue)) tip.append(div("", "vs current — " + d));
+    }
+  }
+}
+
+function legend(row, epochs) {
+  const p = div("epochs");
+  for (const e of [...epochs].sort((a, b) => a.rank - b.rank)) {
+    const span = document.createElement("span");
+    span.dataset.for = e.epoch;
+    const key = document.createElement("b");
+    key.style.color = e.color;
+    key.textContent = "━ ";
+    span.append(key, document.createTextNode(`${e.epoch.slice(0, 7)} ${e.rank ? "superseded" : "current"}`));
+    span.addEventListener("pointerenter", () => highlight(row, e.epoch, null));
+    span.addEventListener("pointerleave", () => highlight(row, null, null));
+    Promise.all(epochs.map(epochMeta)).then(() => {
+      const current = epochs.find(s => s.rank === 0);
+      if (e.rank && e.metaValue && current && current.metaValue) {
+        const d = differences(e.metaValue, current.metaValue);
+        if (d.length) span.title = d.join("\n");
+        const preset = d.find(s => s.startsWith("preset: "));
+        if (preset) span.append(document.createTextNode(` (${preset})`));
+      }
+    });
+    p.append(span);
+  }
+  return p;
 }
 
 async function render(history, machine) {
@@ -152,7 +329,9 @@ async function render(history, machine) {
   await Promise.all(series.map(async s => {
     const rows = [...await csv(s.file), ...await csv(s.unsettled)];
     rows.sort((a, b) => a.t - b.t);
+    rows.forEach(r => r.key = r.commit + "@" + r.run);
     s.rows = rows;
+    s.last = Math.max(...rows.map(r => Date.parse(r.run) || 0));
   }));
   const all = series.flatMap(s => s.rows);
   const span = [Math.min(...all.map(r => r.t)), Math.max(...all.map(r => r.t))];
@@ -179,22 +358,27 @@ async function render(history, machine) {
       h.textContent = cls.replace(/Benchmark$/, "");
       content.append(h);
     }
-    const row = document.createElement("div");
-    row.className = "row";
+    const row = div("row");
+    // The epoch last measured is current; the others are ranked by how recently they were measured.
+    epochs.sort((a, b) => b.last - a.last).forEach((e, i) => {
+      e.rank = i;
+      e.color = EPOCH_COLORS[i] || "var(--history)";
+      e.row = row;
+      e.siblings = epochs;
+      e.metaValue = undefined;
+      const loaded = epochMeta(e).then(m => { e.metaValue = m; return m; });
+      e.meta = loaded;
+    });
     const h = document.createElement("h3");
     h.textContent = contender;
     row.append(h);
-    const charts = document.createElement("div");
-    charts.className = "charts";
+    if (epochs.length > 1) row.append(legend(row, epochs));
+    const charts = div("charts");
     const files = new Set(epochs.map(e => e.file));
     const own = changes.filter(c => files.has(c.file) && !isNaN(c.t));
     for (const [metric, label, unit] of METRICS) {
-      const box = document.createElement("div");
-      box.className = "chart";
-      const title = document.createElement("div");
-      title.className = "title";
-      title.textContent = label;
-      box.append(title, chart(epochs, metric, unit, span, releases, own.filter(c => metric !== "live_bytes" && metric in c.metrics)));
+      const box = div("chart");
+      box.append(div("title", label), chart(epochs, metric, unit, span, releases, own.filter(c => metric !== "live_bytes" && metric in c.metrics)));
       charts.append(box);
     }
     row.append(charts);
