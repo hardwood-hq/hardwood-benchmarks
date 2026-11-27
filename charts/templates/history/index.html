@@ -66,8 +66,15 @@
   h2 { scroll-margin-top: 80px; }
   h2 { font-size: 16px; margin: 28px 0 8px; }
   .meta { color: var(--muted); font-size: 12px; }
+  .row { scroll-margin-top: 64px; transition: box-shadow 0.4s; }
+  .row.flash { box-shadow: 0 0 0 2px var(--regression); }
+  .facts a.jump { display: inline-block; min-width: 1.4em; margin-left: 6px; padding: 0 5px; border: 1px solid currentColor;
+    border-radius: 9px; font-size: 11px; line-height: 16px; text-align: center; color: inherit; text-decoration: none; }
+  .facts a.jump:hover { background: var(--regression); border-color: var(--regression); color: var(--card); }
   .row { background: var(--card); border: 1px solid var(--grid); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
   .row h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; word-break: break-all; }
+  .row h3 .badge { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--regression);
+    border: 1px solid var(--regression); border-radius: 9px; padding: 0 7px; white-space: nowrap; }
   .epochs { font-size: 12px; color: var(--muted); margin: -2px 0 6px; }
   .epochs span { margin-right: 16px; cursor: default; }
   .epochs b { font-weight: 400; }
@@ -104,7 +111,13 @@
   #tip table.scripts td + td, #tip table.scripts th + th { text-align: right; }
   .bad { color: var(--regression); }
   #zoom { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
-  #zoom[hidden] { display: none; }
+  #zoom[hidden], #reset[hidden] { display: none; }
+  .seg { display: inline-flex; }
+  .seg button { border-radius: 0; margin-left: -1px; }
+  .seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 4px 4px 0; }
+  .seg button.on { background: var(--fg); color: var(--card); border-color: var(--fg); }
+  #range { font-variant-numeric: tabular-nums; }
   button, select { font: inherit; background: var(--card); color: var(--fg); border: 1px solid var(--grid); border-radius: 4px; padding: 2px 8px; }
   button { cursor: pointer; }
   button:hover { border-color: var(--muted); }
@@ -123,7 +136,7 @@
   <div class="bar">
     <div class="brand"><img src="https://hardwood.dev/latest/assets/hardwood.svg" alt="" width="30" height="30"><h1>Hardwood regression history</h1></div>
     <div class="tools">
-      <div id="zoom" hidden><span id="range"></span><button id="reset" type="button" title="Esc">Reset zoom</button></div>
+      <div id="zoom"><span id="range"></span><button id="reset" type="button" title="Esc" hidden>Reset zoom</button><span class="seg"><button type="button" data-preset="recent" class="on">Last 60 days</button><button type="button" data-preset="all">All</button></span></div>
       <label class="machine">Machine <select id="machine"></select></label>
     </div>
   </div>
@@ -144,9 +157,9 @@
         <div>
           <div class="group">Markers</div>
           <div class="item"><svg class="swatch" viewBox="0 0 20 12" aria-hidden="true"><line x1="10" x2="10" y1="0" y2="12" stroke="var(--release)" stroke-dasharray="2 3"/></svg>release</div>
-          <div class="item"><svg class="swatch" viewBox="0 0 20 12" aria-hidden="true"><line x1="10" x2="10" y1="0" y2="12" stroke="var(--regression)" stroke-width="1.5"/></svg>confirmed regression</div>
+          <div class="item"><svg class="swatch" viewBox="0 0 20 12" aria-hidden="true"><line x1="10" x2="10" y1="0" y2="12" stroke="var(--regression)" stroke-width="1.5"/></svg>regression</div>
           <div class="item"><svg class="swatch" viewBox="0 0 20 12" aria-hidden="true"><line x1="10" x2="10" y1="0" y2="12" stroke="var(--improvement)" stroke-width="1.5"/></svg>improvement</div>
-          <div class="item"><svg class="swatch" viewBox="0 0 20 12" aria-hidden="true"><line x1="10" x2="10" y1="0" y2="12" stroke="var(--history)" stroke-width="1.5"/></svg>unconfirmed change point</div>
+          <div class="item"><svg class="swatch" viewBox="0 0 20 12" aria-hidden="true"><line x1="10" x2="10" y1="0" y2="12" stroke="var(--history)" stroke-width="1.5"/></svg>regression between backfills</div>
         </div>
       </div>
       <details class="help">
@@ -158,12 +171,14 @@
         <dd>The largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed. It moves with when collections fall, by as much as 40 % between runs of one commit, so a step in it means more survives a young collection only where GC time moves with it. It is not analysed for change points.</dd>
         <dt>Caller share</dt>
         <dd>The CPU time of the thread calling the benchmark against wall time. Near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows.</dd>
+        <dt>Change points</dt>
+        <dd>Apache Otava finds them in wall time, CPU and allocation, from a 3, 5 and 1 % change up. A regression at a commit a night measured opens an issue; one at a commit only backfills measured is drawn grey and opens none. Hover a line for the change in the history and, for a new regression, the change when both commits ran again side by side.</dd>
         <dt>Epochs</dt>
-        <dd>A new epoch starts when what a contender measures changes, such as its preset. Each epoch has its own colour: the current one blue, superseded ones faded. Unsettled points stay off the line.</dd>
+        <dd>A new epoch starts when what a contender measures changes, such as its preset. Each epoch has its own colour: the current one blue, superseded ones faded. Unsettled points stay off the line and out of the change-point analysis; a contender whose current epoch has not settled for 3 nights in a row is marked, and opens an issue.</dd>
         <dt>Time per run</dt>
         <dd>The bars beside the latest run: each nightly run, measuring in blue and gates in grey, against the dashed 60-minute target; × marks a run that recorded nothing. Backfills are left out.</dd>
         <dt>Interaction</dt>
-        <dd>Hover a point to see its details and highlight its epoch; click it to open the report of the run that measured it. Drag across any chart to zoom every chart to that time range; Esc or Reset zoom returns.</dd>
+        <dd>Hover a point to see its details and highlight its epoch; click it to open the report of the run that measured it. The charts open on the last 60 days of commits; All shows every recorded row. Drag across any chart to zoom every chart to that time range; Esc or Reset zoom returns.</dd>
       </dl>
       </details>
     </section>
@@ -298,11 +313,14 @@ function chart(epochs, metric, unit, span, releases, changes) {
   }
   for (const c of changes) {
     if (!inside(c.t)) continue;
-    const color = c.status === "confirmed" ? "var(--regression)" : c.kind === "improvement" ? "var(--improvement)" : "var(--history)";
+    const color = c.status === "regression" ? "var(--regression)" : c.kind === "improvement" ? "var(--improvement)" : "var(--history)";
     plot.append(el("line", {x1: x(c.t), x2: x(c.t), y1: T, y2: H - B, stroke: color, "stroke-width": 1.5}));
     const moved = Object.entries(c.metrics).map(([m, v]) => `${m} ${v.percent > 0 ? "+" : ""}${v.percent.toFixed(1)} %`);
-    const hit = marker(x(c.t), [`${c.status === "confirmed" ? "confirmed regression" : c.kind === "improvement" ? "improvement" : c.status + " change point"}`,
-      `${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`, ...moved, ...(c.issue ? ["Click the line to open " + c.issue + " ↗"] : [])]);
+    const beside = Object.entries((c.side_by_side || {}).metrics || {})
+      .map(([m, v]) => `side by side ${m} ${v.percent > 0 ? "+" : ""}${v.percent.toFixed(1)} %`);
+    const hit = marker(x(c.t), [STATUS_WORDS[c.status] || c.status,
+      `${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`, ...moved, ...beside,
+      ...(c.issue ? ["Click the line to open " + c.issue + " ↗"] : [])]);
     if (c.issue) hit.dataset.href = c.issue;
     plot.append(hit);
   }
@@ -373,11 +391,12 @@ function source(r) {
     label: `the tables of its ${r.run.slice(0, 10)} run`};
 }
 
-const CHANGE_WORDS = [["confirmed", "confirmed regression", "confirmed regressions"],
-  ["pending", "regression pending confirmation", "regressions pending confirmation"],
+const CHANGE_WORDS = [["regression", "regression", "regressions"],
+  ["unstable", "contender no longer settles", "contenders no longer settle"],
   ["improvement", "improvement", "improvements"],
-  ["history", "unconfirmed change point", "unconfirmed change points"],
-  ["unmeasured", "unconfirmed change point", "unconfirmed change points"]];
+  ["history", "regression between backfills", "regressions between backfills"]];
+const STATUS_WORDS = {regression: "regression", improvement: "improvement",
+  history: "regression between backfills (no issue)"};
 
 // The last night: what it measured and how long it took, or why it recorded nothing, and the change points it found.
 function fact(dl, label, ...values) {
@@ -426,9 +445,21 @@ function lastNight(panel, nights) {
       if (night.changes[status]) counts.set(one, {many, status, n: (counts.has(one) ? counts.get(one).n : 0) + night.changes[status]});
     }
     for (const [one, {many, status, n}] of counts) {
-      lines.push(div(status === "confirmed" || status === "pending" ? "bad" : "", `${n} ${n > 1 ? many : one}`));
+      const line = div(status === "regression" || status === "unstable" ? "bad" : "", `${n} ${n > 1 ? many : one}`);
+      // Numbered, the name on hover: a contender's full name would not fit the panel.
+      (night.flagged || []).filter(f => f.status === status).forEach((f, i) => {
+        const a = document.createElement("a");
+        a.className = "jump";
+        a.href = "#" + encodeURIComponent(anchorOf(f.benchmark, f.contender));
+        a.textContent = String(i + 1);
+        a.title = `${f.benchmark.replace(/Benchmark$/, "")} · ${f.contender}: show its charts`;
+        a.addEventListener("click", ev => { ev.preventDefault(); jump(f); });
+        line.append(a);
+      });
+      lines.push(line);
     }
-    fact(facts, "Change points", ...(lines.length ? lines : ["none"]));
+    if (night.status) fact(facts, "Status", Object.assign(div("bad"), {textContent: night.status}));
+    else fact(facts, "Change points", ...(lines.length ? lines : ["none"]));
   } else {
     fact(facts, "Status", Object.assign(div("bad"), {textContent: night.status}));
   }
@@ -530,6 +561,12 @@ function day(t) {
 // Zoom: dragging across any chart's plot narrows every chart to that time range, each with its
 // y axis fitted to the values in it; Escape or the reset button returns to every recorded row.
 let full = null, view = null, drag = null, clips = 0;
+// The charts open on the last RECENT_DAYS of commits, where the nights are; "all" spans every row.
+const RECENT_DAYS = 60;
+let preset = "recent";
+function base() {
+  return preset === "all" ? full : [Math.max(full[0], full[1] - RECENT_DAYS * 864e5), full[1]];
+}
 const drawn = [];
 
 function zoomable(svg) {
@@ -563,7 +600,7 @@ function zoomable(svg) {
       return;
     }
     if (!isFinite(full[0])) return;
-    const span = view || full;
+    const span = view || base();
     const toT = px => span[0] + (px - L) / (W - L - R) * (span[1] - span[0]);
     zoom([toT(Math.min(x0, x1)), toT(Math.max(x0, x1))]);
   };
@@ -573,12 +610,21 @@ function zoomable(svg) {
 
 function zoom(span) {
   view = span;
-  for (const d of drawn) d.box.lastChild.replaceWith(chart(d.epochs, d.metric, d.unit, view || full, d.releases, d.changes));
-  const bar = document.getElementById("zoom");
-  bar.hidden = !view;
-  if (view) document.getElementById("range").textContent = `${day(view[0])} – ${day(view[1])}`;
+  for (const d of drawn) d.box.lastChild.replaceWith(chart(d.epochs, d.metric, d.unit, view || base(), d.releases, d.changes));
+  showRange();
 }
 
+// The bar names the span on show: a zoom, or the preset, which is highlighted only while no zoom narrows it.
+function showRange() {
+  const shown = view || (full && isFinite(full[0]) ? base() : null);
+  document.getElementById("range").textContent = shown ? `${day(shown[0])} – ${day(shown[1])}` : "";
+  document.getElementById("reset").hidden = !view;
+  for (const b of document.querySelectorAll(".seg button")) b.classList.toggle("on", !view && b.dataset.preset === preset);
+}
+
+for (const b of document.querySelectorAll(".seg button")) {
+  b.addEventListener("click", () => { preset = b.dataset.preset; if (full) zoom(null); else showRange(); });
+}
 document.getElementById("reset").addEventListener("click", () => zoom(null));
 document.addEventListener("keydown", ev => { if (ev.key === "Escape" && view) zoom(null); });
 
@@ -699,6 +745,29 @@ function legend(row, epochs) {
   return p;
 }
 
+function anchorOf(benchmark, contender) {
+  return benchmark + "." + contender;
+}
+
+// The rendering of the machine on show; a jump to another machine's contender renders that one first.
+let shown = {history: null, machine: null, rendered: Promise.resolve()};
+function showMachine(history, machine) {
+  document.getElementById("machine").value = machine;
+  shown = {history, machine, rendered: render(history, machine)};
+  return shown.rendered;
+}
+
+async function jump(f) {
+  if (f.machine && f.machine !== shown.machine && shown.history.machines[f.machine]) await showMachine(shown.history, f.machine);
+  await shown.rendered;
+  const row = document.getElementById(anchorOf(f.benchmark, f.contender));
+  if (!row) return;
+  window.history.replaceState(null, "", "#" + encodeURIComponent(row.id));
+  row.scrollIntoView({behavior: "smooth", block: "start"});
+  row.classList.add("flash");
+  setTimeout(() => row.classList.remove("flash"), 1600);
+}
+
 async function render(history, machine) {
   const content = document.getElementById("content");
   content.textContent = "Loading…";
@@ -715,7 +784,6 @@ async function render(history, machine) {
   full = [Math.min(...all.map(r => r.t)), Math.max(...all.map(r => r.t))];
   view = null;
   drawn.length = 0;
-  document.getElementById("zoom").hidden = true;
   // Releases at the commits of main their tags were cut from; a history.json from before the tags has only the measured ones.
   const tagged = new Map((history.releases || []).map(r => [r.version, {version: r.version, t: Date.parse(r.time),
     title: `${r.version}\ncut from ${r.base.slice(0, 9)}, committed ${r.time.slice(0, 10)}`}]));
@@ -749,6 +817,7 @@ async function render(history, machine) {
       content.append(h);
     }
     const row = div("row");
+    row.id = anchorOf(cls, contender);
     // The epoch last measured is current; the others are ranked by how recently they were measured.
     epochs.sort((a, b) => b.last - a.last).forEach((e, i) => {
       e.rank = i;
@@ -761,6 +830,14 @@ async function render(history, machine) {
     });
     const h = document.createElement("h3");
     h.textContent = contender;
+    const current = epochs.find(e => e.rank === 0);
+    if (current.unstable) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = `not settled for ${current.unstable} night${current.unstable > 1 ? "s" : ""}`;
+      badge.title = "Its rows stay off the line and out of the change-point analysis until it settles again.";
+      h.append(badge);
+    }
     row.append(h);
     if (epochs.length > 1) row.append(legend(row, epochs));
     const charts = div("charts");
@@ -769,13 +846,14 @@ async function render(history, machine) {
     for (const [metric, label, unit] of METRICS) {
       const box = div("chart");
       const d = {box, epochs, metric, unit, releases, changes: own.filter(c => metric !== "live_bytes" && metric in c.metrics)};
-      box.append(div("title", label), chart(d.epochs, d.metric, d.unit, full, d.releases, d.changes));
+      box.append(div("title", label), chart(d.epochs, d.metric, d.unit, base(), d.releases, d.changes));
       drawn.push(d);
       charts.append(box);
     }
     row.append(charts);
     content.append(row);
   }
+  showRange();
 }
 
 (async () => {
@@ -791,8 +869,13 @@ async function render(history, machine) {
   }
   const nights = history.nights || [];
   lastNight(document.getElementById("night"), nights);
-  select.addEventListener("change", () => render(history, select.value));
-  if (machines.length) render(history, select.value);
+  select.addEventListener("change", () => showMachine(history, select.value));
+  if (machines.length) {
+    await showMachine(history, select.value);
+    // A link to a contender (#Benchmark.contender) scrolls to it once its charts are there.
+    const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (target) target.scrollIntoView({block: "start"});
+  }
 })();
 </script>
 </body>

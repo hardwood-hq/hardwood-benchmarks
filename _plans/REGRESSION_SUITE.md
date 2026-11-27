@@ -9,7 +9,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 - **Two profiles.**
   - `quick`, for development: under 10 min on the N300, the version under test only, compared with the latest nightly result from the same machine. Elsewhere a baseline version named beside it is interleaved, doubling the time.
   - `nightly`, comprehensive: up to 60 min for one version, `origin/main` on the N300, recorded into the history.
-- **A history.** Each nightly run's results go to `hardwood-hq/hardwood-benchmark-results`; Otava finds the change points, and a change point is confirmed before anyone is alerted. A one-time backfill seeds the history with 1.0.0.Final, 1.1.0.Beta1 to Beta3 and selected main commits.
+- **A history.** Each nightly run's results go to `hardwood-hq/hardwood-benchmark-results`; Otava finds the change points and alone decides which are regressions; each new one is measured again side by side as evidence for its issue. A one-time backfill seeds the history with 1.0.0.Final, 1.1.0.Beta1 to Beta3 and selected main commits.
 
 ## Principles
 
@@ -27,7 +27,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 
 What is built is described in [the regression suite design](../_designs/REGRESSION_SUITE.md). Open:
 
-1. **Calibration.** The nightly job runs with `--no-alert`, on `origin/main`, for a few nights, to see how often Otava flags change points that the confirmation run refutes, and how often it confirms one with nothing behind it. That sets whether Otava's significance and magnitude thresholds need tightening for the number of series at the target false-alarm rate.
+1. **Calibration.** The nightly job runs with `--no-alert`, on `origin/main`, for a few nights, to see how often Otava flags change points with nothing behind them, which the side-by-side run does not reproduce. That sets whether the per-metric magnitudes (`MAGNITUDES` in `charts/nightly.py`) or Otava's significance need tightening for the number of series at the target false-alarm rate.
 2. **Alerts on.** Drop `--no-alert` from the timer once the calibration nights show the false-alarm rate is acceptable.
 3. **Reference.** Every night also measures a pinned release on a few contenders; a reference that moves beyond its band marks the night as disturbed, and nothing is recorded.
 4. **Cold start.** One or two paths are also timed as the first operation of a fresh JVM, over many forks, since a library is often used for a single read per process.

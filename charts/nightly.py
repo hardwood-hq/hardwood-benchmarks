@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """The analysis steps of nightly.sh, on a checkout of hardwood-benchmark-results.
 
-  nightly.py analyze RESULTS --summary FILE --plan FILE
+  nightly.py analyze RESULTS --date DATE --summary FILE --plan FILE
       Adds the night the summary records to nights.csv, the commits the nightly job measured
       as its own. Runs Otava over every settled series of the summary's machine epoch, adds the change
-      points it finds to changes.json, and writes the confirmation runs the new regressions
-      need to --plan: per script, the commit before the change and the commit after it.
+      points it finds to changes.json as found on DATE, and writes the side-by-side runs the new regressions
+      get to --plan: per script, the commit before the change and the commit after it.
   nightly.py plan FILE N FIELD
       Prints field FIELD (script, before or after) of the plan's run N, or with N "count"
       the number of runs.
-  nightly.py confirm RESULTS --plan FILE --item N --out DIR --before-version V --after-version V
-      Decides the change points of the plan's run N from DIR, a run-regression.sh run of the
-      commit before (version V) and the commit after: confirmed when every fork of the commit after is worse
-      than every fork of the commit before, by at least half the change Otava found.
+  nightly.py side-by-side RESULTS --plan FILE --item N --out DIR --before-version V --after-version V
+      Adds to the change points of the plan's run N what DIR, a run-regression.sh run of the
+      commit before (version V) and the commit after, measured: each flagged metric's change
+      between the two commits' medians and every fork's value. It decides nothing.
   nightly.py report RESULTS --date DATE [--summary FILE --out DIR] [--status TEXT]
       Writes reports/DATE.md and reports/latest.md: what ran, against the median of each
       series' last nights, and the change points found, or why the night recorded nothing.
@@ -20,12 +20,19 @@
       Writes history.json, which index.html, the history page, reads; with a Hardwood clone, it
       lists the clone's release tags, so the page marks a release whether or not it was measured.
   nightly.py issues RESULTS --repo OWNER/NAME --token-file FILE
-      Opens an issue for each confirmed regression that has none, and records its URL.
+      Opens an issue for each regression and unstable contender not alerted yet, and records its
+      URL; a failure leaves the rest for the next night.
+  nightly.py mute RESULTS
+      Marks each regression and unstable contender not alerted yet as found with alerts off.
+  nightly.py health --date DATE --repo OWNER/NAME --token-file FILE (--failing REASON | --ok)
+      Keeps one issue open while nights fail: --failing opens it, or comments on it when it is
+      open; --ok closes it.
 
-A change point is one series' change at one commit. changes.json keeps every one, so that a
-change point Otava finds again, or finds a row or two away as rows arrive, is not handled
-twice. Only a regression whose commit after a night of the last RECENT_DAYS days measured as
-its own is confirmed; others, as backfilled versions bring them, are kept as history.
+A change point is one series' change at one commit, as Otava finds it: it alone decides what
+changed. changes.json keeps every one, so that a change point Otava finds again, or finds a
+row or two away as rows arrive, is not handled twice. A regression whose commit after a night
+measured as its own is a regression, however many rows Otava needed to see it; one at a
+commit only a backfill measured is kept as history.
 """
 import argparse
 import csv
@@ -38,6 +45,7 @@ import shutil
 import statistics
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -47,7 +55,13 @@ METRICS = {"wall_ms": "score", "cpu_ms": "cpuMs", "alloc_bytes": "allocBytes", "
 UNITS = {"wall_ms": "ms", "cpu_ms": "ms", "alloc_bytes": "B", "live_bytes": "B"}
 # The caller share from which the report marks a contender as bound by its caller's thread.
 CALLER_BOUND = 0.8
-RECENT_DAYS = 7
+# The smallest change Otava reports per metric, as a fraction of the smaller of the means on
+# either side of it: CPU time
+# includes the JIT's, which moves more night to night than wall time; allocation hardly moves.
+MAGNITUDES = {"wall_ms": 0.03, "cpu_ms": 0.05, "alloc_bytes": 0.01}
+# A contender whose rows have not settled for this many nights in a row is unstable: its rows
+# stay out of Otava, so it gets an issue of its own instead of falling silent.
+UNSTABLE_NIGHTS = 3
 SHIFT_ROWS = 2
 LAST_NIGHTS = 5
 
@@ -97,21 +111,85 @@ def series_meta(results, path):
             "script": definition.get("script", "")}
 
 
+def series_files(results):
+    """Every series as (settled file, unsettled file), relative to the results, either None
+    where the series has none of that kind."""
+    out = {}
+    for path in glob.glob(os.path.join(results, "series", "*", "*", "*.csv")):
+        rel = os.path.relpath(path, results)
+        unsettled = rel.endswith(".unsettled.csv")
+        key = rel[:-len(".unsettled.csv")] + ".csv" if unsettled else rel
+        out.setdefault(key, [None, None])[1 if unsettled else 0] = rel
+    return sorted((s, u) for s, u in out.values())
+
+
+def unsettled_streak(results, settled, unsettled, night_runs):
+    """The rows of the latest nights in a row whose row of this series did not settle, oldest
+    first, and the night's settled row before them, or None."""
+    rows = [(r, True) for r in rows_of(os.path.join(results, settled))] if settled else []
+    rows += [(r, False) for r in rows_of(os.path.join(results, unsettled))] if unsettled else []
+    streak = []
+    for r, ok in sorted((x for x in rows if x[0]["run"] in night_runs), key=lambda x: x[0]["run"], reverse=True):
+        if ok:
+            return streak[::-1], r
+        streak.append(r)
+    return streak[::-1], None
+
+
+def is_unstable(streak, latest_run):
+    """Unstable: not settled for UNSTABLE_NIGHTS nights in a row, up to the latest night. A
+    superseded epoch's series ends before it, and is left out."""
+    return len(streak) >= UNSTABLE_NIGHTS and streak[-1]["run"] == latest_run
+
+
+def unstable(args, summary, night_runs, changes, found):
+    """Adds to changes.json each contender of the machine epoch that is unstable tonight, once
+    per run of unsettled nights."""
+    for settled, unsettled in series_files(args.results):
+        if not unsettled or not unsettled.startswith("series/{}/".format(summary["machine"])):
+            continue
+        file = settled or unsettled[:-len(".unsettled.csv")] + ".csv"
+        streak, before = unsettled_streak(args.results, settled, unsettled, night_runs)
+        if not is_unstable(streak, summary["run"]):
+            continue
+        first = streak[0]
+        # Keyed on the first night's run, not its commit: one commit can be measured night after night.
+        if any(c["file"] == file and c["kind"] == "unstable" and c.get("since_run") == first["run"] for c in changes):
+            continue
+        meta = series_meta(args.results, file)
+        test = "{}.{}@{}@{}".format(meta["benchmark"], meta["contender"], meta["epoch"], meta["machine"])
+        changes.append(dict(meta, file=file, test=test, kind="unstable", status="unstable", commit=first["commit"],
+                            version=first["version"], before_commit=before["commit"] if before else "",
+                            before_version=before["version"] if before else "", found=found, metrics={},
+                            verdicts=[r["verdict"] for r in streak], since_run=first["run"],
+                            id="{}@unstable@{}".format(test, first["run"][:10])))
+
+
 def otava(results, tests):
-    """Otava's change points of `tests`, {test: [change point]}."""
+    """Otava's change points of `tests`, {test: [change point]}, one per commit with the changes
+    of every metric there. Otava takes one minimum magnitude per run, so it runs per metric."""
     found = {}
     names = list(tests)
-    for i in range(0, len(names), 50):
-        done = subprocess.run([os.environ.get("OTAVA", "otava"), "analyze", "--config-file", "otava.yaml",
-                               "--output", "json"] + names[i:i + 50],
-                              cwd=results, capture_output=True, text=True)
-        if done.returncode != 0:
-            raise SystemExit("nightly: otava failed:\n" + done.stderr[-2000:])
-        # One JSON object per test, a line each.
-        for line in done.stdout.splitlines():
-            if line.strip().startswith("{"):
-                found.update(json.loads(line))
-    return found
+    for metric, magnitude in MAGNITUDES.items():
+        for i in range(0, len(names), 50):
+            done = subprocess.run([os.environ.get("OTAVA", "otava"), "analyze", "--config-file", "otava.yaml",
+                                   "--output", "json", "--metrics", metric, "--magnitude", str(magnitude)]
+                                  + names[i:i + 50], cwd=results, capture_output=True, text=True)
+            if done.returncode != 0:
+                raise SystemExit("nightly: otava failed:\n" + done.stderr[-2000:])
+            # One JSON object per test, a line each.
+            for line in done.stdout.splitlines():
+                if not line.strip().startswith("{"):
+                    continue
+                for test, points in json.loads(line).items():
+                    at = found.setdefault(test, {})
+                    for point in points:
+                        commit = point["attributes"]["commit"]
+                        if commit in at:
+                            at[commit]["changes"] += point["changes"]
+                        else:
+                            at[commit] = point
+    return {test: list(at.values()) for test, at in found.items()}
 
 
 def analyze(args):
@@ -127,9 +205,8 @@ def analyze(args):
             writer.writerows(nights)
     tests = {t: f for t, f in tests_of(args.results).items() if f.startswith("series/{}/".format(summary["machine"]))}
     changes = load(os.path.join(args.results, "changes.json"), [])
-    now = datetime.datetime.now(datetime.timezone.utc)
-    recent_nights = {n["commit"] for n in nights
-                     if now.date() - datetime.date.fromisoformat(n["date"]) <= datetime.timedelta(days=RECENT_DAYS)}
+    found = args.date
+    night_commits = {n["commit"] for n in nights}
     plan = {}
     for test, points in otava(args.results, tests).items():
         rows = rows_of(os.path.join(args.results, tests[test]))
@@ -141,46 +218,58 @@ def analyze(args):
             index = commits.index(after)
             if index == 0:
                 continue
-            worse = {c["metric"]: float(c["forward_change_percent"]) for c in point["changes"]
-                     if float(c["forward_change_percent"]) > 0}
-            kind = "regression" if worse else "improvement"
+            # Otava rounds its forward_change_percent to a whole number; the means are exact.
+            metrics = {c["metric"]: {"percent": round((float(c["mean_after"]) / float(c["mean_before"]) - 1) * 100, 2),
+                                     "before": float(c["mean_before"]), "after": float(c["mean_after"]),
+                                     "pvalue": float(c["pvalue"])} for c in point["changes"]}
+            kind = kind_of(metrics)
             known = handled(changes, tests[test], commits, index, kind)
             if known is not None:
                 continue
             meta = series_meta(args.results, tests[test])
-            recent = after in recent_nights
             change = dict(meta, file=tests[test], test=test, kind=kind, commit=after, version=rows[index]["version"],
                           before_commit=rows[index - 1]["commit"], before_version=rows[index - 1]["version"],
-                          found=now.strftime("%Y-%m-%d"),
-                          metrics={c["metric"]: {"percent": float(c["forward_change_percent"]),
-                                                 "before": float(c["mean_before"]), "after": float(c["mean_after"]),
-                                                 "pvalue": float(c["pvalue"])} for c in point["changes"]})
+                          found=found, metrics=metrics)
             if kind == "improvement":
                 change["status"] = "improvement"
-            elif not recent:
-                change["status"] = "history"
+            elif after in night_commits:
+                change["status"] = "regression"
             else:
-                change["status"] = "pending"
+                change["status"] = "history"
             change["id"] = "{}@{}".format(test, after[:9])
             changes.append(change)
+    unstable(args, summary, {n["run"] for n in nights}, changes, found)
     for change in changes:
-        if change["status"] == "pending":
+        if change["status"] == "regression" and change["found"] == found and "side_by_side" not in change:
             key = "{} {} {}".format(change["script"], change["before_commit"], change["commit"])
             plan.setdefault(key, {"script": change["script"], "before": change["before_commit"],
                                   "after": change["commit"], "changes": []})["changes"].append(change["id"])
     save(os.path.join(args.results, "changes.json"), changes)
     save(args.plan, list(plan.values()))
-    print("{} change points pending confirmation, in {} runs".format(
+    print("{} new regressions to run side by side, in {} runs".format(
         sum(len(p["changes"]) for p in plan.values()), len(plan)))
 
 
+def kind_of(metrics):
+    """Wall time decides where it moved: a CPU or allocation increase that buys a faster
+    operation is an improvement, still listed with the metrics that rose. Without a wall-time
+    change, any metric that rose makes a regression."""
+    if "wall_ms" in metrics:
+        return "regression" if metrics["wall_ms"]["percent"] > 0 else "improvement"
+    return "regression" if any(m["percent"] > 0 for m in metrics.values()) else "improvement"
+
+
 def handled(changes, file, commits, index, kind):
-    """The change point of changes.json that this one is: the same series and kind, at the
-    same commit or one up to SHIFT_ROWS rows away."""
+    """The change point of changes.json that this one is: the same series and kind, at a commit
+    from SHIFT_ROWS rows before the known one's commit before to SHIFT_ROWS rows after its commit
+    after. Rows a backfill inserts land inside that range, so a change point Otava finds again
+    between them is still the same one."""
     for change in changes:
         if change["file"] != file or change["kind"] != kind or change["commit"] not in commits:
             continue
-        if abs(commits.index(change["commit"]) - index) <= SHIFT_ROWS:
+        after = commits.index(change["commit"])
+        before = commits.index(change["before_commit"]) if change.get("before_commit") in commits else after - 1
+        if before + 1 - SHIFT_ROWS <= index <= after + SHIFT_ROWS:
             return change
     return None
 
@@ -205,7 +294,7 @@ def fork_values(run_dirs, benchmark, contender, field):
     return [pick(v) for v in by_fork.values()]
 
 
-def confirm(args):
+def side_by_side(args):
     changes = load(os.path.join(args.results, "changes.json"), [])
     by_id = {c["id"]: c for c in changes}
     for item in load(args.plan, [])[args.item:args.item + 1]:
@@ -213,27 +302,18 @@ def confirm(args):
         after = sorted(glob.glob(os.path.join(args.out, args.after_version, "run-*")))
         for cid in item["changes"]:
             change = by_id[cid]
-            verdicts = {}
+            measured = {}
             for metric, found in change["metrics"].items():
                 if found["percent"] <= 0:
                     continue
                 b = fork_values(before, change["benchmark"], change["contender"], METRICS[metric])
                 a = fork_values(after, change["benchmark"], change["contender"], METRICS[metric])
-                if len(a) < 2 or len(b) < 2:
-                    verdicts[metric] = {"verdict": "not measured"}
+                if not a or not b:
                     continue
-                percent = (statistics.median(a) / statistics.median(b) - 1) * 100
-                held = min(a) > max(b) and percent >= found["percent"] / 2
-                verdicts[metric] = {"verdict": "confirmed" if held else "refuted", "percent": round(percent, 2),
+                measured[metric] = {"percent": round((statistics.median(a) / statistics.median(b) - 1) * 100, 2),
                                     "before_forks": [round(v, 4) for v in b], "after_forks": [round(v, 4) for v in a]}
-            change["confirmation"] = {"date": datetime.date.today().isoformat(), "metrics": verdicts}
-            if any(v["verdict"] == "confirmed" for v in verdicts.values()):
-                change["status"] = "confirmed"
-            elif all(v["verdict"] == "not measured" for v in verdicts.values()):
-                change["status"] = "unmeasured"
-            else:
-                change["status"] = "refuted"
-            print("{}: {}".format(cid, change["status"]))
+            change["side_by_side"] = {"date": datetime.date.today().isoformat(), "metrics": measured}
+            print("{}: {}".format(cid, side_by_side_text(change) or "not measured side by side"))
     save(os.path.join(args.results, "changes.json"), changes)
 
 
@@ -318,17 +398,26 @@ def report(args):
             if not_run:
                 lines += ["", "Not run:", ""] + ["- " + l.strip() for l in not_run]
     changes = load(os.path.join(args.results, "changes.json"), [])
-    shown = [c for c in changes if c["status"] in ("pending", "confirmed", "refuted", "unmeasured")
-             and (c["found"] == args.date or c.get("confirmation", {}).get("date") == args.date
-                  or c["status"] == "pending")]
-    lines += ["", "## Change points", ""]
+    order = {"regression": 0, "unstable": 1, "history": 2, "improvement": 3}
+    shown = sorted((c for c in changes if c["found"] == args.date), key=lambda c: order[c["status"]])
+    lines += ["", "## Change points", "",
+              "Found tonight: a regression at a commit a night measured, a contender unstable when it has not "
+              "settled for {} nights in a row, history at a commit only a backfill measured, and improvements.".format(
+                  UNSTABLE_NIGHTS), ""]
     if not shown:
-        lines.append("No new regression.")
+        lines.append("None.")
     for c in shown:
-        moved = ", ".join("{} {:+.1f} %".format(m, v["percent"]) for m, v in c["metrics"].items() if v["percent"] > 0)
+        if c["kind"] == "unstable":
+            lines.append("- **unstable** {}.{}: not settled in the last {} nights ({}), since {}".format(
+                c["benchmark"], c["contender"], len(c["verdicts"]), ", ".join(c["verdicts"]), c["commit"][:9])
+                + (" ({})".format(c["issue"]) if c.get("issue") else ""))
+            continue
+        moved = ", ".join("{} {:+.1f} %".format(m, v["percent"]) for m, v in c["metrics"].items())
+        measured = side_by_side_text(c)
+        extra = "; side by side " + measured if measured else ""
         link = " ({})".format(c["issue"]) if c.get("issue") else ""
-        lines.append("- **{}** {}.{}: {} from {} to {}{}".format(c["status"], c["benchmark"], c["contender"], moved,
-                                                                 c["before_commit"][:9], c["commit"][:9], link))
+        lines.append("- **{}** {}.{}: {} from {} to {}{}{}".format(c["status"], c["benchmark"], c["contender"], moved,
+                                                                   c["before_commit"][:9], c["commit"][:9], extra, link))
     text = "\n".join(lines) + "\n"
     os.makedirs(os.path.join(args.results, "reports"), exist_ok=True)
     for name in (args.date + ".md", "latest.md"):
@@ -401,7 +490,8 @@ def run_times(progress):
 
 def night_list(results, changes):
     """Each night that wrote a report: what it measured and in how long, or why it recorded nothing,
-    and how many change points of each status it found."""
+    how many change points of each status it found, and which contenders its regressions and
+    unstable contenders are, for the page to link."""
     measured = {n["date"]: n for n in rows_of(os.path.join(results, "nights.csv"))}
     out = []
     for path in sorted(glob.glob(os.path.join(results, "reports", "????-??-??.md"))):
@@ -413,77 +503,131 @@ def night_list(results, changes):
             # A run's directory is named after its start without the time's colons, then its version.
             run_dir = os.path.join(results, "runs", "{}-{}".format(n["run"].replace(":", ""), n["version"]))
             night.update(run_times(os.path.join(run_dir, "progress.log")))
+            # A status line above the night's table: its analysis failed.
+            with open(path) as f:
+                lines = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+            if lines and not lines[0].startswith("|"):
+                night["status"] = lines[0]
         else:
             # The status line report() writes under the title of a night that recorded nothing.
             with open(path) as f:
                 status = [l.strip() for l in f if l.strip() and not l.startswith("#")]
             night["status"] = status[0] if status else "nothing recorded"
-        found = {}
+        found, flagged = {}, []
         for c in changes:
             if c["found"] == date:
                 found[c["status"]] = found.get(c["status"], 0) + 1
+                if c["status"] in ("regression", "unstable"):
+                    flagged.append({k: c.get(k) for k in ("status", "benchmark", "contender", "machine", "issue")})
         night["changes"] = found
+        night["flagged"] = flagged
         out.append(night)
     return out
 
 
 def page(args):
     series = []
-    for path in sorted(glob.glob(os.path.join(args.results, "series", "*", "*", "*.csv"))):
-        if path.endswith(".unsettled.csv"):
-            continue
-        rel = os.path.relpath(path, args.results)
-        meta = series_meta(args.results, rel)
-        unsettled = rel[:-len(".csv")] + ".unsettled.csv"
-        meta.update(file=rel, unsettled=unsettled if os.path.exists(os.path.join(args.results, unsettled)) else None)
+    nights = rows_of(os.path.join(args.results, "nights.csv"))
+    night_runs = {n["run"] for n in nights}
+    latest = nights[-1]["run"] if nights else None
+    for settled, unsettled in series_files(args.results):
+        meta = series_meta(args.results, settled or unsettled[:-len(".unsettled.csv")] + ".csv")
+        meta.update(file=settled, unsettled=unsettled)
+        streak = unsettled_streak(args.results, settled, unsettled, night_runs)[0] if unsettled else []
+        if is_unstable(streak, latest):
+            meta["unstable"] = len(streak)
         series.append(meta)
-    for path in sorted(glob.glob(os.path.join(args.results, "series", "*", "*", "*.unsettled.csv"))):
-        rel = os.path.relpath(path, args.results)
-        settled = rel[:-len(".unsettled.csv")] + ".csv"
-        if not os.path.exists(os.path.join(args.results, settled)):
-            meta = series_meta(args.results, settled)
-            meta.update(file=None, unsettled=rel)
-            series.append(meta)
     # Only machine epochs that hold series: one whose series moved on keeps its file, for the
     # reports that link it.
     held = {s["machine"] for s in series}
     machines = {os.path.basename(p)[:-5]: load(p, {}) for p in glob.glob(os.path.join(args.results, "machines", "*.json"))
                 if os.path.basename(p)[:-5] in held}
-    changes = [c for c in load(os.path.join(args.results, "changes.json"), []) if c["status"] != "refuted"]
+    changes = load(os.path.join(args.results, "changes.json"), [])
     save(os.path.join(args.results, "history.json"),
          {"generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
           "series": series, "machines": machines, "changes": changes,
           "releases": releases(args.hardwood) if args.hardwood else [],
-          "nights": night_list(args.results, load(os.path.join(args.results, "changes.json"), []))})
+          "nights": night_list(args.results, changes)})
     shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "history", "index.html"),
                 os.path.join(args.results, "index.html"))
     print("page: {} series".format(len(series)))
 
 
-def confirmed_metrics(change):
-    names = {"wall_ms": "wall time", "cpu_ms": "CPU time", "alloc_bytes": "allocation", "live_bytes": "heap after collection"}
-    return [names[m] for m, v in change["confirmation"]["metrics"].items() if v.get("verdict") == "confirmed"]
+METRIC_NAMES = {"wall_ms": "wall time", "cpu_ms": "CPU time", "alloc_bytes": "allocation",
+                "live_bytes": "heap after collection"}
+
+
+def side_by_side_text(change):
+    """What the side-by-side run measured, per metric, or "" when it did not run."""
+    measured = change.get("side_by_side", {}).get("metrics", {})
+    return ", ".join("{} {:+.1f} %".format(m, v["percent"]) for m, v in measured.items())
+
+
+def worse_metrics(change):
+    return [METRIC_NAMES[m] for m, v in change["metrics"].items() if v["percent"] > 0]
+
+
+def github(token, method, url, payload=None):
+    request = urllib.request.Request("https://api.github.com/" + url, method=method,
+                                     data=json.dumps(payload).encode() if payload is not None else None,
+                                     headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(request) as response:
+        return json.load(response)
+
+
+def token_of(path):
+    with open(path) as f:
+        return f.read().strip()
+
+
+def unstable_issue(c, base):
+    title = "{}.{}: not settled for {} nights".format(c["benchmark"].replace("Benchmark", ""), c["contender"],
+                                                     len(c["verdicts"]))
+    body = "\n".join([
+        "{}.{} has not settled in the nightly runs of the N300 since {}: {}. Its rows stay out of the history Otava "
+        "analyses, so a regression in it would go unseen.".format(
+            c["benchmark"], c["contender"], c["commit"][:9], ", ".join(c["verdicts"])),
+        "",
+        ("Commits since the last night it settled: https://github.com/hardwood-hq/hardwood/compare/{}...{}".format(
+            c["before_commit"], c["commit"]) if c["before_commit"] else "It has not settled in any night of this epoch."),
+        "",
+        "Either Hardwood changed so that it no longer reaches a steady state (bimodal: forks differ, often a JIT "
+        "decision), or the preset's warmup no longer covers it; the run's tables show the forks.",
+        "",
+        "Unsettled rows: {}{}".format(base, c["file"][:-len(".csv")] + ".unsettled.csv")])
+    return title, body
 
 
 def issues(args):
-    with open(args.token_file) as f:
-        token = f.read().strip()
+    token = token_of(args.token_file)
     changes = load(os.path.join(args.results, "changes.json"), [])
+    base = "https://github.com/hardwood-hq/hardwood-benchmark-results/blob/main/"
     for c in changes:
-        if c["status"] != "confirmed" or c.get("issue"):
+        # No issue key yet: not alerted. An empty one: found while alerts were off (mute).
+        if c["status"] not in ("regression", "unstable") or "issue" in c:
             continue
+        if c["kind"] == "unstable":
+            title, body = unstable_issue(c, base)
+            c["issue"] = github(token, "POST", "repos/{}/issues".format(args.repo),
+                                {"title": title, "body": body, "labels": ["performance"]})["html_url"]
+            print("issue: {}".format(c["issue"]))
+            save(os.path.join(args.results, "changes.json"), changes)
+            continue
+        measured = c.get("side_by_side", {}).get("metrics", {})
         moved = []
         for m, v in c["metrics"].items():
-            confirmed = c["confirmation"]["metrics"].get(m, {})
-            if confirmed.get("verdict") == "confirmed":
-                moved.append("| {} | {} | {} | {:+.1f} % | {:+.1f} % |".format(
-                    m, number(v["before"], UNITS[m]), number(v["after"], UNITS[m]), v["percent"], confirmed["percent"]))
-        base = "https://github.com/hardwood-hq/hardwood-benchmark-results/blob/main/"
+            if v["percent"] > 0:
+                beside = "{:+.1f} %".format(measured[m]["percent"]) if m in measured else "not run"
+                moved.append("| {} | {} | {} | {:+.1f} % | {} |".format(
+                    m, number(v["before"], UNITS[m]), number(v["after"], UNITS[m]), v["percent"], beside))
         body = "\n".join([
-            "The nightly regression run found {}.{} worse between {} and {} in {}, and a run of both commits side by side confirmed it.".format(
-                c["benchmark"], c["contender"], c["before_commit"][:9], c["commit"][:9], ", ".join(confirmed_metrics(c))),
+            "Otava found {}.{} worse between {} and {} in {}, in the nightly history of the N300.".format(
+                c["benchmark"], c["contender"], c["before_commit"][:9], c["commit"][:9], ", ".join(worse_metrics(c))),
             "",
             "Commits: https://github.com/hardwood-hq/hardwood/compare/{}...{}".format(c["before_commit"], c["commit"]),
+            "",
+            "The side-by-side column is both commits measured again, interleaved, the same night: a change that "
+            "does not show there may come from the machine rather than the code.",
             "",
             "| Metric | Before | After | Change in the history | Change side by side |",
             "|---|--:|--:|--:|--:|"] + moved + [
@@ -493,15 +637,49 @@ def issues(args):
             "Reproduce: install both commits as snapshots, then in hardwood-benchmarks `./run-regression.sh --profile nightly --only {} --rounds 2 BEFORE AFTER`.".format(
                 c["script"])])
         title = "{}.{}: {} worse since {}".format(c["benchmark"].replace("Benchmark", ""), c["contender"],
-                                                  ", ".join(confirmed_metrics(c)), c["commit"][:9])
-        request = urllib.request.Request(
-            "https://api.github.com/repos/{}/issues".format(args.repo), method="POST",
-            data=json.dumps({"title": title, "body": body, "labels": ["performance", "bug"]}).encode(),
-            headers={"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json"})
-        with urllib.request.urlopen(request) as response:
-            c["issue"] = json.load(response)["html_url"]
+                                                  ", ".join(worse_metrics(c)), c["commit"][:9])
+        c["issue"] = github(token, "POST", "repos/{}/issues".format(args.repo),
+                            {"title": title, "body": body, "labels": ["performance", "bug"]})["html_url"]
         print("issue: {}".format(c["issue"]))
         save(os.path.join(args.results, "changes.json"), changes)
+
+
+def mute(args):
+    """Marks every regression and unstable contender not alerted yet as found while alerts were
+    off, so that turning them on opens issues only for what is found from then on."""
+    changes = load(os.path.join(args.results, "changes.json"), [])
+    for c in changes:
+        if c["status"] in ("regression", "unstable") and "issue" not in c:
+            c["issue"] = ""
+    save(os.path.join(args.results, "changes.json"), changes)
+
+
+HEALTH_TITLE = "Nightly regression job failing"
+
+
+def health(args):
+    """One issue stays open while nights fail, found by its title among the open issues."""
+    token = token_of(args.token_file)
+    query = urllib.parse.quote('repo:{} is:issue is:open in:title "{}"'.format(args.repo, HEALTH_TITLE))
+    found = [i for i in github(token, "GET", "search/issues?q=" + query)["items"] if i["title"] == HEALTH_TITLE]
+    issue = found[0] if found else None
+    if args.failing:
+        text = "Night of {}: {}".format(args.date, args.failing)
+        if issue:
+            github(token, "POST", "repos/{}/issues/{}/comments".format(args.repo, issue["number"]), {"body": text})
+            print("health: commented on {}".format(issue["html_url"]))
+        else:
+            body = (text + "\n\nThe nightly regression job in hardwood-benchmarks recorded nothing or could not analyse "
+                    "what it recorded. Each failing night adds a comment here; the next good night closes this issue. "
+                    "Its log is under `~/nightly/runs/` on the machine.")
+            made = github(token, "POST", "repos/{}/issues".format(args.repo),
+                          {"title": HEALTH_TITLE, "body": body, "labels": ["performance"]})
+            print("health: opened {}".format(made["html_url"]))
+    elif issue:
+        github(token, "POST", "repos/{}/issues/{}/comments".format(args.repo, issue["number"]),
+               {"body": "Night of {}: recorded and analysed again.".format(args.date)})
+        github(token, "PATCH", "repos/{}/issues/{}".format(args.repo, issue["number"]), {"state": "closed"})
+        print("health: closed {}".format(issue["html_url"]))
 
 
 def main():
@@ -509,13 +687,14 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("analyze")
     p.add_argument("results")
+    p.add_argument("--date", required=True)
     p.add_argument("--summary", required=True)
     p.add_argument("--plan", required=True)
     p = sub.add_parser("plan")
     p.add_argument("file")
     p.add_argument("n")
     p.add_argument("field", nargs="?")
-    p = sub.add_parser("confirm")
+    p = sub.add_parser("side-by-side")
     p.add_argument("results")
     p.add_argument("--plan", required=True)
     p.add_argument("--item", type=int, required=True)
@@ -535,8 +714,18 @@ def main():
     p.add_argument("results")
     p.add_argument("--repo", required=True)
     p.add_argument("--token-file", required=True)
+    p = sub.add_parser("mute")
+    p.add_argument("results")
+    p = sub.add_parser("health")
+    p.add_argument("--date", required=True)
+    p.add_argument("--repo", required=True)
+    p.add_argument("--token-file", required=True)
+    state = p.add_mutually_exclusive_group(required=True)
+    state.add_argument("--failing", metavar="REASON")
+    state.add_argument("--ok", action="store_true")
     args = parser.parse_args()
-    {"analyze": analyze, "plan": plan_field, "confirm": confirm, "report": report, "page": page, "issues": issues}[args.command](args)
+    {"analyze": analyze, "plan": plan_field, "side-by-side": side_by_side, "report": report, "page": page,
+     "issues": issues, "mute": mute, "health": health}[args.command](args)
 
 
 if __name__ == "__main__":

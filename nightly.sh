@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # The nightly regression job: measures Hardwood's origin/main with the nightly profile, records
-# it into hardwood-benchmark-results, lets Apache Otava find change points, confirms new
-# regressions, and pushes the results, the night's report and the history page. See --help.
+# it into hardwood-benchmark-results, lets Apache Otava find change points, measures each new
+# regression's two commits side by side, and pushes the results, the night's report and the
+# history page. See --help.
 #
 set -uo pipefail
 
@@ -18,7 +19,8 @@ Usage: ./nightly.sh [options]
                     and record no contender whose series already holds a settled row of the commit
   --backfill        work through the backfill queue only, without the deadline, and without
                     measuring the night's commit
-  --no-alert        record, analyse and confirm, but open no issue
+  --no-alert        record, analyse and run side by side, but open no issue: neither for a
+                    regression nor for a failing night
   --no-push         commit to the results checkout, but push nothing
   -h, --help
 
@@ -27,7 +29,9 @@ hardwood-benchmarks and hardwood-benchmark-results, runs/<date>/ with each night
 log, the backfill queue, and the lock a run holds. A run starts only when no other run holds
 the lock, no JVM runs on the machine and the clock is not pinned by someone else; it pins the
 clock itself and restores it at the end. A JVM of another session seen during the run voids
-it: nothing is recorded, and the night's report says why.
+it: nothing is recorded, and the night's report says why. A night that records nothing, or
+cannot analyse what it recorded, exits 1 and, with alerts on, keeps one issue on hardwood open
+until a night succeeds.
 
 \$NIGHTLY_SCRIPTS (comma-separated) limits the night's own run to those scripts, to test the
 job in a few minutes.
@@ -83,7 +87,7 @@ if (( ${#ENQUEUE[@]} )); then
   exit 0
 fi
 
-# Work after the night's own run (confirmations, backfill) starts only this many minutes after
+# Work after the night's own run (side-by-side runs, backfill) starts only this many minutes after
 # the job began, so that a night ends before the box is used by day.
 DEADLINE_MIN="${NIGHTLY_DEADLINE_MIN:-180}"
 HW="$HOME_DIR/hardwood"
@@ -136,17 +140,34 @@ publish() {
   return 1
 }
 
-# A night that records nothing still says why, in its report.
+# Keeps the issue on Hardwood that stays open while nights fail: health --failing REASON or --ok.
+health() {
+  [ -n "$ALERT" ] && [ -n "$PUSH" ] && [ -f "$ISSUES_TOKEN" ] || return 0
+  ( cd "$BENCH" && python3 charts/nightly.py health --date "$DATE" --repo hardwood-hq/hardwood \
+      --token-file "$ISSUES_TOKEN" "$@" ) 2>&1 | tee -a "$LOG"
+}
+
+# A night that records nothing still says why, in its report, and alerts. A backfill run, by
+# hand or by day, leaves the night's report and the alert alone.
 skip() {
   log "skipped: $1"
+  [ -z "$BACKFILL" ] || exit 1
   ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --status "Nothing recorded: $1." \
     && python3 charts/nightly.py page "$RESULTS" $( [ -d "$HW/.git" ] && echo --hardwood "$HW" ) ) >> "$LOG" 2>&1
   publish "Nightly $DATE: nothing recorded"
-  exit 0
+  health --failing "nothing recorded: $1."
+  exit 1
 }
 
-clone https://github.com/hardwood-hq/hardwood-benchmark-results.git "$RESULTS" || { log "cannot clone the results"; exit 1; }
-git -C "$RESULTS" checkout -q main && git -C "$RESULTS" reset -q --hard origin/main
+# Without the results checkout there is no report to write; the alert still goes out.
+results_broken() {
+  log "$1"
+  [ -n "$BACKFILL" ] || health --failing "nothing recorded: $1."
+  exit 1
+}
+clone https://github.com/hardwood-hq/hardwood-benchmark-results.git "$RESULTS" || results_broken "cannot clone or fetch the results"
+git -C "$RESULTS" checkout -q main && git -C "$RESULTS" reset -q --hard origin/main \
+  || results_broken "cannot bring the results checkout to origin/main"
 clone https://github.com/hardwood-hq/hardwood.git "$HW" || skip "cannot clone Hardwood"
 log "benchmarks at $(git -C "$BENCH" rev-parse --short HEAD), results at $(git -C "$RESULTS" rev-parse --short HEAD)"
 
@@ -265,32 +286,54 @@ if scripts:
             print(ref, ",".join(scripts))
 PY
 
-# Change points, and the confirmation of each new regression: the commit before and the commit
-# after, interleaved over two rounds, six forks each.
-( cd "$BENCH" && python3 charts/nightly.py analyze "$RESULTS" --summary "$SUMMARY" --plan "$RUN/plan.json" ) 2>&1 | tee -a "$LOG"
-n="$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" count 2>/dev/null || echo 0)"
+# Change points, as Otava finds them. A night whose analysis fails publishes what it recorded,
+# says so in its report, and alerts.
+( cd "$BENCH" && python3 charts/nightly.py analyze "$RESULTS" --date "$DATE" --summary "$SUMMARY" --plan "$RUN/plan.json" ) 2>&1 | tee -a "$LOG"
+if (( PIPESTATUS[0] != 0 )); then
+  log "analysis failed"
+  ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --summary "$SUMMARY" --out "$RUN/night" \
+      --status "Analysis failed: recorded, but no change points were looked for (see the night's log on the machine)." \
+    && python3 charts/nightly.py page "$RESULTS" --hardwood "$HW" ) >> "$LOG" 2>&1
+  publish "Nightly $DATE: $VERSION, not analysed"
+  health --failing "the analysis of $VERSION failed."
+  exit 1
+fi
+
+# Each new regression's commit before and commit after, measured again side by side,
+# interleaved over two rounds, six forks each: evidence for its issue, not a verdict.
+n="$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" count)"
 for (( i = 0; i < n; i++ )); do
-  (( $(minutes) < DEADLINE_MIN )) || { log "deadline: confirmation $i onwards waits for the next night"; break; }
+  (( $(minutes) < DEADLINE_MIN )) || { log "deadline: no side-by-side run from $i onwards"; break; }
   script="$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" "$i" script)"
-  before="$(version_of "$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" "$i" before)")" || { log "confirmation $i: does not build"; continue; }
-  after="$(version_of "$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" "$i" after)")" || { log "confirmation $i: does not build"; continue; }
-  log "confirming $script: $before against $after"
-  ( cd "$BENCH" && bash ./run-regression.sh --profile nightly --only "$script" --rounds 2 --out "$RUN/confirm-$i" "$before" "$after" ) \
-    > "$RUN/confirm-$i.out" 2>&1
+  before="$(version_of "$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" "$i" before)")" || { log "side by side $i: does not build"; continue; }
+  after="$(version_of "$(cd "$BENCH" && python3 charts/nightly.py plan "$RUN/plan.json" "$i" after)")" || { log "side by side $i: does not build"; continue; }
+  log "side by side $script: $before against $after"
+  ( cd "$BENCH" && bash ./run-regression.sh --profile nightly --only "$script" --rounds 2 --out "$RUN/side-by-side-$i" "$before" "$after" ) \
+    > "$RUN/side-by-side-$i.out" 2>&1
   if disturbed; then
-    log "another JVM ran during confirmation $i ($(head -1 "$RUN/disturbed")): it and the rest stay pending"
+    log "another JVM ran during side-by-side run $i ($(head -1 "$RUN/disturbed")): no side-by-side run from $i onwards"
     break
   fi
-  ( cd "$BENCH" && python3 charts/nightly.py confirm "$RESULTS" --plan "$RUN/plan.json" --item "$i" --out "$RUN/confirm-$i" \
+  ( cd "$BENCH" && python3 charts/nightly.py side-by-side "$RESULTS" --plan "$RUN/plan.json" --item "$i" --out "$RUN/side-by-side-$i" \
       --before-version "$before" --after-version "$after" ) 2>&1 | tee -a "$LOG"
 done
 
+# With alerts off, what was found is marked so, and turning alerts on later opens no backlog.
+[ -n "$ALERT" ] || ( cd "$BENCH" && python3 charts/nightly.py mute "$RESULTS" ) >> "$LOG" 2>&1
 ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --summary "$SUMMARY" --out "$RUN/night" \
     && python3 charts/nightly.py page "$RESULTS" --hardwood "$HW" ) >> "$LOG" 2>&1
 publish "Nightly $DATE: $VERSION"
+issued=0
 if [ -n "$ALERT" ] && [ -n "$PUSH" ] && [ -f "$ISSUES_TOKEN" ]; then
+  # An issue that could not be opened stays unalerted, for the next night to open.
   ( cd "$BENCH" && python3 charts/nightly.py issues "$RESULTS" --repo hardwood-hq/hardwood --token-file "$ISSUES_TOKEN" ) 2>&1 | tee -a "$LOG"
-  publish "Nightly $DATE: issues of confirmed regressions"
+  issued=${PIPESTATUS[0]}
+  publish "Nightly $DATE: issues of regressions"
+fi
+if (( issued != 0 )); then
+  health --failing "opening the issues of its regressions failed."
+else
+  health --ok
 fi
 
 fi

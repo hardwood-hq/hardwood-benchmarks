@@ -2,7 +2,7 @@
 
 Describes how the suite measures Hardwood versions against each other: how a benchmark builds
 against any version, how a contender is measured and judged settled, how a run's results are
-recorded into a history, and how the nightly job on the N300 finds, confirms and reports
+recorded into a history, and how the nightly job on the N300 finds and reports
 regressions in that history.
 
 Related documents:
@@ -29,9 +29,9 @@ flowchart LR
   R["run-regression.sh<br/>measures"] -->|raw output| C["record-results.py<br/>records"]
   C -->|series, runs, otava.yaml| H[("hardwood-benchmark-results")]
   H -->|series| O["Apache Otava<br/>finds change points"]
-  O -->|change points| N["nightly.py<br/>decides, reports"]
+  O -->|change points| N["nightly.py<br/>classifies, reports"]
   N -->|changes, reports, page| H
-  N -->|confirmed regression| I["issue on hardwood"]
+  N -->|new regression, failing night| I["issue on hardwood"]
 ```
 
 | Part | Reads | Writes |
@@ -39,7 +39,7 @@ flowchart LR
 | `run-regression.sh` | a profile, one or more Hardwood versions | a run's raw output, outside the results: per script the timings and `RegressionProfiler`'s per-iteration metrics, `manifest.json` describing machine and JVM, `tables.md`, `not-run.txt` |
 | `charts/record-results.py` | one version's raw output | in the results: one row per contender into that contender's series, a copy of the raw output under `runs/`, `epochs/`, `machines/`, and `otava.yaml` regenerated from the series |
 | Apache Otava | `otava.yaml` and the series | nothing; it prints the change points it finds |
-| `charts/nightly.py` | Otava's change points, the series, confirmation runs | `changes.json`, `nights.csv`, `reports/`, `history.json` and `index.html`, and an issue on Hardwood per confirmed regression |
+| `charts/nightly.py` | Otava's change points, the series, side-by-side runs | `changes.json`, `nights.csv`, `reports/`, `history.json` and `index.html`, an issue on Hardwood per new regression, and one while nights fail |
 
 `nightly.sh` drives all four once a night and works through a queue of backfills after; a
 backfill runs the first two and regenerates the page, without analysing.
@@ -69,8 +69,8 @@ either:
   microcode, the JDK build, the JVM's heap and collector flags, governor, clock and turbo.
   The kernel is recorded but not hashed: a distribution ships one every few weeks, and series
   that restarted with each would rarely hold enough rows to analyse. A step a kernel causes
-  shows as a change point at a commit where Hardwood did not change, and the confirmation,
-  which runs both commits on one kernel, refutes it.
+  shows as a change point at a commit where Hardwood did not change, and the side-by-side run,
+  which runs both commits on one kernel, does not reproduce it.
 
 A new hash starts a new series and leaves the old one as it is. When the key itself changes,
 recording first hashes every existing machine epoch again and moves its series to the new
@@ -202,33 +202,53 @@ the commit for a snapshot build. A version that could not run a contender is dra
 
 **Analysis.** Each night, after recording, `nightly.py` runs Otava over every settled series of
 the machine epoch, on wall time, CPU and allocation; the caller time and the
-heap-after-collection peak are recorded and charted, not analysed. Otava fits each series' whole
-history each time, so it returns every change point, old ones included, and one may shift by a row or two as rows arrive. `changes.json`
-keeps every change point found, keyed by series and commit, and a change point within a
-couple of rows of one already there is the same one. Each has a status:
+heap-after-collection peak are recorded and charted, not analysed. Otava alone decides what
+changed: it runs once per metric, with a minimum change of its own for each (`MAGNITUDES`),
+since CPU time carries the JIT's and moves more night to night than wall time, and allocation
+hardly moves at all. Otava fits each series' whole history each time, so it returns every
+change point, old ones included, and one may shift by a row or two as rows arrive.
+`changes.json` keeps every change point found, keyed by series and commit (see Matching below). Each has a status, set once:
 
 | Status | Meaning |
 |---|---|
-| `pending` | a regression waiting for its confirmation run |
-| `confirmed` | the confirmation run reproduced it; an issue is opened |
-| `refuted` | the confirmation run did not reproduce it |
-| `improvement` | a change for the better; not confirmed |
-| `history` | a regression whose commit after is not a recent night of the job's own |
+| `regression` | worse, at a commit a night measured as its own (`nights.csv`); an issue is opened |
+| `history` | worse, at a commit only a backfill measured; alerts no one |
+| `improvement` | better |
+| `unstable` | the contender's rows have not settled for the last `UNSTABLE_NIGHTS` nights in a row; an issue is opened |
 
-**Recent nights.** `nights.csv` lists the commits the job measured as its own nights. Only a
-regression whose commit after is among the last week's is confirmed. A change point that a
-backfilled version reveals, or one in older rows, is history and alerts no one.
+Where wall time moved, its direction decides between regression and improvement: a CPU or
+allocation increase that buys a faster operation is an improvement, listed with the metrics
+that rose. Without a wall-time change, any metric that rose makes a regression. A regression
+counts however many rows Otava needed to see it: a step that shows only after a
+week of nights opens its issue then.
 
-**Confirmation.** The commit before and the commit after run side by side, interleaved over
-two rounds, in `run-regression.sh`'s several-version mode, limited to the change point's
-script. A regression is confirmed when every fork of the commit after is worse than every
-fork of the commit before, by at least half the change Otava found, on any metric Otava
-flagged.
+A contender whose rows stop settling leaves Otava's view, since only settled rows reach it, so
+a regression in it would go unseen. That is a change point of its own: when the latest nights'
+rows of a series have all not settled for `UNSTABLE_NIGHTS` nights, `changes.json` gets an
+`unstable` entry keyed by the first of those nights, once per such run of nights; a superseded
+epoch's series ends before the latest night and is left out. Its issue names the commits since
+the last night it settled.
 
-**Alerts.** A confirmed regression opens an issue on `hardwood-hq/hardwood`, labelled
+**Side by side.** The commit before and the commit after of each new regression run again,
+interleaved over two rounds, in `run-regression.sh`'s several-version mode, limited to the
+change point's script, while the night has time. What they measure, each flagged metric's
+change between the two medians and every fork's value, goes into the change point and its
+issue as evidence: a change that does not show side by side may come from the machine rather
+than the code. It decides nothing.
+
+**Alerts.** A new regression opens an issue on `hardwood-hq/hardwood`, labelled
 `performance` and `bug`, naming the series, the commit range and each metric's change in the
 history and side by side, with a link to the night's report. `changes.json` records the
-issue, so it is opened once.
+issue, so it is opened once; one that could not be opened is opened by the next night. With
+alerts off, each night marks what it found as found with alerts off, so turning them on opens no
+backlog. A night that records nothing, whose analysis fails or whose issues cannot be opened
+exits 1 or alerts, and keeps one issue, "Nightly regression job failing", open: the first such
+night opens it, each further one comments, and the next good night closes it.
+
+**Matching.** Otava fits each series' whole history each night, and backfilled rows land
+between existing ones, so a change point it finds again may sit a few rows from where it was
+first found. A change point is the one already in `changes.json` when it lies within the known
+one's commit range, widened by `SHIFT_ROWS` on either side.
 
 ## The nightly job
 
@@ -244,9 +264,11 @@ own forks and builds end all the time. A skipped or void night still writes a re
 why.
 
 **A night.** The job builds `origin/main` as a snapshot (`<version>-main<sha>-SNAPSHOT`),
-runs the nightly profile, records the run, analyses, confirms pending regressions while time
-remains, writes the night's report and the page, and pushes to the results repository's
-`main`. Then it opens the issues of confirmed regressions, unless it runs with `--no-alert`.
+runs the nightly profile, records the run, analyses, runs the new regressions side by side
+while time remains, writes the night's report and the page, and pushes to the results
+repository's `main`. Then it opens the issues of new regressions and closes a failing-night
+issue, unless it runs with `--no-alert`. The report lists every change point found that
+night, history and improvements included.
 
 **The queue.** `~/nightly/queue` holds backfills, one per line: a release version or a
 commit, and the scripts to run. After the night's own work the job takes items from it while
@@ -263,12 +285,13 @@ its row, since measuring the same commit night after night is how calibration re
 **The report and the page.** `reports/<date>.md` lists what the night measured, each
 contender's metrics against the median of its series' last nights and its caller share (caller
 time against wall time, marked from 0.8, where wall time misses decode changes), what did not
-run, and the change points found or decided. `index.html` with `history.json` charts every
+run, and the change points found that night. `index.html` with `history.json` charts every
 series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
-peak and caller share against commit time, unsettled rows hollow and off the line, each run's
+peak and caller share against commit time, unsettled rows hollow and off the line, an unstable contender marked, each run's
 forks as a whisker on wall time, change points marked, releases marked at the commit of the
 measured line each was cut from, whether or not they were measured, and the newest epochs each in
-its own colour, superseded ones faded. Dragging across a chart narrows every chart to that time range,
+its own colour, superseded ones faded. The charts open on the last 60 days of commits, where the nights are, and show every row on
+request. Dragging across a chart narrows every chart to that time range,
 each y axis fitted to the values in it. A sticky bar holds the machine and the zoom; a panel above
 the charts shows the latest nightly run: what it measured and in how long, or why it recorded nothing,
 the change points it found, and a bar per nightly run of its measuring and gate time, per script on hover (backfills, whose time depends
