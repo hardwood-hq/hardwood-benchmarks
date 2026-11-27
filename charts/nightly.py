@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """The analysis steps of nightly.sh, on a checkout of hardwood-benchmark-results.
 
-  nightly.py analyze RESULTS --date DATE --summary FILE --plan FILE
-      Adds the night the summary records to nights.csv, the commits the nightly job measured
-      as its own. Runs Otava over every settled series of the summary's machine epoch, adds the change
-      points it finds to changes.json as found on DATE, and writes the side-by-side runs the new regressions
-      get to --plan: per script, the commit before the change and the commit after it.
+  nightly.py analyze RESULTS --date DATE [--summary FILE --plan FILE]
+      With --summary, a night's analysis: adds the night the summary records to nights.csv,
+      the commits the nightly job measured as its own, runs Otava over every settled series of
+      the summary's machine epoch, and writes the side-by-side runs the new regressions get to
+      --plan: per script, the commit before the change and the commit after it. Without, the
+      analysis after a batch of backfills: every machine epoch, no night recorded, nothing
+      planned. Either adds the change points it finds to changes.json as found on DATE.
+  nightly.py releases CLONE
+      Prints the versions of the releases the history page marks from FIRST_RELEASE on, oldest
+      first: what a series whose epoch starts is backfilled with.
   nightly.py plan FILE N FIELD
       Prints field FIELD (script, before or after) of the plan's run N, or with N "count"
       the number of runs.
@@ -142,15 +147,15 @@ def is_unstable(streak, latest_run):
     return len(streak) >= UNSTABLE_NIGHTS and streak[-1]["run"] == latest_run
 
 
-def unstable(args, summary, night_runs, changes, found):
-    """Adds to changes.json each contender of the machine epoch that is unstable tonight, once
-    per run of unsettled nights."""
+def unstable(args, machine, latest_run, night_runs, changes, found):
+    """Adds to changes.json each contender under `machine` (a series/ prefix) that is unstable
+    as of the night `latest_run`, once per run of unsettled nights."""
     for settled, unsettled in series_files(args.results):
-        if not unsettled or not unsettled.startswith("series/{}/".format(summary["machine"])):
+        if not unsettled or not unsettled.startswith(machine):
             continue
         file = settled or unsettled[:-len(".unsettled.csv")] + ".csv"
         streak, before = unsettled_streak(args.results, settled, unsettled, night_runs)
-        if not is_unstable(streak, summary["run"]):
+        if not is_unstable(streak, latest_run):
             continue
         first = streak[0]
         # Keyed on the first night's run, not its commit: one commit can be measured night after night.
@@ -193,17 +198,22 @@ def otava(results, tests):
 
 
 def analyze(args):
-    summary = load(args.summary, None)
+    if bool(args.summary) != bool(args.plan):
+        raise SystemExit("nightly: analyze takes --summary and --plan together, or neither")
+    if args.summary and not os.path.exists(args.summary):
+        raise SystemExit("nightly: no summary " + args.summary)
+    summary = load(args.summary, None) if args.summary else None
     nights_path = os.path.join(args.results, "nights.csv")
     nights = rows_of(nights_path)
-    if not any(n["run"] == summary["run"] for n in nights):
+    if summary and not any(n["run"] == summary["run"] for n in nights):
         nights.append({"date": summary["run"][:10], "commit": summary["commit"], "version": summary["version"],
                        "run": summary["run"]})
         with open(nights_path, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=["date", "commit", "version", "run"])
             writer.writeheader()
             writer.writerows(nights)
-    tests = {t: f for t, f in tests_of(args.results).items() if f.startswith("series/{}/".format(summary["machine"]))}
+    machine = "series/{}/".format(summary["machine"]) if summary else "series/"
+    tests = {t: f for t, f in tests_of(args.results).items() if f.startswith(machine)}
     changes = load(os.path.join(args.results, "changes.json"), [])
     found = args.date
     night_commits = {n["commit"] for n in nights}
@@ -236,16 +246,20 @@ def analyze(args):
                 change["status"] = "regression"
             else:
                 change["status"] = "history"
-            change["id"] = "{}@{}".format(test, after[:9])
+            change["id"] = "{}@{}@{}".format(test, kind, after[:9])
             changes.append(change)
-    unstable(args, summary, {n["run"] for n in nights}, changes, found)
-    for change in changes:
-        if change["status"] == "regression" and change["found"] == found and "side_by_side" not in change:
+    # Unstable is judged up to the latest night, which a batch of backfills does not move.
+    if nights:
+        unstable(args, machine, nights[-1]["run"], {n["run"] for n in nights}, changes, found)
+    for change in changes if summary else []:
+        # Any regression not alerted yet without one: also those an analysis after backfills found.
+        if change["status"] == "regression" and "issue" not in change and "side_by_side" not in change:
             key = "{} {} {}".format(change["script"], change["before_commit"], change["commit"])
             plan.setdefault(key, {"script": change["script"], "before": change["before_commit"],
                                   "after": change["commit"], "changes": []})["changes"].append(change["id"])
     save(os.path.join(args.results, "changes.json"), changes)
-    save(args.plan, list(plan.values()))
+    if args.plan:
+        save(args.plan, list(plan.values()))
     print("{} new regressions to run side by side, in {} runs".format(
         sum(len(p["changes"]) for p in plan.values()), len(plan)))
 
@@ -433,8 +447,10 @@ def releases(clone):
     """Each release tag, placed at the commit of the clone's origin/main it was cut from.
 
     A release is tagged on that line or on a commit forked off it (the version change, a patch);
-    its fork point is the code the nights measured. A release whose fork point an earlier
-    release already has, such as a maintenance release of it, marks nothing new and is left out.
+    its fork point is the code the nights measured. A release whose fork point lies within a
+    day of an earlier release's marks no code of its own and is left out: a maintenance release
+    has its release's fork point, and a release cut right after another (1.1.0.Beta3, two
+    commits after Beta2) has hardly moved from it.
     origin/main, not HEAD: the job leaves the clone at whatever commit it measured last, a
     backfill's included.
     """
@@ -447,15 +463,32 @@ def releases(clone):
         if m:
             commit, time = git("show", "-s", "--format=%H %cI", tag + "^{commit}").split()
             tags.append((time, m.group(1), commit))
-    out, bases = [], set()
-    for tagged, version, commit in sorted(tags, key=lambda t: instant(t[0])):
+    placed = []
+    for tagged, version, commit in tags:
         # No merge base: a tag of unrelated history.
         base = subprocess.run(["git", "-C", clone, "merge-base", commit, "origin/main"], capture_output=True, text=True).stdout.strip()
-        if not base or base in bases:
+        if base:
+            placed.append((instant(git("show", "-s", "--format=%cI", base)), instant(tagged), version, commit, base))
+    out = []
+    # By fork point, then tag: of two releases cut within a day, the first cut is kept.
+    for _, _, version, commit, base in sorted(placed):
+        time = git("show", "-s", "--format=%cI", base)
+        if any(abs((instant(time) - instant(r["time"])).total_seconds()) < 86400 for r in out):
             continue
-        bases.add(base)
-        out.append({"version": version, "commit": commit, "base": base, "time": git("show", "-s", "--format=%cI", base)})
+        out.append({"version": version, "commit": commit, "base": base, "time": time})
     return out
+
+
+# The oldest release the benchmarks build against (src/compat).
+FIRST_RELEASE = "1.0.0.Final"
+
+
+def release_versions(args):
+    versions = [r["version"] for r in releases(args.clone)]
+    if FIRST_RELEASE not in versions:
+        raise SystemExit("nightly: {} is not among the releases of {}: {}".format(FIRST_RELEASE, args.clone, versions))
+    for version in versions[versions.index(FIRST_RELEASE):]:
+        print(version)
 
 
 def run_times(progress):
@@ -688,8 +721,10 @@ def main():
     p = sub.add_parser("analyze")
     p.add_argument("results")
     p.add_argument("--date", required=True)
-    p.add_argument("--summary", required=True)
-    p.add_argument("--plan", required=True)
+    p.add_argument("--summary")
+    p.add_argument("--plan")
+    p = sub.add_parser("releases")
+    p.add_argument("clone")
     p = sub.add_parser("plan")
     p.add_argument("file")
     p.add_argument("n")
@@ -724,7 +759,7 @@ def main():
     state.add_argument("--failing", metavar="REASON")
     state.add_argument("--ok", action="store_true")
     args = parser.parse_args()
-    {"analyze": analyze, "plan": plan_field, "side-by-side": side_by_side, "report": report, "page": page,
+    {"analyze": analyze, "releases": release_versions, "plan": plan_field, "side-by-side": side_by_side, "report": report, "page": page,
      "issues": issues, "mute": mute, "health": health}[args.command](args)
 
 
