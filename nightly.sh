@@ -285,7 +285,7 @@ for (( i = 0; i < n; i++ )); do
 done
 
 ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --summary "$SUMMARY" --out "$RUN/night" \
-    && python3 charts/nightly.py page "$RESULTS" ) >> "$LOG" 2>&1
+    && python3 charts/nightly.py page "$RESULTS" --hardwood "$HW" ) >> "$LOG" 2>&1
 publish "Nightly $DATE: $VERSION"
 if [ -n "$ALERT" ] && [ -n "$PUSH" ] && [ -f "$ISSUES_TOKEN" ]; then
   ( cd "$BENCH" && python3 charts/nightly.py issues "$RESULTS" --repo hardwood-hq/hardwood --token-file "$ISSUES_TOKEN" ) 2>&1 | tee -a "$LOG"
@@ -308,7 +308,7 @@ while [ -s "$QUEUE" ] && (( $(minutes) < DEADLINE_MIN )); do
        break ;;
     *) log "backfill $v recorded nothing"; continue ;;
   esac
-  ( cd "$BENCH" && python3 charts/nightly.py page "$RESULTS" ) >> "$LOG" 2>&1
+  ( cd "$BENCH" && python3 charts/nightly.py page "$RESULTS" --hardwood "$HW" ) >> "$LOG" 2>&1
   publish "Backfill $v (${scripts:-all})"
 done
 log "done in $(minutes) min"
