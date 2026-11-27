@@ -18,7 +18,8 @@ Usage: ./nightly.sh [options]
                     exit; queued items run after the night's own work while time remains,
                     and record no contender whose series already holds a settled row of the commit
   --backfill        work through the backfill queue only, without the deadline, and without
-                    measuring the night's commit
+                    measuring the night's commit; the change points are analysed once the
+                    queue is done
   --no-alert        record, analyse and run side by side, but open no issue: neither for a
                     regression nor for a failing night
   --no-push         commit to the results checkout, but push nothing
@@ -267,17 +268,16 @@ esac
 SUMMARY="$RUN/night.summary.json"
 
 # When a contender's epoch starts tonight, its series gets comparison points under the new
-# definition: the last release and the commit measured the night before.
-python3 - "$SUMMARY" "$RESULTS/nights.csv" "$HW" >> "$QUEUE" <<'PY'
-import csv, json, os, subprocess, sys
-summary, nights, hw = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3]
+# definition: every release the history page marks, so that each series holds every release,
+# and the commit measured the night before.
+RELEASES="$(cd "$BENCH" && python3 charts/nightly.py releases "$HW" 2>> "$LOG")" \
+  || log "the releases could not be listed: a new series gets only the previous night's commit"
+python3 - "$SUMMARY" "$RESULTS/nights.csv" "$RELEASES" >> "$QUEUE" <<'PY'
+import csv, json, os, sys
+summary, nights, releases = json.load(open(sys.argv[1])), sys.argv[2], sys.argv[3].split()
 scripts = sorted({c["script"] for c in summary["contenders"] if c["new"]})
 if scripts:
-    # The highest release by version: a release branch's tags are not reachable from main.
-    tags = subprocess.run(["git", "-C", hw, "tag", "-l", "v[0-9]*", "--sort=-v:refname"],
-                          capture_output=True, text=True).stdout.split()
-    tag = tags[0] if tags else ""
-    refs = [tag[1:]] if tag else []
+    refs = list(releases)
     if os.path.exists(nights):
         earlier = [n["commit"] for n in csv.DictReader(open(nights)) if n["run"] != summary["run"]]
         refs += earlier[-1:]
@@ -354,5 +354,22 @@ while [ -s "$QUEUE" ] && (( $(minutes) < DEADLINE_MIN )); do
   esac
   ( cd "$BENCH" && python3 charts/nightly.py page "$RESULTS" --hardwood "$HW" ) >> "$LOG" 2>&1
   publish "Backfill $v (${scripts:-all})"
+  backfilled=1
 done
+
+# Change points once a batch of backfills is in: once, not after each, since Otava fits what
+# rows there are, and a series half-way through a batch would show steps the rest fills in.
+if [ -n "${backfilled:-}" ]; then
+  ( cd "$BENCH" && python3 charts/nightly.py analyze "$RESULTS" --date "$DATE" ) 2>&1 | tee -a "$LOG"
+  if (( PIPESTATUS[0] != 0 )); then
+    log "analysis after the backfills failed"
+    [ -n "$BACKFILL" ] || health --failing "the analysis after its backfills failed."
+    log "done in $(minutes) min"
+    exit 1
+  else
+    [ -n "$ALERT" ] || ( cd "$BENCH" && python3 charts/nightly.py mute "$RESULTS" ) >> "$LOG" 2>&1
+    ( cd "$BENCH" && python3 charts/nightly.py page "$RESULTS" --hardwood "$HW" ) >> "$LOG" 2>&1
+    publish "Change points after the backfills"
+  fi
+fi
 log "done in $(minutes) min"

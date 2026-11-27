@@ -42,7 +42,8 @@ flowchart LR
 | `charts/nightly.py` | Otava's change points, the series, side-by-side runs | `changes.json`, `nights.csv`, `reports/`, `history.json` and `index.html`, an issue on Hardwood per new regression, and one while nights fail |
 
 `nightly.sh` drives all four once a night and works through a queue of backfills after; a
-backfill runs the first two and regenerates the page, without analysing.
+backfill runs the first two and regenerates the page, and a batch of backfills is analysed once
+it is done.
 
 ## Runs, series and epochs
 
@@ -286,9 +287,16 @@ night, history and improvements included.
 **The queue.** `~/nightly/queue` holds backfills, one per line: a release version or a
 commit, and the scripts to run. After the night's own work the job takes items from it while
 it is within its window; an item that starts runs to completion, and the rest wait for the
-next night. When a contender's epoch or machine epoch starts, the night queues the highest
-release and the previous night's commit for the scripts concerned, so the new series has
-comparison points. `--backfill` works through the queue at once, without measuring a night.
+next night. When a contender's epoch or machine epoch starts, the night queues every release
+the history page marks, from 1.0.0.Final, the oldest the benchmarks build against, and the
+previous night's commit for the scripts concerned, so that every
+series holds every release. `--backfill` works through the queue at once, without measuring a
+night. Once a batch of backfills is in, the job runs the analysis over every machine epoch:
+once, not after each backfill, since Otava fits whatever rows a series has, and a series half
+way through a batch shows steps the rest of it fills in. It records no night and runs nothing
+side by side; a regression it finds at a night's commit (backfilled rows can move Otava's fit)
+is run side by side by the next night, which takes every regression not alerted yet that has no
+side-by-side run, and its failure fails the run.
 A backfill records a contender only where its series holds no settled row of the commit yet: a
 script backfilled for one new contender runs its other contenders too, and they would otherwise
 get a second row for a commit they already hold. A commit whose row did not settle can be
@@ -302,7 +310,7 @@ run, and the change points found that night. `index.html` with `history.json` ch
 series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
 peak and caller share against commit time, unsettled rows hollow and off the line, an unstable contender marked, each run's
 forks as a whisker on wall time, change points marked, releases marked at the commit of the
-measured line each was cut from, whether or not they were measured, and the newest epochs each in
+measured line each was cut from, whether or not they were measured (one whose fork point lies within a day of an earlier release's, such as a maintenance release, marks nothing of its own and is left out), and the newest epochs each in
 its own colour, superseded ones faded. The charts open on the last 60 days of commits, where the nights are, and show every row on
 request. Dragging across a chart narrows every chart to that time range,
 each y axis fitted to the values in it. A sticky bar holds the machine and the zoom; a panel above
