@@ -266,7 +266,8 @@ time against wall time, marked from 0.8, where wall time misses decode changes),
 run, and the change points found or decided. `index.html` with `history.json` charts every
 series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
 peak and caller share against commit time, unsettled rows hollow and off the line, each run's
-forks as a whisker on wall time, releases and change points marked, and each epoch in its own
+forks as a whisker on wall time, change points marked, releases marked at the commit of the
+measured line each was cut from, whether or not they were measured, and each epoch in its own
 colour, superseded ones faded. Dragging across a chart narrows every chart to that time range,
 each y axis fitted to the values in it.
 

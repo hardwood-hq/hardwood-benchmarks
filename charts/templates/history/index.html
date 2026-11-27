@@ -59,6 +59,7 @@
   .row.focus .epochs span:not(.on) { opacity: 0.4; }
 
   svg { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  svg line.marker { cursor: default; }
   svg g.forks { stroke-opacity: 0.55; }
   svg rect.band { fill: var(--muted); fill-opacity: 0.22; stroke: var(--muted); stroke-opacity: 0.5; pointer-events: none; }
   #zoom { position: fixed; z-index: 9; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; align-items: center;
@@ -85,7 +86,7 @@
   <p class="legend">
     <span>● settled</span><span>○ not settled or bimodal</span><span>┿ forks' means, slowest to fastest (wall)</span>
     <span style="color:var(--regression)">┃ confirmed regression</span><span style="color:var(--improvement)">┃ improvement</span>
-    <span style="color:var(--history)">┃ earlier change point</span><span style="color:var(--release)">┆ release</span>
+    <span style="color:var(--history)">┃ unconfirmed change point</span><span style="color:var(--release)">┆ release</span>
   </p>
   <p class="note">Wall, CPU and allocated are per operation, lower is better. Heap after GC is the largest heap in use right after a collection in an iteration: live data plus objects promoted and not yet reclaimed, so it moves with when collections fall, by as much as 40 % between runs of one commit where an iteration sees only one or two; a step in it means more survives a young collection only where GC time moves with it. It is charted, not analysed for change points, and no change point is marked on it. The caller share is the CPU time of the thread calling the benchmark against wall time: near 1, that thread never waits on Hardwood, and wall time misses decode changes that CPU time still shows. Rows are placed at the measured commit's time. A new epoch starts when what the contender measures changes; each epoch of a contender has its own colour, the current one blue and superseded ones faded. Hovering a point highlights its epoch in all of the contender's charts and shows the point's details. Dragging across a chart zooms every chart to that time range, each y axis fitted to the values in it.
     Machine: <select id="machine"></select></p>
@@ -198,17 +199,34 @@ function chart(epochs, metric, unit, span, releases, changes) {
   svg.append(defs);
   const plot = el("g", {"clip-path": `url(#${clip})`});
   svg.append(plot);
-  for (const [version, t] of releases) {
-    if (!inside(t)) continue;
-    plot.append(el("line", {x1: x(t), x2: x(t), y1: T, y2: H - B, stroke: "var(--release)", "stroke-dasharray": "2 3"}));
-    if (metric === "wall_ms") plot.append(el("text", {x: x(t) + 2, y: T - 3}, version));
+  // Labels go on the wall chart only, newest first, each skipped where it would overlap the one to its right.
+  // Releases within a unit of each other share one marker and label.
+  const marks = [];
+  for (const release of [...releases].filter(r => inside(r.t)).sort((a, b) => b.t - a.t)) {
+    const rx = x(release.t), last = marks[marks.length - 1];
+    if (last && last.x - rx < 1) last.releases.unshift(release); else marks.push({x: rx, releases: [release]});
+  }
+  let room = W - R;
+  for (const mark of marks) {
+    const rx = mark.x;
+    plot.append(el("line", {x1: rx, x2: rx, y1: T, y2: H - B, stroke: "var(--release)", "stroke-dasharray": "2 3"}));
+    plot.append(marker(rx, mark.releases.flatMap(r => r.title.split("\n"))));
+    if (metric !== "wall_ms") continue;
+    const label = shortVersions(mark.releases.map(r => r.version)), width = label.length * 5.2;
+    const end = rx + 2 + width > W - R;
+    const left = end ? rx - 2 - width : rx + 2;
+    if (left < L - 5 || left + width > room) continue;
+    plot.append(el("text", end ? {x: rx - 2, y: T - 3, "text-anchor": "end"} : {x: rx + 2, y: T - 3}, label));
+    room = left - 6;
   }
   for (const c of changes) {
     if (!inside(c.t)) continue;
     const color = c.status === "confirmed" ? "var(--regression)" : c.kind === "improvement" ? "var(--improvement)" : "var(--history)";
-    const line = el("line", {x1: x(c.t), x2: x(c.t), y1: T, y2: H - B, stroke: color, "stroke-width": 1.5});
-    line.append(el("title", {}, `${c.status}: ${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`));
-    if (c.issue) { const a = el("a", {href: c.issue}); a.append(line); plot.append(a); } else plot.append(line);
+    plot.append(el("line", {x1: x(c.t), x2: x(c.t), y1: T, y2: H - B, stroke: color, "stroke-width": 1.5}));
+    const moved = Object.entries(c.metrics).map(([m, v]) => `${m} ${v.percent > 0 ? "+" : ""}${v.percent.toFixed(1)} %`);
+    const hit = marker(x(c.t), [`${c.status === "confirmed" ? "confirmed regression" : c.kind === "improvement" ? "improvement" : c.status + " change point"}`,
+      `${c.before_commit.slice(0, 9)} → ${c.commit.slice(0, 9)}`, ...moved, ...(c.issue ? ["click to open " + c.issue] : [])]);
+    if (c.issue) { const a = el("a", {href: c.issue}); a.append(hit); plot.append(a); } else plot.append(hit);
   }
   // Superseded epochs first, so the current one is drawn on top.
   const order = [...epochs].sort((a, b) => b.rank - a.rank);
@@ -249,6 +267,19 @@ function forks(r, cx, y, color) {
   g.append(el("line", {x1: cx, x2: cx, y1: Math.min(...ys), y2: Math.max(...ys), "stroke-width": 0.8}));
   for (const fy of ys) g.append(el("line", {x1: cx - 2.5, x2: cx + 2.5, y1: fy, y2: fy, "stroke-width": 1}));
   return g;
+}
+
+// "1.1.0.CR1" as "1.1 CR1", "1.0.1.Final" as "1.0.1 Final".
+function shortVersion(version) {
+  const m = version.match(/^(\d+)\.(\d+)\.(\d+)\.(.+)$/);
+  return m ? `${m[1]}.${m[2]}${m[3] === "0" ? "" : "." + m[3]} ${m[4]}` : version;
+}
+
+// Versions of one line share its prefix: "1.1 Beta2/Beta3".
+function shortVersions(versions) {
+  const parts = versions.map(v => shortVersion(v).split(" "));
+  return parts.every(p => p.length === 2 && p[0] === parts[0][0])
+    ? parts[0][0] + " " + parts.map(p => p[1]).join("/") : parts.map(p => p.join(" ")).join("/");
 }
 
 function day(t) {
@@ -321,6 +352,20 @@ function enter(ev, point) {
   tip.style.display = "block";
   place(ev);
   Promise.all(point.e.siblings.map(epochMeta)).then(() => { if (hovered === point) { fillTip(point); place(ev); } });
+}
+
+// A marker's hover area: wider than its line, with its lines of text in the tooltip.
+function marker(mx, lines) {
+  const hit = el("line", {x1: mx, x2: mx, y1: T - 10, y2: H - B, stroke: "transparent", "stroke-width": 7, class: "marker"});
+  hit.addEventListener("pointerenter", ev => {
+    if (drag) return;
+    tip.replaceChildren(...lines.map((l, i) => div(i ? "dim" : "", l)));
+    tip.style.display = "block";
+    place(ev);
+  });
+  hit.addEventListener("pointermove", place);
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+  return hit;
 }
 
 function leave() {
@@ -422,7 +467,15 @@ async function render(history, machine) {
   view = null;
   drawn.length = 0;
   document.getElementById("zoom").hidden = true;
-  const releases = [...new Map(all.filter(r => !r.version.includes("SNAPSHOT")).map(r => [r.version, r.t])).entries()];
+  // Releases at the commits of main their tags were cut from, and any measured release the tags miss.
+  const tagged = new Map((history.releases || []).map(r => [r.version, {version: r.version, t: Date.parse(r.time),
+    title: `${r.version}\ncut from ${r.base.slice(0, 9)}, committed ${r.time.slice(0, 10)}`}]));
+  for (const r of all) {
+    if (!r.version.includes("SNAPSHOT") && !tagged.has(r.version)) {
+      tagged.set(r.version, {version: r.version, t: r.t, title: `${r.version}\n${r.commit.slice(0, 9)}`});
+    }
+  }
+  const releases = [...tagged.values()];
   const changes = history.changes.filter(c => c.machine === machine);
   for (const c of changes) {
     const s = series.find(s => s.file === c.file);

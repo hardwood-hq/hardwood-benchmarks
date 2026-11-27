@@ -16,8 +16,9 @@
   nightly.py report RESULTS --date DATE [--summary FILE --out DIR] [--status TEXT]
       Writes reports/DATE.md and reports/latest.md: what ran, against the median of each
       series' last nights, and the change points found, or why the night recorded nothing.
-  nightly.py page RESULTS
-      Writes history.json, which index.html, the history page, reads.
+  nightly.py page RESULTS [--hardwood CLONE]
+      Writes history.json, which index.html, the history page, reads; with a Hardwood clone, it
+      lists the clone's release tags, so the page marks a release whether or not it was measured.
   nightly.py issues RESULTS --repo OWNER/NAME --token-file FILE
       Opens an issue for each confirmed regression that has none, and records its URL.
 
@@ -32,6 +33,7 @@ import datetime
 import glob
 import json
 import os
+import re
 import shutil
 import statistics
 import subprocess
@@ -335,6 +337,38 @@ def report(args):
     print("report: reports/{}.md".format(args.date))
 
 
+RELEASE_TAG = re.compile(r"v(\d+\.\d+\.\d+\.(?:Alpha\d+|Beta\d+|CR\d+|Final))")
+
+
+def releases(clone):
+    """Each release tag, placed at the commit of the clone's origin/main it was cut from.
+
+    A release is tagged on that line or on a commit forked off it (the version change, a patch);
+    its fork point is the code the nights measured. A release whose fork point an earlier
+    release already has, such as a maintenance release of it, marks nothing new and is left out.
+    origin/main, not HEAD: the job leaves the clone at whatever commit it measured last, a
+    backfill's included.
+    """
+    def git(*argv):
+        return subprocess.run(["git", "-C", clone, *argv], check=True, capture_output=True, text=True).stdout.strip()
+
+    tags = []
+    for tag in git("tag", "--list", "v*").split():
+        m = RELEASE_TAG.fullmatch(tag)
+        if m:
+            commit, time = git("show", "-s", "--format=%H %cI", tag + "^{commit}").split()
+            tags.append((time, m.group(1), commit))
+    out, bases = [], set()
+    for tagged, version, commit in sorted(tags, key=lambda t: instant(t[0])):
+        # No merge base: a tag of unrelated history.
+        base = subprocess.run(["git", "-C", clone, "merge-base", commit, "origin/main"], capture_output=True, text=True).stdout.strip()
+        if not base or base in bases:
+            continue
+        bases.add(base)
+        out.append({"version": version, "commit": commit, "base": base, "time": git("show", "-s", "--format=%cI", base)})
+    return out
+
+
 def page(args):
     series = []
     for path in sorted(glob.glob(os.path.join(args.results, "series", "*", "*", "*.csv"))):
@@ -360,7 +394,8 @@ def page(args):
     changes = [c for c in load(os.path.join(args.results, "changes.json"), []) if c["status"] != "refuted"]
     save(os.path.join(args.results, "history.json"),
          {"generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-          "series": series, "machines": machines, "changes": changes})
+          "series": series, "machines": machines, "changes": changes,
+          "releases": releases(args.hardwood) if args.hardwood else []})
     shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "history", "index.html"),
                 os.path.join(args.results, "index.html"))
     print("page: {} series".format(len(series)))
@@ -436,6 +471,7 @@ def main():
     p.add_argument("--status")
     p = sub.add_parser("page")
     p.add_argument("results")
+    p.add_argument("--hardwood")
     p = sub.add_parser("issues")
     p.add_argument("results")
     p.add_argument("--repo", required=True)
