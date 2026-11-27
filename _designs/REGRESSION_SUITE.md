@@ -58,8 +58,21 @@ A series is identified by its contender, its **epoch** and its **machine epoch**
 either:
 
 - A contender's epoch hashes what it measures: its script's preset, the iteration counts
-  every preset shares, its benchmark method's source, its parameters and the files it reads,
-  each by name and size to three significant figures. A benchmark declares those files in its
+  every preset shares, its benchmark method's source and the benchmarks' own code the method
+  reaches, its parameters and the files it reads, each by name and size to three significant
+  figures. The reached code (`charts/benchcode.py`) is every method the method calls by name,
+  in its own class or another (`Scans.hardwoodFiltered(...)`); every field and constant it
+  uses, with each assignment to it, `@Setup` methods' included; the types nested in a class it
+  names; and the whole source of any other benchmarks class it names otherwise; each followed
+  in turn and hashed without comments, whitespace or imports. A change to a helper therefore
+  starts the epochs of the contenders that reach it, and setup or checking code reached through
+  a field counts as reached, which errs towards a new epoch. Java is read with patterns rather
+  than parsed, so a reference the patterns miss leaves an epoch as it would be without it.
+  Left out are the version adapters under `src/compat`, which one a run compiles depending on
+  the Hardwood version, so that they differ between the rows of one series by design, and the
+  classes that make fixtures (`*Generator`, `*Downloader`) or write reports (`BenchReport`),
+  since the fixture's name and size stand for the data. Each run's manifest records the
+  benchmarks commit it ran, `+` marking local changes. A benchmark declares those files in its
   meta sidecar (`BenchReport.fixture`), once for all its contenders and again for each
   contender that reads other files, and recording fails for a contender with none declared.
   A contender whose input is generated in memory declares none. The size is
