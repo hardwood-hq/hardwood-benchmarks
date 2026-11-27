@@ -192,7 +192,7 @@ const METRICS = [["wall_ms", "Wall", "ms"], ["cpu_ms", "CPU", "ms"], ["alloc_byt
 const W = 280, H = 130, L = 46, R = 6, T = 14, B = 18;
 // Epoch colours by recency within a contender: the current epoch first. Older epochs past the last slot share grey.
 const EPOCH_COLORS = ["var(--line)", "var(--epoch-2)", "var(--epoch-3)", "var(--epoch-4)"];
-const EPOCH_KEYS = ["script", "preset", "common", "params", "fixture", "method"];
+const EPOCH_KEYS = ["script", "preset", "common", "params", "fixture", "method", "code"];
 
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -257,7 +257,13 @@ function differences(meta, other) {
   for (const k of EPOCH_KEYS) {
     const a = show(meta[k] ?? ""), b = show(other[k] ?? "");
     if (a === b) continue;
-    out.push(k === "method" ? "method source differs" : `${k}: ${a || "–"} → ${b || "–"}`);
+    if (k === "code") {
+      const x = meta.code || {}, y = other.code || {};
+      const changed = [...new Set([...Object.keys(x), ...Object.keys(y)])].filter(n => x[n] !== y[n]).sort();
+      out.push(`code it reaches differs: ${changed.join(", ")}`);
+    } else {
+      out.push(k === "method" ? "method source differs" : `${k}: ${a || "–"} → ${b || "–"}`);
+    }
   }
   return out;
 }

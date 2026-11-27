@@ -23,7 +23,8 @@ per contender its benchmark, script, series file and whether its series is new.
 otava.yaml is written again from every series file, one Otava test per file.
 
 A contender's epoch hashes what it measures: its script's preset and the iteration counts
-every preset shares, its benchmark method's source, its parameters and the files it reads,
+every preset shares, its benchmark method's source and a digest of each piece of the
+benchmarks' own code the method reaches (benchcode.py), its parameters and the files it reads,
 each by name and size to three significant figures, as the benchmark declares them in its
 meta sidecar (`fixture`, or `fixture.<contender>` for a contender that reads other files). A machine epoch hashes the manifest's description of the
 machine and JVM, MACHINE_KEYS, the kernel left out. A new hash of either starts a new series,
@@ -47,6 +48,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import benchcode  # noqa: E402
 import settling  # noqa: E402
 
 SCHEMA = 1
@@ -188,6 +190,7 @@ def summarise(out, version):
             metas.setdefault(key[0], meta(run, key[0]))
 
     common = common_preset()
+    sources = benchcode.Sources(*benchcode.working_tree())
     contenders = []
     for (cls, contender), rows in sorted(records.items()):
         method = contender.split("[", 1)[0]
@@ -196,7 +199,7 @@ def summarise(out, version):
         fixture = fixture_of(metas[cls], cls, contender)
         definition = {"script": script, "preset": shell_value("run-{}.sh".format(script), "BENCH_REGRESSION_PRESET"),
                       "common": common, "method": method_source(cls, method), "params": params,
-                      "fixture": fixture}
+                      "fixture": fixture, "code": benchcode.code_of(sources, cls, method)}
         by_fork = {}
         for r in rows:
             by_fork.setdefault(r["fork"], []).append(r["score"])

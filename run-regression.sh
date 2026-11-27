@@ -138,9 +138,16 @@ def first(path, key):
     return None
 
 java = subprocess.run(["java", "-version"], capture_output=True, text=True).stderr.strip().splitlines()
+# The benchmarks' own commit, "+" when the checkout has changes: the code each contender ran.
+head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+if not head:
+    sys.exit("run-regression: not in a git checkout of hardwood-benchmarks; the manifest records its commit")
+dirty = subprocess.run(["git", "status", "--porcelain", "--", "src", "charts", "*.sh", "pom.xml"],
+                       capture_output=True, text=True).stdout.strip()
 cpu = "/sys/devices/system/cpu/cpu0/cpufreq/"
 json.dump({
     "started": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    "benchmarks": head + ("+" if dirty else ""),
     "profile": sys.argv[2],
     "rounds": int(sys.argv[3]),
     "host": platform.node(),
@@ -156,6 +163,7 @@ json.dump({
     "load": read("/proc/loadavg"),
 }, open(sys.argv[1], "w"), indent=2)
 PY
+[ -s "$OUT/manifest.json" ] || { echo "run-regression: could not write $OUT/manifest.json" >&2; exit 1; }
 progress="$OUT/progress.log"
 : > "$progress"
 : > "$OUT/files.txt"
