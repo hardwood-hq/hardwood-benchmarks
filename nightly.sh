@@ -139,7 +139,8 @@ publish() {
 # A night that records nothing still says why, in its report.
 skip() {
   log "skipped: $1"
-  ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --status "Nothing recorded: $1." ) >> "$LOG" 2>&1
+  ( cd "$BENCH" && python3 charts/nightly.py report "$RESULTS" --date "$DATE" --status "Nothing recorded: $1." \
+    && python3 charts/nightly.py page "$RESULTS" $( [ -d "$HW/.git" ] && echo --hardwood "$HW" ) ) >> "$LOG" 2>&1
   publish "Nightly $DATE: nothing recorded"
   exit 0
 }

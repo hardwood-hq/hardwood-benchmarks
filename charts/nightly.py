@@ -369,6 +369,64 @@ def releases(clone):
     return out
 
 
+def run_times(progress):
+    """A run's duration and, per script in the order it ran, the seconds its gate and its measurement took
+    and whether its gate failed, from the run's progress.log: "gate S: passed against V  Ns" (absent or
+    without seconds when a gate passed before for the same sources), "gate S: FAILED against V  Ns, see L",
+    "round 1/1  V  S  exit X  Ns" and "total Ns"."""
+    if not os.path.exists(progress):
+        return {}
+    scripts, out = {}, {}
+    with open(progress) as f:
+        for line in f:
+            words = line.split()
+            if not words:
+                continue
+            if words[0] == "gate" and len(words) > 1:
+                entry = scripts.setdefault(words[1].rstrip(":"), {})
+                seconds = [int(w.rstrip(",")[:-1]) for w in words[2:] if re.fullmatch(r"\d+s,?", w)]
+                if seconds:
+                    entry["gate_s"] = seconds[0]
+                if words[2:3] == ["FAILED"] or words[2:3] == ["FAILED,"]:
+                    entry["gate_failed"] = True
+            elif words[0] == "round" and len(words) >= 7:
+                entry = scripts.setdefault(words[3], {})
+                entry["measure_s"] = entry.get("measure_s", 0) + int(words[-1].rstrip("s"))
+            elif words[0] == "total":
+                out["minutes"] = round(int(words[1].rstrip("s")) / 60)
+    out["scripts"] = [dict(script=k, gate_s=v.get("gate_s", 0), measure_s=v.get("measure_s", 0),
+                           **({"gate_failed": True} if v.get("gate_failed") else {})) for k, v in scripts.items()]
+    return out
+
+
+def night_list(results, changes):
+    """Each night that wrote a report: what it measured and in how long, or why it recorded nothing,
+    and how many change points of each status it found."""
+    measured = {n["date"]: n for n in rows_of(os.path.join(results, "nights.csv"))}
+    out = []
+    for path in sorted(glob.glob(os.path.join(results, "reports", "????-??-??.md"))):
+        date = os.path.basename(path)[:-3]
+        night = {"date": date, "report": os.path.relpath(path, results)}
+        n = measured.get(date)
+        if n:
+            night.update(version=n["version"], commit=n["commit"], run=n["run"])
+            # A run's directory is named after its start without the time's colons, then its version.
+            run_dir = os.path.join(results, "runs", "{}-{}".format(n["run"].replace(":", ""), n["version"]))
+            night.update(run_times(os.path.join(run_dir, "progress.log")))
+        else:
+            # The status line report() writes under the title of a night that recorded nothing.
+            with open(path) as f:
+                status = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+            night["status"] = status[0] if status else "nothing recorded"
+        found = {}
+        for c in changes:
+            if c["found"] == date:
+                found[c["status"]] = found.get(c["status"], 0) + 1
+        night["changes"] = found
+        out.append(night)
+    return out
+
+
 def page(args):
     series = []
     for path in sorted(glob.glob(os.path.join(args.results, "series", "*", "*", "*.csv"))):
@@ -395,7 +453,8 @@ def page(args):
     save(os.path.join(args.results, "history.json"),
          {"generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
           "series": series, "machines": machines, "changes": changes,
-          "releases": releases(args.hardwood) if args.hardwood else []})
+          "releases": releases(args.hardwood) if args.hardwood else [],
+          "nights": night_list(args.results, load(os.path.join(args.results, "changes.json"), []))})
     shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "history", "index.html"),
                 os.path.join(args.results, "index.html"))
     print("page: {} series".format(len(series)))

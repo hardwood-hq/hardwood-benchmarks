@@ -267,9 +267,13 @@ run, and the change points found or decided. `index.html` with `history.json` ch
 series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
 peak and caller share against commit time, unsettled rows hollow and off the line, each run's
 forks as a whisker on wall time, change points marked, releases marked at the commit of the
-measured line each was cut from, whether or not they were measured, and each epoch in its own
-colour, superseded ones faded. Dragging across a chart narrows every chart to that time range,
-each y axis fitted to the values in it.
+measured line each was cut from, whether or not they were measured, and the newest epochs each in
+its own colour, superseded ones faded. Dragging across a chart narrows every chart to that time range,
+each y axis fitted to the values in it. A sticky bar holds the machine and the zoom; a panel above
+the charts shows the latest nightly run: what it measured and in how long, or why it recorded nothing,
+the change points it found, and a bar per nightly run of its measuring and gate time, per script on hover (backfills, whose time depends
+on the version and the scripts they ran, are left out); a point links to the
+report of the night that measured it, or to the tables of any other run, both as GitHub renders them.
 
 **Credentials.** Pushing uses a token for the results repository alone, and opening issues one
 for issues on Hardwood alone, each in its own file under `~/nightly`, since a fine-grained
