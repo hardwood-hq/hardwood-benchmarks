@@ -119,8 +119,35 @@ It writes to `target/regression/`:
 
 `--only`, `--rounds` and `--fail-on-regression` are described in `./run-regression.sh --help`.
 [The regression suite](_designs/REGRESSION_SUITE.md) describes the presets, what a fork
-records, the settled and bimodal verdicts, the gates, and the nightly job on the N300, whose
-results the [history page](https://hardwood.dev/hardwood-benchmark-results/) charts.
+records, the settled and bimodal verdicts, the gates, and the nightly job, whose results the
+[history page](https://hardwood.dev/hardwood-benchmark-results/) charts.
+
+### Running the nightly job on a new machine
+
+The machine should be dedicated to the job while it runs, from 03:00 for about three hours: any JVM outside
+the job voids the night.
+
+1. Install a JDK 25 that a login shell finds, Python 3.10 or later, git and Maven's
+   prerequisites. The S3 scripts download s3proxy themselves.
+2. Name the machine: lower-case letters, digits and dashes, in
+   `/etc/hardwood-benchmarks/machine`. The name is the machine's directory in
+   [hardwood-benchmark-results](https://github.com/hardwood-hq/hardwood-benchmark-results) and
+   names its issue while its nights fail; every regression run on the machine records it.
+3. Optionally install `profiling-setup` (cloud-boxes' `bench_host` role) and let the job's user
+   run it with `sudo -n`, to pin the clock. Without it, the job measures on the clock as it is;
+   set the governor to `performance`, and turn boost off where the CPU allows.
+4. Put the job's two fine-grained GitHub tokens under `~/nightly`, mode 600: `token-results`,
+   Contents read and write on hardwood-benchmark-results only, and `token-issues`, Issues read
+   and write on hardwood only.
+5. Run it once by hand without pushing or alerting, about an hour:
+   `./nightly.sh --no-push --no-alert`, then read `~/nightly/runs/<date>-<time>/nightly.log`.
+6. Start it from a timer at 03:00, as a oneshot service with a login shell (cloud-boxes'
+   `hardwood_nightly` role installs both, and writes the name). Keep `--no-alert` until a
+   week of nights shows the noise.
+
+Its first night finds no history, so it queues a backfill of every release from 1.0.0.Final,
+which runs after the night's own work while its window lasts, over several nights;
+`./nightly.sh --backfill` works through it at once.
 
 ## Publication runs
 
@@ -179,7 +206,7 @@ Each documents its options in `--help`.
 | `charts/make-version-chart.py` | charts every Hardwood contender across any number of snapshots |
 | `charts/median-runs.py` | writes a snapshot of the per-contender medians of several runs |
 | `charts/record-results.py` | appends a version's run to a checkout of [hardwood-benchmark-results](https://github.com/hardwood-hq/hardwood-benchmark-results) |
-| `charts/against-history.py` | compares an N300 run with the latest nightly results |
+| `charts/against-history.py` | compares a run with the latest nightly results of its machine |
 | `run-s3-fetch-check.sh BASE HEAD` | checks a change to Hardwood's fetching on the S3 benchmark: exact request and byte counts, optionally timed |
 | `s3-env.sh start\|stop\|status` | runs the emulated S3 endpoint |
-| `nightly.sh` | the N300's nightly regression job |
+| `nightly.sh` | the nightly regression job |

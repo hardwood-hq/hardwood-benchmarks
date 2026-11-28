@@ -3,9 +3,10 @@
 
 Usage: record-results.py OUT VERSION --results DIR --hardwood-repo DIR [--summary FILE] [--backfill]
 
-OUT is run-regression.sh's output directory, VERSION the version it ran, DIR a checkout of
-hardwood-benchmark-results, and --hardwood-repo a Hardwood clone, where the commit a version
-was built from gives each row its time. Run from the benchmarks checkout that produced OUT.
+OUT is run-regression.sh's output directory, VERSION the version it ran, DIR the directory of
+the machine the run's manifest names in a checkout of hardwood-benchmark-results, and
+--hardwood-repo a Hardwood clone, where the commit a version was built from gives each row its
+time. Run from the benchmarks checkout that produced OUT.
 
 Per contender one row is added to series/<machine epoch>/<Benchmark>/<contender>@<epoch>.csv,
 or to its .unsettled.csv twin when settling.py calls it not settled or bimodal: the commit's
@@ -232,6 +233,8 @@ def main():
     rekey(args.results)
     summary = summarise(args.out, args.version)
     manifest, machine_epoch, runs = summary["manifest"], summary["machine_epoch"], summary["runs"]
+    if manifest.get("machine") != os.path.basename(os.path.abspath(args.results)):
+        raise SystemExit("record-results: the run is of machine {!r}, not of {}".format(manifest.get("machine"), args.results))
     machines = os.path.join(args.results, "machines")
     os.makedirs(machines, exist_ok=True)
     with open(os.path.join(machines, machine_epoch + ".json"), "w") as f:

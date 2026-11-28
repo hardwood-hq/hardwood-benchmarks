@@ -241,7 +241,7 @@ function div(cls, text) {
 // What an epoch measures, from epochs/<Benchmark>/<contender>/<epoch>.json; fetched once, on first hover.
 function epochMeta(e) {
   if (!e.meta) {
-    const path = ["epochs", e.benchmark, e.contender, e.epoch + ".json"].map(encodeURIComponent).join("/");
+    const path = [e.root, "epochs", e.benchmark, e.contender, e.epoch + ".json"].map(encodeURIComponent).join("/");
     e.meta = fetch(path).then(r => r.ok ? r.json() : null, () => null);
   }
   return e.meta;
@@ -393,7 +393,7 @@ let nightOfRun = new Map();
 function source(r) {
   const night = nightOfRun.get(r.run);
   if (night) return {href: RESULTS_REPO + night.report, label: `the ${night.date} report`};
-  return {href: `${RESULTS_REPO}runs/${encodeURIComponent(r.run.replace(/:/g, "") + "-" + r.version)}/tables.md`,
+  return {href: `${RESULTS_REPO}${shown.name}/runs/${encodeURIComponent(r.run.replace(/:/g, "") + "-" + r.version)}/tables.md`,
     label: `the tables of its ${r.run.slice(0, 10)} run`};
 }
 
@@ -759,16 +759,18 @@ function anchorOf(benchmark, contender) {
   return benchmark + "." + contender;
 }
 
-// The rendering of the machine on show; a jump to another machine's contender renders that one first.
-let shown = {history: null, machine: null, rendered: Promise.resolve()};
-function showMachine(history, machine) {
-  document.getElementById("machine").value = machine;
-  shown = {history, machine, rendered: render(history, machine)};
+// The rendering of the machine on show: its name, whose directory holds its history, and the
+// machine epoch charted. A jump to another machine epoch's contender renders that one first.
+let shown = {name: null, history: null, machine: null, rendered: Promise.resolve()};
+function showMachine(name, history, machine) {
+  document.getElementById("machine").value = name + "/" + machine;
+  shown = {name, history, machine, rendered: render(history, machine)};
+  lastNight(document.getElementById("night"), history.nights || []);
   return shown.rendered;
 }
 
 async function jump(f) {
-  if (f.machine && f.machine !== shown.machine && shown.history.machines[f.machine]) await showMachine(shown.history, f.machine);
+  if (f.machine && f.machine !== shown.machine && shown.history.machines[f.machine]) await showMachine(shown.name, shown.history, f.machine);
   await shown.rendered;
   const row = document.getElementById(anchorOf(f.benchmark, f.contender));
   if (!row) return;
@@ -867,25 +869,41 @@ async function render(history, machine) {
   showRange();
 }
 
-(async () => {
+// A machine's history, its paths made relative to the page: each machine's directory holds its own.
+async function historyOf(name) {
   // Revalidated on every load, as the series files are: each night rewrites them under the same names.
-  const history = await (await fetch("history.json", {cache: "no-cache"})).json();
-  const machines = Object.entries(history.machines);
+  const history = await (await fetch(encodeURIComponent(name) + "/history.json", {cache: "no-cache"})).json();
+  const under = path => path && name + "/" + path;
+  for (const s of history.series) Object.assign(s, {root: name, file: under(s.file), unsettled: under(s.unsettled)});
+  for (const c of history.changes) c.file = under(c.file);
+  for (const n of history.nights || []) n.report = under(n.report);
+  return history;
+}
+
+(async () => {
+  const names = await (await fetch("machines.json", {cache: "no-cache"})).json();
+  const histories = new Map(await Promise.all(names.map(async name => [name, await historyOf(name)])));
   const select = document.getElementById("machine");
-  for (const [id, m] of machines) {
-    const option = document.createElement("option");
-    option.value = id;
-    option.textContent = `${m.cpu.replace(/\((R|TM)\)/g, "").replace(/\s+/g, " ")} · ${(m.max_freq_khz / 1e6).toFixed(2)} GHz · JDK ${(m.java.match(/build ([^,)]+)/) || [, ""])[1]}`;
-    select.append(option);
+  for (const [name, history] of histories) {
+    for (const [id, m] of Object.entries(history.machines)) {
+      const option = document.createElement("option");
+      option.value = name + "/" + id;
+      option.textContent = `${name} · ${m.cpu.replace(/\((R|TM)\)/g, "").replace(/\s+/g, " ")} · ${(m.max_freq_khz / 1e6).toFixed(2)} GHz · JDK ${(m.java.match(/build ([^,)]+)/) || [, ""])[1]}`;
+      select.append(option);
+    }
   }
-  const nights = history.nights || [];
-  lastNight(document.getElementById("night"), nights);
-  select.addEventListener("change", () => showMachine(history, select.value));
-  if (machines.length) {
-    await showMachine(history, select.value);
+  const pick = value => {
+    const [name, machine] = value.split("/");
+    return showMachine(name, histories.get(name), machine);
+  };
+  select.addEventListener("change", () => pick(select.value));
+  if (select.options.length) {
+    await pick(select.value);
     // A link to a contender (#Benchmark.contender) scrolls to it once its charts are there.
     const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
     if (target) target.scrollIntoView({block: "start"});
+  } else {
+    lastNight(document.getElementById("night"), []);
   }
 })();
 </script>

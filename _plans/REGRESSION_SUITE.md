@@ -7,7 +7,7 @@ Rebuilds the regression layer of the benchmarks into two profiles whose numbers 
 - **Trustworthy numbers.** Every contender is measured after it settles, in three JVMs. A contender still warming during measurement gets "not settled", never a verdict, and is not recorded. A night whose reference version moved is not recorded either.
 - **A known false-alarm rate.** At most one false alert a month, established from nights run with alerts off before alerts are trusted.
 - **Two profiles.**
-  - `quick`, for development: under 10 min on the N300, the version under test only, compared with the latest nightly result from the same machine. Elsewhere a baseline version named beside it is interleaved, doubling the time.
+  - `quick`, for development: under 10 min on the N300, the version under test only, compared with the latest nightly result from the same machine. On a machine without nightly runs, a baseline version named beside it is interleaved, doubling the time.
   - `nightly`, comprehensive: up to 60 min for one version, `origin/main` on the N300, recorded into the history.
 - **A history.** Each nightly run's results go to `hardwood-hq/hardwood-benchmark-results`; Otava finds the change points and alone decides which are regressions; each new one is measured again side by side as evidence for its issue. A one-time backfill seeds the history with 1.0.0.Final, 1.1.0.Beta1 to Beta3 and selected main commits.
 
@@ -38,10 +38,10 @@ When these are done, their design goes into the design document and this plan is
 
 ## Settled decisions
 
-- `quick` compares against history on the N300 only; on any other machine it needs a baseline version named beside the one under test.
+- `quick` compares against history only on a machine that runs the nightly job; on any other it needs a baseline version named beside the one under test.
 - Reading a sample of a taxi month to shorten flat and narrow is dropped: it changes their inputs and only halved warmup, since a smaller read makes per-read setup a larger share of each operation and that code needs its own invocations to compile.
 - Warmup is time-based per preset, sized on the N300. One operation count per script does not fit contenders whose settle points differ twentyfold; operation counts per contender would need a JMH run per contender in every benchmark.
 - 3 forks of 3 measurement iterations per contender, nightly.
 - Calibration runs on `origin/main` rather than one pinned commit, to get a feel for the noise over a few nights first.
-- `quick` against history compares with the latest nightly value of each contender, shown beside its commit; on any other machine than the N300, `quick` compares against a baseline version named beside the one under test.
+- `quick` against history compares with the latest nightly value of each contender, shown beside its commit; on a machine without nightly runs, `quick` compares against a baseline version named beside the one under test.
 - The nightly job pushes straight to the results repository's `main`, as a bot identity with a fine-grained token for that repository only, and alerts by opening an issue on `hardwood-hq/hardwood` with a second token, for issues on that repository only.

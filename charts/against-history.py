@@ -4,7 +4,8 @@
 Usage: against-history.py OUT VERSION --results DIR [--metric M] [--band PCT]
 
 OUT is run-regression.sh's output directory, VERSION the version it ran, and DIR a checkout of
-hardwood-benchmark-results. Run from the benchmarks checkout that produced OUT.
+hardwood-benchmark-results, whose directory of the machine the run's manifest names holds the
+history compared with. Run from the benchmarks checkout that produced OUT.
 
 Per contender the run measured, it finds the series recording would add the run to (the same
 contender, epoch and machine epoch) and prints the series' latest settled value, the commit it
@@ -70,13 +71,19 @@ def main():
 
     column, unit = METRICS[args.metric]
     summary = record_results.summarise(args.out, args.version)
+    name = summary["manifest"].get("machine")
+    if not name:
+        print("The run names no machine: set /etc/hardwood-benchmarks/machine or $BENCH_MACHINE_NAME to the name the "
+              "machine's nightly runs record under.")
+        return 1
+    results = os.path.join(args.results, name)
     machine = summary["machine_epoch"]
-    machine_dir = os.path.join(args.results, "series", machine)
+    machine_dir = os.path.join(results, "series", machine)
     if not os.path.isdir(machine_dir):
-        known = sorted(os.listdir(os.path.join(args.results, "series"))) if os.path.isdir(
-            os.path.join(args.results, "series")) else []
-        print("No nightly history on this machine (machine epoch {}; the results hold {}). The machine, JDK, "
-              "heap flags or clock differ from the nightly runs'.".format(machine, ", ".join(known) or "none"))
+        known = sorted(os.listdir(os.path.join(results, "series"))) if os.path.isdir(
+            os.path.join(results, "series")) else []
+        print("No nightly history on {} (machine epoch {}; the results hold {}). The machine, JDK, "
+              "heap flags or clock differ from the nightly runs'.".format(name, machine, ", ".join(known) or "none"))
         return 1
 
     print("{} against the latest nightly results of machine epoch {}, {} per operation; "

@@ -150,7 +150,9 @@ json.dump({
     "benchmarks": head + ("+" if dirty else ""),
     "profile": sys.argv[2],
     "rounds": int(sys.argv[3]),
-    "host": platform.node(),
+    # The machine's name, which names its directory in the results; not the host name, which
+    # may be a DHCP name holding the machine's address.
+    "machine": os.environ.get("BENCH_MACHINE_NAME") or read("/etc/hardwood-benchmarks/machine"),
     "cpu": first("/proc/cpuinfo", "model name") or platform.machine(),
     "cores": os.cpu_count(),
     "microcode": first("/proc/cpuinfo", "microcode"),
