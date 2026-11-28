@@ -523,8 +523,7 @@ def run_times(progress):
 
 def night_list(results, changes):
     """Each night that wrote a report: what it measured and in how long, or why it recorded nothing,
-    how many change points of each status it found, and which contenders its regressions and
-    unstable contenders are, for the page to link."""
+    how many change points of each status it found, and the contender of each, for the page to link."""
     measured = {n["date"]: n for n in rows_of(os.path.join(results, "nights.csv"))}
     out = []
     for path in sorted(glob.glob(os.path.join(results, "reports", "????-??-??.md"))):
@@ -546,14 +545,13 @@ def night_list(results, changes):
             with open(path) as f:
                 status = [l.strip() for l in f if l.strip() and not l.startswith("#")]
             night["status"] = status[0] if status else "nothing recorded"
-        found, flagged = {}, []
+        found, points = {}, []
         for c in changes:
             if c["found"] == date:
                 found[c["status"]] = found.get(c["status"], 0) + 1
-                if c["status"] in ("regression", "unstable"):
-                    flagged.append({k: c.get(k) for k in ("status", "benchmark", "contender", "machine", "issue")})
+                points.append({k: c.get(k) for k in ("status", "benchmark", "contender", "machine", "issue")})
         night["changes"] = found
-        night["flagged"] = flagged
+        night["points"] = points
         out.append(night)
     return out
 

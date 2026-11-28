@@ -311,11 +311,11 @@ series of a machine epoch: per contender its wall time, CPU, allocation, heap-af
 peak and caller share against commit time, unsettled rows hollow and off the line, an unstable contender marked, each run's
 forks as a whisker on wall time, change points marked, releases marked at the commit of the
 measured line each was cut from, whether or not they were measured (one whose fork point lies within a day of an earlier release's, such as a maintenance release, marks nothing of its own and is left out), and the newest epochs each in
-its own colour, superseded ones faded. The charts open on the last 60 days of commits, where the nights are, and show every row on
+its own colour, superseded ones faded. The charts open on the last 60 days of commits, where the nights are, and show the last 7 days or every row on
 request. Dragging across a chart narrows every chart to that time range,
 each y axis fitted to the values in it. A sticky bar holds the machine and the zoom; a panel above
 the charts shows the latest nightly run: what it measured and in how long, or why it recorded nothing,
-the change points it found, and a bar per nightly run of its measuring and gate time, per script on hover (backfills, whose time depends
+the change points it found, each numbered and linked to its contender's charts, and a bar per nightly run of its measuring and gate time, per script on hover (backfills, whose time depends
 on the version and the scripts they ran, are left out); a point links to the
 report of the night that measured it, or to the tables of any other run, both as GitHub renders them.
 
