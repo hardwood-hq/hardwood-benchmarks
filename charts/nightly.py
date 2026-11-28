@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """The analysis steps of nightly.sh, on a checkout of hardwood-benchmark-results.
 
+Every step but `index` takes RESULTS, a machine's directory in the checkout (<checkout>/<name>/),
+which holds everything that machine records: its series, epochs, nights, change points, reports,
+runs, otava.yaml and history.json. No two machines write the same file; the checkout's root holds
+only the page, which `index` writes.
+
   nightly.py analyze RESULTS --date DATE [--summary FILE --plan FILE]
       With --summary, a night's analysis: adds the night the summary records to nights.csv,
       the commits the nightly job measured as its own, runs Otava over every settled series of
@@ -22,16 +27,19 @@
       Writes reports/DATE.md and reports/latest.md: what ran, against the median of each
       series' last nights, and the change points found, or why the night recorded nothing.
   nightly.py page RESULTS [--hardwood CLONE]
-      Writes history.json, which index.html, the history page, reads; with a Hardwood clone, it
+      Writes the machine's history.json, which the history page reads; with a Hardwood clone, it
       lists the clone's release tags, so the page marks a release whether or not it was measured.
+  nightly.py index CHECKOUT
+      Writes the page, index.html, and machines.json, the machines whose history.json it shows,
+      to the checkout's root.
   nightly.py issues RESULTS --repo OWNER/NAME --token-file FILE
       Opens an issue for each regression and unstable contender not alerted yet, and records its
       URL; a failure leaves the rest for the next night.
   nightly.py mute RESULTS
       Marks each regression and unstable contender not alerted yet as found with alerts off.
-  nightly.py health --date DATE --repo OWNER/NAME --token-file FILE (--failing REASON | --ok)
-      Keeps one issue open while nights fail: --failing opens it, or comments on it when it is
-      open; --ok closes it.
+  nightly.py health --machine NAME --date DATE --repo OWNER/NAME --token-file FILE (--failing REASON | --ok)
+      Keeps one issue per machine open while its nights fail: --failing opens it, or comments on
+      it when it is open; --ok closes it.
 
 A change point is one series' change at one commit, as Otava finds it: it alone decides what
 changed. changes.json keeps every one, so that a change point Otava finds again, or finds a
@@ -376,7 +384,7 @@ def report(args):
                   "| Commit | [{}](https://github.com/hardwood-hq/hardwood/commit/{}) |".format(summary["commit"][:9],
                                                                                          summary["commit"]),
                   "| Run | {} |".format(summary["run"]),
-                  "| Machine | [{0}](../machines/{0}.json) |".format(summary["machine"])]
+                  "| Machine | {0} ([{1}](../machines/{1}.json)) |".format(machine_name(args.results), summary["machine"])]
         if args.out and os.path.exists(os.path.join(args.out, "progress.log")):
             with open(os.path.join(args.out, "progress.log")) as f:
                 total = [l.split()[1] for l in f if l.startswith("total ")]
@@ -579,9 +587,21 @@ def page(args):
           "series": series, "machines": machines, "changes": changes,
           "releases": releases(args.hardwood) if args.hardwood else [],
           "nights": night_list(args.results, changes)})
-    shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "history", "index.html"),
-                os.path.join(args.results, "index.html"))
     print("page: {} series".format(len(series)))
+
+
+def index(args):
+    """The page and the machines it shows: each directory of the checkout with a history.json."""
+    names = sorted(d for d in os.listdir(args.checkout) if os.path.isfile(os.path.join(args.checkout, d, "history.json")))
+    save(os.path.join(args.checkout, "machines.json"), names)
+    shutil.copy(os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "history", "index.html"),
+                os.path.join(args.checkout, "index.html"))
+    print("index: {}".format(", ".join(names) or "no machines"))
+
+
+def machine_name(results):
+    """The machine a machine's directory belongs to: the directory's name."""
+    return os.path.basename(os.path.abspath(results))
 
 
 METRIC_NAMES = {"wall_ms": "wall time", "cpu_ms": "CPU time", "alloc_bytes": "allocation",
@@ -611,13 +631,13 @@ def token_of(path):
         return f.read().strip()
 
 
-def unstable_issue(c, base):
+def unstable_issue(c, base, name):
     title = "{}.{}: not settled for {} nights".format(c["benchmark"].replace("Benchmark", ""), c["contender"],
                                                      len(c["verdicts"]))
     body = "\n".join([
-        "{}.{} has not settled in the nightly runs of the N300 since {}: {}. Its rows stay out of the history Otava "
+        "{}.{} has not settled in the nightly runs of {} since {}: {}. Its rows stay out of the history Otava "
         "analyses, so a regression in it would go unseen.".format(
-            c["benchmark"], c["contender"], c["commit"][:9], ", ".join(c["verdicts"])),
+            c["benchmark"], c["contender"], name, c["commit"][:9], ", ".join(c["verdicts"])),
         "",
         ("Commits since the last night it settled: https://github.com/hardwood-hq/hardwood/compare/{}...{}".format(
             c["before_commit"], c["commit"]) if c["before_commit"] else "It has not settled in any night of this epoch."),
@@ -632,13 +652,14 @@ def unstable_issue(c, base):
 def issues(args):
     token = token_of(args.token_file)
     changes = load(os.path.join(args.results, "changes.json"), [])
-    base = "https://github.com/hardwood-hq/hardwood-benchmark-results/blob/main/"
+    name = machine_name(args.results)
+    base = "https://github.com/hardwood-hq/hardwood-benchmark-results/blob/main/{}/".format(name)
     for c in changes:
         # No issue key yet: not alerted. An empty one: found while alerts were off (mute).
         if c["status"] not in ("regression", "unstable") or "issue" in c:
             continue
         if c["kind"] == "unstable":
-            title, body = unstable_issue(c, base)
+            title, body = unstable_issue(c, base, name)
             c["issue"] = github(token, "POST", "repos/{}/issues".format(args.repo),
                                 {"title": title, "body": body, "labels": ["performance"]})["html_url"]
             print("issue: {}".format(c["issue"]))
@@ -652,8 +673,8 @@ def issues(args):
                 moved.append("| {} | {} | {} | {:+.1f} % | {} |".format(
                     m, number(v["before"], UNITS[m]), number(v["after"], UNITS[m]), v["percent"], beside))
         body = "\n".join([
-            "Otava found {}.{} worse between {} and {} in {}, in the nightly history of the N300.".format(
-                c["benchmark"], c["contender"], c["before_commit"][:9], c["commit"][:9], ", ".join(worse_metrics(c))),
+            "Otava found {}.{} worse between {} and {} in {}, in the nightly history of {}.".format(
+                c["benchmark"], c["contender"], c["before_commit"][:9], c["commit"][:9], ", ".join(worse_metrics(c)), name),
             "",
             "Commits: https://github.com/hardwood-hq/hardwood/compare/{}...{}".format(c["before_commit"], c["commit"]),
             "",
@@ -685,14 +706,15 @@ def mute(args):
     save(os.path.join(args.results, "changes.json"), changes)
 
 
-HEALTH_TITLE = "Nightly regression job failing"
+HEALTH_TITLE = "Nightly regression job failing on {}"
 
 
 def health(args):
-    """One issue stays open while nights fail, found by its title among the open issues."""
+    """One issue per machine stays open while its nights fail, found by its title among the open issues."""
     token = token_of(args.token_file)
-    query = urllib.parse.quote('repo:{} is:issue is:open in:title "{}"'.format(args.repo, HEALTH_TITLE))
-    found = [i for i in github(token, "GET", "search/issues?q=" + query)["items"] if i["title"] == HEALTH_TITLE]
+    title = HEALTH_TITLE.format(args.machine)
+    query = urllib.parse.quote('repo:{} is:issue is:open in:title "{}"'.format(args.repo, title))
+    found = [i for i in github(token, "GET", "search/issues?q=" + query)["items"] if i["title"] == title]
     issue = found[0] if found else None
     if args.failing:
         text = "Night of {}: {}".format(args.date, args.failing)
@@ -702,9 +724,9 @@ def health(args):
         else:
             body = (text + "\n\nThe nightly regression job in hardwood-benchmarks recorded nothing or could not analyse "
                     "what it recorded. Each failing night adds a comment here; the next good night closes this issue. "
-                    "Its log is under `~/nightly/runs/` on the machine.")
+                    "Its log is under `~/nightly/runs/` on {}.".format(args.machine))
             made = github(token, "POST", "repos/{}/issues".format(args.repo),
-                          {"title": HEALTH_TITLE, "body": body, "labels": ["performance"]})
+                          {"title": title, "body": body, "labels": ["performance"]})
             print("health: opened {}".format(made["html_url"]))
     elif issue:
         github(token, "POST", "repos/{}/issues/{}/comments".format(args.repo, issue["number"]),
@@ -743,6 +765,8 @@ def main():
     p = sub.add_parser("page")
     p.add_argument("results")
     p.add_argument("--hardwood")
+    p = sub.add_parser("index")
+    p.add_argument("checkout")
     p = sub.add_parser("issues")
     p.add_argument("results")
     p.add_argument("--repo", required=True)
@@ -750,6 +774,7 @@ def main():
     p = sub.add_parser("mute")
     p.add_argument("results")
     p = sub.add_parser("health")
+    p.add_argument("--machine", required=True)
     p.add_argument("--date", required=True)
     p.add_argument("--repo", required=True)
     p.add_argument("--token-file", required=True)
@@ -758,7 +783,7 @@ def main():
     state.add_argument("--ok", action="store_true")
     args = parser.parse_args()
     {"analyze": analyze, "releases": release_versions, "plan": plan_field, "side-by-side": side_by_side, "report": report, "page": page,
-     "issues": issues, "mute": mute, "health": health}[args.command](args)
+     "index": index, "issues": issues, "mute": mute, "health": health}[args.command](args)
 
 
 if __name__ == "__main__":

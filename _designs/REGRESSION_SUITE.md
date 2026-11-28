@@ -2,8 +2,8 @@
 
 Describes how the suite measures Hardwood versions against each other: how a benchmark builds
 against any version, how a contender is measured and judged settled, how a run's results are
-recorded into a history, and how the nightly job on the N300 finds and reports
-regressions in that history.
+recorded into a history, and how the nightly job on each machine that runs it finds and
+reports regressions in that history.
 
 Related documents:
 
@@ -37,9 +37,9 @@ flowchart LR
 | Part | Reads | Writes |
 |---|---|---|
 | `run-regression.sh` | a profile, one or more Hardwood versions | a run's raw output, outside the results: per script the timings and `RegressionProfiler`'s per-iteration metrics, `manifest.json` describing machine and JVM, `tables.md`, `not-run.txt` |
-| `charts/record-results.py` | one version's raw output | in the results: one row per contender into that contender's series, a copy of the raw output under `runs/`, `epochs/`, `machines/`, and `otava.yaml` regenerated from the series |
+| `charts/record-results.py` | one version's raw output | in the machine's directory of the results: one row per contender into that contender's series, a copy of the raw output under `runs/`, `epochs/`, `machines/`, and `otava.yaml` regenerated from the series |
 | Apache Otava | `otava.yaml` and the series | nothing; it prints the change points it finds |
-| `charts/nightly.py` | Otava's change points, the series, side-by-side runs | `changes.json`, `nights.csv`, `reports/`, `history.json` and `index.html`, an issue on Hardwood per new regression, and one while nights fail |
+| `charts/nightly.py` | Otava's change points, the series, side-by-side runs | in the machine's directory: `changes.json`, `nights.csv`, `reports/`, `history.json`; at the root, the page (`index.html`, `machines.json`); an issue on Hardwood per new regression, and one per machine while its nights fail |
 
 `nightly.sh` drives all four once a night and works through a queue of backfills after; a
 backfill runs the first two and regenerates the page, and a batch of backfills is analysed once
@@ -205,8 +205,9 @@ heap-after-collection peak. It summarises the run as recording does (`record-res
 nightly value is a single row, so a delta is called worse or better only beyond a fixed band: a
 hint, not a verdict. A call on the heap-after-collection peak means something only where the GC
 time moves with it. A contender whose definition differs from the nightly one has no series to
-compare with, and says so. Hardwood's `hardwood-quick-vs-nightly` skill runs the `quick` profile for
-a branch on the N300 and shows this table.
+compare with, and says so. The run's manifest names the machine, whose directory of the results
+holds the history compared with. Hardwood's `hardwood-quick-vs-nightly` skill runs the `quick` profile for
+a branch on a machine that runs the nightly job and shows this table.
 
 **The version chart.** `charts/make-version-chart.py`, run by hand, charts each Hardwood
 contender across any number of snapshots in the order given, labelled with the version, and
@@ -256,8 +257,10 @@ history and side by side, with a link to the night's report. `changes.json` reco
 issue, so it is opened once; one that could not be opened is opened by the next night. With
 alerts off, each night marks what it found as found with alerts off, so turning them on opens no
 backlog. A night that records nothing, whose analysis fails or whose issues cannot be opened
-exits 1 or alerts, and keeps one issue, "Nightly regression job failing", open: the first such
-night opens it, each further one comments, and the next good night closes it.
+exits 1 or alerts, and keeps one issue per machine, "Nightly regression job failing on <machine>",
+open: the first such night opens it, each further one comments, and the next good night closes
+it. So does a night whose push fails three times, as the next night starts from the results'
+`origin/main` and its commit is lost.
 
 **Matching.** Otava fits each series' whole history each night, and backfilled rows land
 between existing ones, so a change point it finds again may sit a few rows from where it was
@@ -266,12 +269,28 @@ one's commit range, widened by `SHIFT_ROWS` on either side.
 
 ## The nightly job
 
-`nightly.sh` runs from a systemd timer on the N300. It keeps its clones of Hardwood, the
-benchmarks and the results under `~/nightly`, brings the benchmarks to `origin/main` first,
-and runs a copy of itself, since bash reads a script while running it.
+`nightly.sh` runs from a systemd timer on each machine that measures. It keeps its clones of
+Hardwood, the benchmarks and the results under `~/nightly`, brings the benchmarks to
+`origin/main` first, and runs a copy of itself, since bash reads a script while running it.
+
+**Machines.** Each machine has a name, in `/etc/hardwood-benchmarks/machine` or
+`$BENCH_MACHINE_NAME`, which each run's manifest records; not the host name, which on a DHCP network
+may hold the machine's address. The name is the machine's directory in the results, which
+holds everything it records: its series, epochs, machine epochs, runs, nights, change points,
+reports, `otava.yaml` and `history.json`. Every path inside is relative to that directory, and
+every step but the page's entry runs on it alone, so a night analyses only its own machine's
+series, and "a commit a night measured" means a night of that machine. No two machines write
+the same file, except the page at the root: `index.html` and `machines.json`, the list of
+directories with a `history.json`. Pushing rebases on what other machines pushed since, and
+writes the page again from the merged tree, so a conflict there resolves itself; a conflict
+anywhere else would mean two jobs share a name, and fails the push. A machine epoch is still
+its hardware and JVM, so a JDK update starts new series within the machine's directory.
 
 **The box to itself.** A night holds a lock (`~/nightly/lock`) and starts only when no JVM runs
-and no one else pinned the clock; it pins the clock and restores it at the end. While it
+and no one else pinned the clock. With `profiling-setup` installed (cloud-boxes' `bench_host`
+role) it pins the clock and restores it at the end, and a pin that fails skips the night;
+without, it measures on the clock as it is and logs the governor and frequency, which the machine
+epoch records, so a pinned and an unpinned run never share a series. While it
 measures, a watcher looks for JVMs outside the job's control group; one voids the night, which
 records nothing. A JVM that has ended before the watcher reads it is skipped, since the job's
 own forks and builds end all the time. A skipped or void night still writes a report saying
@@ -291,7 +310,7 @@ next night. When a contender's epoch or machine epoch starts, the night queues e
 the history page marks, from 1.0.0.Final, the oldest the benchmarks build against, and the
 previous night's commit for the scripts concerned, so that every
 series holds every release. `--backfill` works through the queue at once, without measuring a
-night. Once a batch of backfills is in, the job runs the analysis over every machine epoch:
+night. Once a batch of backfills is in, the job runs the analysis over every machine epoch of the machine:
 once, not after each backfill, since Otava fits whatever rows a series has, and a series half
 way through a batch shows steps the rest of it fills in. It records no night and runs nothing
 side by side; a regression it finds at a night's commit (backfilled rows can move Otava's fit)
@@ -303,18 +322,18 @@ get a second row for a commit they already hold. A commit whose row did not sett
 backfilled again. A night's own run of a commit already recorded adds
 its row, since measuring the same commit night after night is how calibration reads the noise.
 
-**The report and the page.** `reports/<date>.md` lists what the night measured, each
+**The report and the page.** A machine's `reports/<date>.md` lists what the night measured, each
 contender's metrics against the median of its series' last nights and its caller share (caller
 time against wall time, marked from 0.8, where wall time misses decode changes), what did not
-run, and the change points found that night. `index.html` with `history.json` charts every
-series of a machine epoch: per contender its wall time, CPU, allocation, heap-after-collection
+run, and the change points found that night. `index.html` reads `machines.json` and each machine's `history.json`, and charts every
+series of a machine epoch, picked by machine and epoch: per contender its wall time, CPU, allocation, heap-after-collection
 peak and caller share against commit time, unsettled rows hollow and off the line, an unstable contender marked, each run's
 forks as a whisker on wall time, change points marked, releases marked at the commit of the
 measured line each was cut from, whether or not they were measured (one whose fork point lies within a day of an earlier release's, such as a maintenance release, marks nothing of its own and is left out), and the newest epochs each in
 its own colour, superseded ones faded. The charts open on the last 60 days of commits, where the nights are, and show the last 7 days or every row on
 request. Dragging across a chart narrows every chart to that time range,
 each y axis fitted to the values in it. A sticky bar holds the machine and the zoom; a panel above
-the charts shows the latest nightly run: what it measured and in how long, or why it recorded nothing,
+the charts shows the picked machine's latest nightly run: what it measured and in how long, or why it recorded nothing,
 the change points it found, each numbered and linked to its contender's charts, and a bar per nightly run of its measuring and gate time, per script on hover (backfills, whose time depends
 on the version and the scripts they ran, are left out); a point links to the
 report of the night that measured it, or to the tables of any other run, both as GitHub renders them.
