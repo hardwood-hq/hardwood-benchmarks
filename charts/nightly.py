@@ -384,7 +384,7 @@ def report(args):
                   "| Commit | [{}](https://github.com/hardwood-hq/hardwood/commit/{}) |".format(summary["commit"][:9],
                                                                                          summary["commit"]),
                   "| Run | {} |".format(summary["run"]),
-                  "| Machine | {0} ([{1}](../machines/{1}.json)) |".format(machine_name(args.results), summary["machine"])]
+                  "| Machine | {0} ([{1}](../machine-epochs/{1}.json)) |".format(machine_name(args.results), summary["machine"])]
         if args.out and os.path.exists(os.path.join(args.out, "progress.log")):
             with open(os.path.join(args.out, "progress.log")) as f:
                 total = [l.split()[1] for l in f if l.startswith("total ")]
@@ -579,12 +579,12 @@ def page(args):
     # Only machine epochs that hold series: one whose series moved on keeps its file, for the
     # reports that link it.
     held = {s["machine"] for s in series}
-    machines = {os.path.basename(p)[:-5]: load(p, {}) for p in glob.glob(os.path.join(args.results, "machines", "*.json"))
-                if os.path.basename(p)[:-5] in held}
+    machine_epochs = {os.path.basename(p)[:-5]: load(p, {}) for p in glob.glob(os.path.join(args.results, "machine-epochs", "*.json"))
+                      if os.path.basename(p)[:-5] in held}
     changes = load(os.path.join(args.results, "changes.json"), [])
     save(os.path.join(args.results, "history.json"),
          {"generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-          "series": series, "machines": machines, "changes": changes,
+          "series": series, "machine_epochs": machine_epochs, "changes": changes,
           "releases": releases(args.hardwood) if args.hardwood else [],
           "nights": night_list(args.results, changes)})
     print("page: {} series".format(len(series)))

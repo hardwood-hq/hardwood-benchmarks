@@ -37,7 +37,7 @@ flowchart LR
 | Part | Reads | Writes |
 |---|---|---|
 | `run-regression.sh` | a profile, one or more Hardwood versions | a run's raw output, outside the results: per script the timings and `RegressionProfiler`'s per-iteration metrics, `manifest.json` describing machine and JVM, `tables.md`, `not-run.txt` |
-| `charts/record-results.py` | one version's raw output | in the machine's directory of the results: one row per contender into that contender's series, a copy of the raw output under `runs/`, `epochs/`, `machines/`, and `otava.yaml` regenerated from the series |
+| `charts/record-results.py` | one version's raw output | in the machine's directory of the results: one row per contender into that contender's series, a copy of the raw output under `runs/`, `epochs/`, `machine-epochs/`, and `otava.yaml` regenerated from the series |
 | Apache Otava | `otava.yaml` and the series | nothing; it prints the change points it finds |
 | `charts/nightly.py` | Otava's change points, the series, side-by-side runs | in the machine's directory: `changes.json`, `nights.csv`, `reports/`, `history.json`; at the root, the page (`index.html`, `machines.json`); an issue on Hardwood per new regression, and one per machine while its nights fail |
 

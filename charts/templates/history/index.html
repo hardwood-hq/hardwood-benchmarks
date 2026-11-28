@@ -770,7 +770,7 @@ function showMachine(name, history, machine) {
 }
 
 async function jump(f) {
-  if (f.machine && f.machine !== shown.machine && shown.history.machines[f.machine]) await showMachine(shown.name, shown.history, f.machine);
+  if (f.machine && f.machine !== shown.machine && shown.history.machine_epochs[f.machine]) await showMachine(shown.name, shown.history, f.machine);
   await shown.rendered;
   const row = document.getElementById(anchorOf(f.benchmark, f.contender));
   if (!row) return;
@@ -885,7 +885,7 @@ async function historyOf(name) {
   const histories = new Map(await Promise.all(names.map(async name => [name, await historyOf(name)])));
   const select = document.getElementById("machine");
   for (const [name, history] of histories) {
-    for (const [id, m] of Object.entries(history.machines)) {
+    for (const [id, m] of Object.entries(history.machine_epochs)) {
       const option = document.createElement("option");
       option.value = name + "/" + id;
       option.textContent = `${name} · ${m.cpu.replace(/\((R|TM)\)/g, "").replace(/\s+/g, " ")} · ${(m.max_freq_khz / 1e6).toFixed(2)} GHz · JDK ${(m.java.match(/build ([^,)]+)/) || [, ""])[1]}`;
