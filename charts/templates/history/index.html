@@ -67,10 +67,10 @@
   h2 { font-size: 16px; margin: 28px 0 8px; }
   .meta { color: var(--muted); font-size: 12px; }
   .row { scroll-margin-top: 64px; transition: box-shadow 0.4s; }
-  .row.flash { box-shadow: 0 0 0 2px var(--regression); }
+  .row.flash { box-shadow: 0 0 0 2px var(--chip); }
   .facts a.jump { display: inline-block; min-width: 1.4em; margin-left: 6px; padding: 0 5px; border: 1px solid currentColor;
     border-radius: 9px; font-size: 11px; line-height: 16px; text-align: center; color: inherit; text-decoration: none; }
-  .facts a.jump:hover { background: var(--regression); border-color: var(--regression); color: var(--card); }
+  .facts a.jump:hover { background: var(--chip); border-color: var(--chip); color: var(--card); }
   .row { background: var(--card); border: 1px solid var(--grid); border-radius: 6px; padding: 8px 10px; margin: 8px 0; }
   .row h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; word-break: break-all; }
   .row h3 .badge { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--regression);
@@ -136,7 +136,7 @@
   <div class="bar">
     <div class="brand"><img src="https://hardwood.dev/latest/assets/hardwood.svg" alt="" width="30" height="30"><h1>Hardwood regression history</h1></div>
     <div class="tools">
-      <div id="zoom"><span id="range"></span><button id="reset" type="button" title="Esc" hidden>Reset zoom</button><span class="seg"><button type="button" data-preset="recent" class="on">Last 60 days</button><button type="button" data-preset="all">All</button></span></div>
+      <div id="zoom"><span id="range"></span><button id="reset" type="button" title="Esc" hidden>Reset zoom</button><span class="seg"><button type="button" data-preset="7">Last 7 days</button><button type="button" data-preset="60" class="on">Last 60 days</button><button type="button" data-preset="all">All</button></span></div>
       <label class="machine">Machine <select id="machine"></select></label>
     </div>
   </div>
@@ -404,6 +404,9 @@ const CHANGE_WORDS = [["regression", "regression", "regressions"],
 const STATUS_WORDS = {regression: "regression", improvement: "improvement",
   history: "regression between backfills (no issue)"};
 
+// An unstable contender is marked like a regression.
+const statusColor = status => `var(--${status === "unstable" ? "regression" : status})`;
+
 // The last night: what it measured and how long it took, or why it recorded nothing, and the change points it found.
 function fact(dl, label, ...values) {
   const dt = document.createElement("dt");
@@ -453,9 +456,10 @@ function lastNight(panel, nights) {
     for (const [one, {many, status, n}] of counts) {
       const line = div(status === "regression" || status === "unstable" ? "bad" : "", `${n} ${n > 1 ? many : one}`);
       // Numbered, the name on hover: a contender's full name would not fit the panel.
-      (night.flagged || []).filter(f => f.status === status).forEach((f, i) => {
+      (night.points || []).filter(f => f.status === status).forEach((f, i) => {
         const a = document.createElement("a");
         a.className = "jump";
+        a.style.setProperty("--chip", statusColor(status));
         a.href = "#" + encodeURIComponent(anchorOf(f.benchmark, f.contender));
         a.textContent = String(i + 1);
         a.title = `${f.benchmark.replace(/Benchmark$/, "")} · ${f.contender}: show its charts`;
@@ -567,11 +571,11 @@ function day(t) {
 // Zoom: dragging across any chart's plot narrows every chart to that time range, each with its
 // y axis fitted to the values in it; Escape or the reset button returns to every recorded row.
 let full = null, view = null, drag = null, clips = 0;
-// The charts open on the last RECENT_DAYS of commits, where the nights are; "all" spans every row.
-const RECENT_DAYS = 60;
-let preset = "recent";
+// A preset is a number of days back from the last commit, or "all" for every row; the charts
+// open on the last 60 days, where the nights are.
+let preset = "60";
 function base() {
-  return preset === "all" ? full : [Math.max(full[0], full[1] - RECENT_DAYS * 864e5), full[1]];
+  return preset === "all" ? full : [Math.max(full[0], full[1] - Number(preset) * 864e5), full[1]];
 }
 const drawn = [];
 
@@ -770,6 +774,7 @@ async function jump(f) {
   if (!row) return;
   window.history.replaceState(null, "", "#" + encodeURIComponent(row.id));
   row.scrollIntoView({behavior: "smooth", block: "start"});
+  row.style.setProperty("--chip", statusColor(f.status));
   row.classList.add("flash");
   setTimeout(() => row.classList.remove("flash"), 1600);
 }
