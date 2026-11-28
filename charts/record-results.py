@@ -235,9 +235,9 @@ def main():
     manifest, machine_epoch, runs = summary["manifest"], summary["machine_epoch"], summary["runs"]
     if manifest.get("machine") != os.path.basename(os.path.abspath(args.results)):
         raise SystemExit("record-results: the run is of machine {!r}, not of {}".format(manifest.get("machine"), args.results))
-    machines = os.path.join(args.results, "machines")
-    os.makedirs(machines, exist_ok=True)
-    with open(os.path.join(machines, machine_epoch + ".json"), "w") as f:
+    machine_epochs = os.path.join(args.results, "machine-epochs")
+    os.makedirs(machine_epochs, exist_ok=True)
+    with open(os.path.join(machine_epochs, machine_epoch + ".json"), "w") as f:
         json.dump(summary["machine"], f, indent=2, sort_keys=True)
 
     metas = summary["metas"]
@@ -301,7 +301,7 @@ def rekey(results):
     one, merging rows into a series already there, and updates changes.json; the old machine
     file stays, for the reports that link it."""
     moved = {}
-    for path in sorted(glob.glob(os.path.join(results, "machines", "*.json"))):
+    for path in sorted(glob.glob(os.path.join(results, "machine-epochs", "*.json"))):
         old = os.path.basename(path)[:-len(".json")]
         with open(path) as f:
             described = json.load(f)
@@ -309,7 +309,7 @@ def rekey(results):
         new = "m" + digest(machine)
         if new == old:
             continue
-        target = os.path.join(results, "machines", new + ".json")
+        target = os.path.join(results, "machine-epochs", new + ".json")
         if not os.path.exists(target):
             with open(target, "w") as f:
                 json.dump(machine, f, indent=2, sort_keys=True)
